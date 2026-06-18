@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Implementation phase. Task 1 (stabilize `lesspass-core`), Task 2 (scaffold Tauri desktop app), Task 3 (SQLCipher-backed storage model and CRUD), and Task 4 (session and Keychain boundary) are complete. Next: Task 5 — Tauri commands.
+Implementation phase. Tasks 1–5 are complete (core, desktop scaffold, SQLCipher storage, session/Keychain boundary, Tauri commands). Next: Task 6 — Desktop UI views.
 
 ## Completed
 
@@ -16,9 +16,13 @@ Implementation phase. Task 1 (stabilize `lesspass-core`), Task 2 (scaffold Tauri
 | Task 1 | Stabilize lesspass-core: CoreError, Result returns, fa-* serde, salt tiebreaking, compatibility tests. 15 tests passing. | `crates/lesspass-core/`, `Cargo.toml` |
 | Task 2 | Scaffold Tauri desktop app: Vite + React + Tailwind frontend, Tauri v2 Rust backend. cargo check and yarn build pass. | `desktop/`, `Cargo.toml`, `package.json`, `yarn.lock` |
 | Task 3 | Add SQLCipher-backed storage model and CRUD: folders, entries, tags, encrypted open, search, and no password column. 4 DB tests passing. | `desktop/src-tauri/src/db.rs`, `desktop/src-tauri/tests/db_tests.rs` |
+| Task 5 | Add Tauri commands: nine `#[tauri::command]` wrappers (session, vault, settings), pure helpers (`synthesize_fingerprints`, `derive_password`) for unit testing, AppState managed in `main.rs` with `cfg(mobile)` biometric gating preserved, frontend `types.ts` + `api.ts`. 4 command tests passing (10 total). | `desktop/src-tauri/src/commands.rs`, `desktop/src-tauri/src/main.rs`, `desktop/src-tauri/src/lib.rs`, `desktop/src-tauri/tests/commands_tests.rs`, `desktop/src/types.ts`, `desktop/src/api.ts` |
 | Task 4 | Add session and Keychain boundary: in-memory session lock/unlock with zeroize, macOS Keychain adapter trait, managed Tauri session state. 2 session tests passing. Biometric plugin registration is gated to mobile because `tauri-plugin-biometric` v2.3.2 compiles its Rust API only under `cfg(mobile)`. | `desktop/src-tauri/src/session.rs`, `desktop/src-tauri/src/keychain.rs`, `desktop/src-tauri/tests/session_tests.rs` |
 
 ## In Progress
+
+| Task | Description | Status |
+|------|-------------|--------|
 
 None.
 
@@ -26,7 +30,6 @@ None.
 
 | Task | Description |
 |------|-------------|
-| Task 5 | Add Tauri commands. |
 | Task 6 | Build desktop UI views. |
 | Task 7 | Add native messaging backend. |
 | Task 8 | Rebuild Chromium extension as read-only client. |

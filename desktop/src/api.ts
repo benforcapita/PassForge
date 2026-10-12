@@ -24,10 +24,12 @@ export type Api = {
   generatePassword: (entryId: string) => Promise<string>;
   getSettings: () => Promise<Settings>;
   saveSettings: (settings: Settings) => Promise<Settings>;
+  recordActivity: () => Promise<void>;
 };
 
 const tauriApi: Api = {
   isLocked: () => invoke<boolean>("is_locked"),
+  recordActivity: () => invoke<void>("record_activity"),
   unlockWithMasterPassword: (masterPassword: string) =>
     invoke<void>("unlock_with_master_password", { masterPassword }),
   lock: () => invoke<void>("lock"),

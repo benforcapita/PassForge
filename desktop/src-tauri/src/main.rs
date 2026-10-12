@@ -19,6 +19,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::is_locked,
+            commands::record_activity,
             commands::unlock_with_master_password,
             commands::lock,
             commands::create_folder,
@@ -34,6 +35,22 @@ fn main() {
             commands::save_settings,
         ]);
 
+    let builder = builder
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .setup(|app| {
+            use tauri::{Emitter, Manager};
+            let session = app.state::<session::SessionState>().inner().clone();
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    if let Ok(true) = session.lock_if_idle() {
+                        let _ = app_handle.emit("passforge://vault-locked", ());
+                    }
+                }
+            });
+            Ok(())
+        });
     #[cfg(mobile)]
     let builder = builder.plugin(tauri_plugin_biometric::init());
 

@@ -3,9 +3,9 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use zeroize::Zeroize;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct SessionState {
-    inner: Mutex<SessionInner>,
+    inner: std::sync::Arc<Mutex<SessionInner>>,
 }
 
 #[derive(Default)]
@@ -46,6 +46,14 @@ impl SessionState {
             return Err(PassForgeError::Locked);
         }
         Ok(inner.master_password.clone())
+    }
+
+    /// Refreshes the last-activity timestamp. No-op while locked.
+    pub fn touch(&self) {
+        let mut inner = self.inner.lock().expect("session mutex poisoned");
+        if inner.unlocked_at.is_some() {
+            inner.unlocked_at = Some(Instant::now());
+        }
     }
 
     pub fn set_idle_timeout(&self, seconds: u64) {

@@ -26,7 +26,7 @@ pub struct AppState {
     pub db: Mutex<VaultDb>,
 }
 
-fn load_settings(db: &VaultDb) -> Settings {
+pub fn load_settings(db: &VaultDb) -> Settings {
     db.get_kv("settings")
         .ok()
         .flatten()

@@ -1,0 +1,7 @@
+{
+  "name": "com.passforge.desktop",
+  "description": "PassForge native messaging host — serves vault profiles and generates passwords for the PassForge browser extension.",
+  "path": "PASSFORGE_HOST_PATH",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://PASSFORGE_EXTENSION_ID/"]
+}

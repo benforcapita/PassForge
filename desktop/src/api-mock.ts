@@ -54,8 +54,8 @@ function hashString(input: string): number {
 function fakeFingerprint(seed: string): Finger[] {
   const h = hashString(seed);
   return [0, 1, 2].map((i) => ({
-    icon: FA_ICONS[(h >> (i * 5)) % FA_ICONS.length],
-    color: FP_COLORS[(h >> (i * 3)) % FP_COLORS.length],
+    icon: FA_ICONS[(h >>> (i * 5)) % FA_ICONS.length],
+    color: FP_COLORS[(h >>> (i * 3)) % FP_COLORS.length],
   }));
 }
 

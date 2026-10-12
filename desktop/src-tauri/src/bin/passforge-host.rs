@@ -5,14 +5,13 @@
 
 use passforge_desktop::native_messaging::{dispatch, read_frame, write_frame};
 use passforge_desktop::vault;
-use serde::Serialize;
 
 fn main() {
     let db_path = match std::env::var_os("PASSFORGE_DB_PATH") {
         Some(p) => std::path::PathBuf::from(p),
         None => match vault::default_db_path() {
             Ok(p) => p,
-            Err(e) => return fail(&e.to_string()),
+            Err(e) => fail(&e.to_string()),
         },
     };
     let db = vault::open_existing_at(&db_path).ok();
@@ -38,7 +37,7 @@ fn main() {
                 }
             }
             Ok(None) => return, // browser closed the pipe
-            Err(e) => return fail(&e.to_string()),
+            Err(e) => fail(&e.to_string()),
         }
     }
 }

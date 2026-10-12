@@ -1,13 +1,5 @@
-mod biometric;
-mod commands;
-mod db;
-mod error;
-mod keychain;
-mod models;
-mod session;
-mod vault;
-
-use commands::AppState;
+use passforge_desktop::commands::{self, AppState};
+use passforge_desktop::{session, vault};
 use std::sync::Mutex;
 
 fn main() {

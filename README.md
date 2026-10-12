@@ -10,7 +10,7 @@ PassForge is a local-first, stateless password manager built on the LessPass alg
 
 ### What PassForge adds on top of LessPass
 
-- **macOS desktop app** — Tauri v2 shell, Rust backend, React 19 frontend with Material Design 3 dark theme.
+- **macOS desktop app** — Tauri v2 shell, Rust backend, React 19 frontend built on the Obsidian Precision design system (see `docs/design-system/`).
 - **Encrypted local metadata** — SQLCipher-backed SQLite stores entries (site, login, counter, password options, salt fields) so you can organize and revisit sites without remembering every parameter.
 - **Keychain + Touch ID** — Master password and database encryption key live in the macOS Secure Enclave. The desktop holds the master password only in RAM and zeroizes it on lock, idle timeout, or quit.
 - **Entry organization** — Folders (hierarchical), groups (flat, many-to-many), and tags (freeform).

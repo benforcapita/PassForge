@@ -1,0 +1,84 @@
+:root {
+  /* Surfaces */
+  --pf-surface-canvas: #070A0F;
+  --pf-surface-base: #0D1117;
+  --pf-surface-raised: #161B22;
+  --pf-surface-overlay: #21262D;
+  --pf-surface-input: #0B0F17;
+  --pf-surface-input-focus: #111622;
+
+  /* Accents */
+  --pf-accent-primary: #06B6D4;
+  --pf-accent-primary-hover: #0891B2;
+  --pf-accent-primary-muted: rgba(6, 182, 212, 0.12);
+  --pf-accent-secondary: #38BDF8;
+
+  /* Status */
+  --pf-status-error: #EF4444;
+  --pf-status-error-bg: rgba(239, 68, 68, 0.12);
+  --pf-status-warning: #F59E0B;
+  --pf-status-warning-bg: rgba(245, 158, 11, 0.12);
+  --pf-status-success: #10B981;
+  --pf-status-success-bg: rgba(16, 185, 129, 0.12);
+
+  /* Borders */
+  --pf-border-subtle: #21262D;
+  --pf-border-moderate: #30363D;
+  --pf-border-strong: #484F58;
+  --pf-border-focus: #06B6D4;
+
+  /* Typography */
+  --pf-text-primary: #F0F6FC;
+  --pf-text-secondary: #8B949E;
+  --pf-text-muted: #484F58;
+  --pf-text-on-accent: #070A0F;
+  --pf-text-error: #F87171;
+
+  /* Radii */
+  --pf-radius-sm: 4px;
+  --pf-radius-md: 6px;
+  --pf-radius-lg: 8px;
+}
+
+@theme inline {
+  --color-pf-canvas: var(--pf-surface-canvas);
+  --color-pf-base: var(--pf-surface-base);
+  --color-pf-raised: var(--pf-surface-raised);
+  --color-pf-overlay: var(--pf-surface-overlay);
+  --color-pf-input: var(--pf-surface-input);
+  --color-pf-input-focus: var(--pf-surface-input-focus);
+
+  --color-pf-accent: var(--pf-accent-primary);
+  --color-pf-accent-hover: var(--pf-accent-primary-hover);
+  --color-pf-accent-muted: var(--pf-accent-primary-muted);
+  --color-pf-accent-secondary: var(--pf-accent-secondary);
+
+  --color-pf-error: var(--pf-status-error);
+  --color-pf-error-bg: var(--pf-status-error-bg);
+  --color-pf-warning: var(--pf-status-warning);
+  --color-pf-warning-bg: var(--pf-status-warning-bg);
+  --color-pf-success: var(--pf-status-success);
+  --color-pf-success-bg: var(--pf-status-success-bg);
+
+  --color-pf-border-subtle: var(--pf-border-subtle);
+  --color-pf-border-moderate: var(--pf-border-moderate);
+  --color-pf-border-strong: var(--pf-border-strong);
+  --color-pf-border-focus: var(--pf-border-focus);
+
+  --color-pf-text-primary: var(--pf-text-primary);
+  --color-pf-text-secondary: var(--pf-text-secondary);
+  --color-pf-text-muted: var(--pf-text-muted);
+  --color-pf-text-on-accent: var(--pf-text-on-accent);
+  --color-pf-text-error: var(--pf-text-error);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px #30363D;
+  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px #30363D;
+  --shadow-focus-ring: 0 0 0 2px #06B6D4;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+}

@@ -170,10 +170,70 @@ impl VaultDb {
         }))
     }
 
+    pub fn list_folders(&self) -> Result<Vec<Folder>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, parent_id, name FROM folders ORDER BY name ASC")?;
+        let rows = stmt.query_map([], |row| {
+            Ok(Folder {
+                id: row.get(0)?,
+                parent_id: row.get(1)?,
+                name: row.get(2)?,
+            })
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(Into::into)
+    }
+
+    pub fn update_entry(&self, id: &str, input: EntryInput) -> Result<VaultEntry> {
+        let now = Utc::now().to_rfc3339();
+        let affected = self.conn.execute(
+            "UPDATE entries SET site = ?1, login = ?2, counter = ?3, options_json = ?4,
+             salt_fields_json = ?5, crypto_json = ?6, folder_id = ?7, updated_at = ?8
+             WHERE id = ?9",
+            params![
+                &input.site,
+                &input.login,
+                input.counter,
+                serde_json::to_string(&input.options)?,
+                serde_json::to_string(&input.salt_fields)?,
+                serde_json::to_string(&input.crypto)?,
+                &input.folder_id,
+                &now,
+                id
+            ],
+        )?;
+        if affected == 0 {
+            return Err(PassForgeError::EntryNotFound(id.to_string()));
+        }
+
+        self.conn.execute(
+            "DELETE FROM entry_tags WHERE entry_id = ?1",
+            params![id],
+        )?;
+        for tag in &input.tags {
+            self.attach_tag(id, tag)?;
+        }
+
+        Ok(self
+            .get_entry(id)?
+            .expect("updated entry should be readable immediately"))
+    }
+
+    pub fn delete_entry(&self, id: &str) -> Result<()> {
+        let affected = self
+            .conn
+            .execute("DELETE FROM entries WHERE id = ?1", params![id])?;
+        if affected == 0 {
+            return Err(PassForgeError::EntryNotFound(id.to_string()));
+        }
+        Ok(())
+    }
+
     pub fn search_entries(&self, query: &str) -> Result<Vec<EntrySummary>> {
         let like = format!("%{}%", query);
         let mut stmt = self.conn.prepare(
-            "SELECT id, site, login, last_used_at FROM entries
+            "SELECT id, site, login, counter, folder_id, last_used_at FROM entries
              WHERE site LIKE ?1 OR login LIKE ?1
              ORDER BY last_used_at DESC, site ASC, login ASC",
         )?;
@@ -182,8 +242,10 @@ impl VaultDb {
                 id: row.get(0)?,
                 site: row.get(1)?,
                 login: row.get(2)?,
+                counter: row.get::<_, i64>(3)? as u32,
+                folder_id: row.get(4)?,
                 fingerprint: None,
-                last_used_at: row.get(3)?,
+                last_used_at: row.get(5)?,
             })
         })?;
 

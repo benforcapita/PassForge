@@ -1,10 +1,14 @@
 use crate::error::{PassForgeError, Result};
+#[cfg(target_os = "macos")]
 use security_framework::passwords::{
     delete_generic_password, get_generic_password, set_generic_password,
 };
 
+#[cfg(target_os = "macos")]
 const SERVICE: &str = "com.passforge.desktop";
+#[cfg(target_os = "macos")]
 const MASTER_ACCOUNT: &str = "master-password";
+#[cfg(target_os = "macos")]
 const DB_KEY_ACCOUNT: &str = "database-key";
 
 pub trait SecretStore: Send + Sync {
@@ -15,9 +19,11 @@ pub trait SecretStore: Send + Sync {
     fn load_database_key(&self) -> Result<Option<Vec<u8>>>;
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Debug, Default)]
 pub struct MacKeychain;
 
+#[cfg(target_os = "macos")]
 impl SecretStore for MacKeychain {
     fn save_master_password(&self, value: &[u8]) -> Result<()> {
         set_generic_password(SERVICE, MASTER_ACCOUNT, value)

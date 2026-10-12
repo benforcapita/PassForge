@@ -1,4 +1,4 @@
-import { Eye, EyeOff, KeyRound, Lock } from "lucide-react";
+import { Eye, EyeOff, Fingerprint, KeyRound, Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { Button } from "../components/ui/Button";
@@ -22,10 +22,21 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [fingers, setFingers] = useState<Finger[] | null>(null);
+  const [biometric, setBiometric] = useState({ supported: false, stored: false });
+  const [remember, setRemember] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
+    void (async () => {
+      try {
+        const supported = await api.biometricSupported();
+        const stored = await api.masterPasswordStored();
+        setBiometric({ supported: !!supported, stored: !!stored });
+      } catch {
+        // Biometrics unavailable — affordances stay hidden.
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -48,6 +59,22 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
     setError(null);
     try {
       await api.unlockWithMasterPassword(password);
+      if (remember) {
+        api.rememberMasterPassword().catch(() => {});
+      }
+      onUnlock();
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
+  };
+
+  const touchIdUnlock = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.biometricUnlock();
       onUnlock();
     } catch (err) {
       setError(errorMessage(err));
@@ -134,10 +161,37 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
               )}
             </div>
 
+            {biometric.supported && !biometric.stored && (
+              <label className="mt-3 flex cursor-pointer items-center gap-2 text-[12px] text-pf-text-secondary">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-[#06B6D4]"
+                />
+                Remember on this Mac (Touch ID)
+              </label>
+            )}
+
             <Button type="submit" disabled={!password || busy} className="mt-4 w-full">
               Unlock Vault
             </Button>
           </form>
+
+          {biometric.supported && biometric.stored && (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => void touchIdUnlock()}
+              className="mt-2.5 w-full"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Fingerprint size={14} strokeWidth={1.5} />
+                Unlock with Touch ID
+              </span>
+            </Button>
+          )}
 
           <p className="mt-5 text-center text-[11px] leading-4 text-pf-text-muted">
             PassForge is stateless. Passwords exist only in memory during generation.

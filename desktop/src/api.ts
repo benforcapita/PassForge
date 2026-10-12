@@ -25,6 +25,11 @@ export type Api = {
   getSettings: () => Promise<Settings>;
   saveSettings: (settings: Settings) => Promise<Settings>;
   recordActivity: () => Promise<void>;
+  biometricSupported: () => Promise<boolean>;
+  masterPasswordStored: () => Promise<boolean>;
+  biometricUnlock: () => Promise<void>;
+  rememberMasterPassword: () => Promise<void>;
+  forgetMasterPassword: () => Promise<void>;
 };
 
 const tauriApi: Api = {
@@ -46,6 +51,11 @@ const tauriApi: Api = {
   generatePassword: (entryId: string) => invoke<string>("generate_password", { entryId }),
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
+  biometricSupported: () => invoke<boolean>("biometric_supported"),
+  masterPasswordStored: () => invoke<boolean>("master_password_stored"),
+  biometricUnlock: () => invoke<void>("biometric_unlock"),
+  rememberMasterPassword: () => invoke<void>("remember_master_password"),
+  forgetMasterPassword: () => invoke<void>("forget_master_password"),
 };
 
 async function resolveApi(): Promise<Api> {

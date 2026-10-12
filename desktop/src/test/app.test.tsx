@@ -55,6 +55,11 @@ vi.mock("../api", () => {
       generatePassword: vi.fn(async () => "S3cret-Value!"),
       getSettings: vi.fn(async () => settings),
       saveSettings: vi.fn(async (s: Settings) => s),
+      biometricSupported: vi.fn(async () => false),
+      masterPasswordStored: vi.fn(async () => false),
+      biometricUnlock: vi.fn(async () => {}),
+      rememberMasterPassword: vi.fn(async () => {}),
+      forgetMasterPassword: vi.fn(async () => {}),
     },
   };
 });
@@ -104,6 +109,30 @@ describe("LockScreen", () => {
     await screen.findByText(
       "Authentication failed. Master key does not match local vault signature.",
     );
+  });
+
+  it("offers Touch ID when supported and a password is stored", async () => {
+    vi.mocked(api.biometricSupported).mockResolvedValue(true);
+    vi.mocked(api.masterPasswordStored).mockResolvedValue(true);
+    const onUnlock = vi.fn();
+    render(<LockScreen onUnlock={onUnlock} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Unlock with Touch ID/ }));
+    await waitFor(() => expect(api.biometricUnlock).toHaveBeenCalled());
+    await waitFor(() => expect(onUnlock).toHaveBeenCalled());
+  });
+
+  it("offers remember-on-this-Mac when supported but nothing stored", async () => {
+    vi.mocked(api.biometricSupported).mockResolvedValue(true);
+    vi.mocked(api.masterPasswordStored).mockResolvedValue(false);
+    const onUnlock = vi.fn();
+    render(<LockScreen onUnlock={onUnlock} />);
+    fireEvent.click(await screen.findByRole("checkbox"));
+    fireEvent.change(screen.getByPlaceholderText("Master password"), {
+      target: { value: "hunter2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock Vault" }));
+    await waitFor(() => expect(onUnlock).toHaveBeenCalled());
+    await waitFor(() => expect(api.rememberMasterPassword).toHaveBeenCalled());
   });
 });
 

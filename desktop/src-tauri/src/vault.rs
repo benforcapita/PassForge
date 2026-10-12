@@ -23,7 +23,10 @@ fn new_db_key() -> Vec<u8> {
     key
 }
 
-fn platform_secret_store(dir: &std::path::Path) -> PlatformSecretStore {
+/// The platform secret store for the vault directory (Keychain on macOS,
+/// 0600 key file elsewhere). `pub(crate)` so commands can reach the same
+/// store for the optional saved-master-password feature.
+pub(crate) fn platform_secret_store(dir: &std::path::Path) -> PlatformSecretStore {
     #[cfg(target_os = "macos")]
     {
         let _ = dir;
@@ -77,10 +80,23 @@ pub fn open_at(db_path: &std::path::Path) -> Result<VaultDb> {
     Ok(db)
 }
 
+/// The path `open()` resolves to (PASSFORGE_DB_PATH or the default).
+pub fn resolved_db_path() -> Result<std::path::PathBuf> {
+    match std::env::var_os("PASSFORGE_DB_PATH") {
+        Some(p) => Ok(std::path::PathBuf::from(p)),
+        None => default_db_path(),
+    }
+}
+
+/// The secret store co-located with the vault `open()` uses.
+pub fn resolved_secret_store() -> Result<PlatformSecretStore> {
+    let path = resolved_db_path()?;
+    let dir = path
+        .parent()
+        .ok_or_else(|| PassForgeError::InvalidRequest("invalid vault path".into()))?;
+    Ok(platform_secret_store(dir))
+}
+
 pub fn open() -> Result<VaultDb> {
-    let path = match std::env::var_os("PASSFORGE_DB_PATH") {
-        Some(p) => std::path::PathBuf::from(p),
-        None => default_db_path()?,
-    };
-    open_at(&path)
+    open_at(&resolved_db_path()?)
 }

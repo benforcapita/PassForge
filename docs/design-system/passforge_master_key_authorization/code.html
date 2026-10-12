@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PassForge - Master Key Authorization</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            pf: {
+              canvas: '#070A0F',
+              base: '#0D1117',
+              raised: '#161B22',
+              overlay: '#21262D',
+              input: {
+                DEFAULT: '#0B0F17',
+                focus: '#111622',
+              },
+              accent: {
+                primary: '#06B6D4',
+                hover: '#0891B2',
+                muted: 'rgba(6, 182, 212, 0.12)',
+                secondary: '#38BDF8',
+              },
+              status: {
+                error: '#EF4444',
+                'error-bg': 'rgba(239, 68, 68, 0.12)',
+                warning: '#F59E0B',
+                'warning-bg': 'rgba(245, 158, 11, 0.12)',
+                success: '#10B981',
+                'success-bg': 'rgba(16, 185, 129, 0.12)',
+              },
+              border: {
+                subtle: '#21262D',
+                moderate: '#30363D',
+                strong: '#484F58',
+                focus: '#06B6D4',
+              },
+              text: {
+                primary: '#F0F6FC',
+                secondary: '#8B949E',
+                muted: '#484F58',
+                'on-accent': '#070A0F',
+                error: '#F87171',
+              },
+            },
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          borderRadius: {
+            sm: '4px',
+            md: '6px',
+            lg: '8px',
+          },
+          boxShadow: {
+            modal: '0 20px 48px rgba(0, 0, 0, 0.8), 0 0 0 1px #30363D',
+            focus: '0 0 0 2px #06B6D4',
+            subtle: '0 4px 20px rgba(0, 0, 0, 0.5)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    input {
+      user-select: text;
+    }
+    .mono-num {
+      font-feature-settings: "zero" 1, "cv02" 1;
+    }
+    /* Subtle dot grid matrix backdrop to reinforce hardware cryptographic terminal */
+    .crypto-grid {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+  </style>
+</head>
+<body class="bg-pf-canvas text-pf-text-primary font-sans antialiased h-screen w-screen overflow-hidden flex flex-col justify-between select-none crypto-grid">
+
+  <!-- macOS Native Window Chrome / Topbar (40px) -->
+  <header class="h-10 px-4 flex items-center justify-between border-b border-pf-border-subtle bg-pf-canvas/90 backdrop-blur z-20 shrink-0">
+    <div class="flex items-center gap-3">
+      <!-- Native macOS Traffic Lights -->
+      <div class="flex items-center gap-2 pr-2">
+        <span class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E] inline-block opacity-90 hover:opacity-100 transition-opacity"></span>
+        <span class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123] inline-block opacity-90 hover:opacity-100 transition-opacity"></span>
+        <span class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29] inline-block opacity-90 hover:opacity-100 transition-opacity"></span>
+      </div>
+      
+      <!-- Brand & Version -->
+      <div class="flex items-center gap-2 pl-2 border-l border-pf-border-subtle">
+        <svg class="w-4 h-4 text-pf-accent-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span class="font-semibold text-xs tracking-wider text-pf-text-primary uppercase font-mono">PASSFORGE</span>
+        <span class="text-[10px] font-mono text-pf-text-muted bg-pf-raised px-1.5 py-0.5 rounded-sm border border-pf-border-subtle">v2.4.0</span>
+      </div>
+    </div>
+
+    <!-- Central Security State Pill -->
+    <div class="flex items-center gap-2 px-2.5 py-1 rounded-sm bg-pf-base border border-pf-border-subtle">
+      <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+      <span class="text-[11px] font-mono tracking-tight text-pf-text-secondary uppercase">ENGINE LOCKED • TRANSIENT BUFFER FLUSHED</span>
+    </div>
+
+    <!-- Right Window Utility Badges -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 text-[11px] font-mono text-pf-text-secondary bg-pf-base px-2 py-0.5 rounded-sm border border-pf-border-subtle">
+        <svg class="w-3 h-3 text-pf-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+        </svg>
+        <span>SQLITE ENCRYPTED</span>
+      </div>
+      <div class="flex items-center gap-1 text-[11px] font-mono text-pf-text-muted">
+        <span class="px-1 py-0.5 bg-pf-overlay rounded border border-pf-border-subtle text-[10px]">⌘Q</span>
+        <span>Quit</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Central Authentication Takeover Container -->
+  <main class="flex-1 flex items-center justify-center p-6 relative">
+    
+    <!-- Background Ambient Glow & Blueprint Aesthetics -->
+    <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+      <div class="w-[580px] h-[480px] bg-cyan-950/10 rounded-full blur-[120px] pointer-events-none"></div>
+    </div>
+
+    <!-- Main Cryptographic Authentication Card (380px Desktop Standard Spec) -->
+    <div class="w-[420px] bg-pf-raised border border-pf-border-moderate rounded-lg shadow-modal relative z-10 flex flex-col overflow-hidden">
+      
+      <!-- Card Top Security Banner -->
+      <div class="px-6 pt-6 pb-4 border-b border-pf-border-subtle bg-pf-base/60">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-md bg-pf-canvas border border-pf-border-moderate flex items-center justify-center text-pf-accent-primary relative group">
+              <svg class="w-5 h-5 text-pf-accent-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                <circle cx="12" cy="16" r="1.5"></circle>
+              </svg>
+              <!-- Live hardware indicator dot -->
+              <span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+            </div>
+            <div>
+              <h1 class="text-[16px] font-semibold tracking-tight text-pf-text-primary">Master Key Authorization</h1>
+              <p class="text-[12px] text-pf-text-secondary mt-0.5">Stateless Argon2id derivation engine</p>
+            </div>
+          </div>
+
+          <!-- Hotkey shortcut hint -->
+          <div class="text-[11px] font-mono text-pf-text-muted bg-pf-overlay px-2 py-1 rounded border border-pf-border-subtle">
+            ESC • Clear
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Content -->
+      <div class="p-6 space-y-5 bg-pf-raised">
+        
+        <!-- Field 1: Master Password Input with Hash Visualizer -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label for="master-input" class="text-[12px] font-medium text-pf-text-secondary uppercase tracking-wider font-mono">
+              Master Passphrase
+            </label>
+            <span class="text-[11px] font-mono text-pf-text-muted flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-pf-accent-primary"></span>
+              HMAC Salt Ready
+            </span>
+          </div>
+
+          <!-- Monochromatic Password Input Well -->
+          <div class="relative group">
+            <input 
+              id="master-input"
+              type="password"
+              autofocus
+              value="••••••••••••••••••••"
+              placeholder="Enter cryptographic master key..."
+              class="w-full h-11 px-3.5 pr-20 bg-pf-input text-pf-text-primary font-mono text-[15px] border border-pf-border-focus rounded-sm focus:outline-none focus:ring-2 focus:ring-pf-accent-primary/50 focus:bg-pf-input-focus transition-all tracking-wider mono-num"
+            />
+            
+            <!-- Quick reveal toggle & clear triggers -->
+            <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-pf-text-muted">
+              <button type="button" class="p-1 hover:text-pf-text-primary hover:bg-pf-overlay rounded transition-colors" title="Toggle Secret Visibility">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+              <div class="w-px h-3.5 bg-pf-border-subtle"></div>
+              <span class="text-[10px] font-mono px-1 py-0.5 bg-pf-overlay text-pf-text-secondary border border-pf-border-subtle rounded">↵</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Fingerprint & Entropy Bar (Spec Section 6.4) -->
+          <div class="p-2.5 bg-pf-base rounded-sm border border-pf-border-subtle flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-mono text-pf-text-secondary">Entropy Signature:</span>
+              <!-- 3-Glyph Derivation Hash Fingerprint -->
+              <div class="flex items-center gap-1.5 px-1.5 py-0.5 bg-pf-overlay rounded border border-pf-border-subtle">
+                <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="12" r="10"></circle>
+                </svg>
+                <svg class="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="12,2 22,12 12,22 2,12"></polygon>
+                </svg>
+                <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                </svg>
+              </div>
+            </div>
+            
+            <div class="text-[11px] font-mono text-cyan-400 font-medium tracking-wide">
+              98.2 BITS (STRONG)
+            </div>
+          </div>
+        </div>
+
+        <!-- Biometric Fallback Section (Touch ID / Secure Enclave) -->
+        <div class="p-3 bg-pf-base/80 rounded-sm border border-pf-border-subtle flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded bg-pf-raised border border-pf-border-moderate flex items-center justify-center text-pf-accent-primary">
+              <!-- Touch ID / Fingerprint Icon -->
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a10 10 0 0 0-10 10c0 4.1 2.5 7.6 6.1 9.2"></path>
+                <path d="M12 6a6 6 0 0 0-6 6c0 2.2 1.2 4.1 3 5.1"></path>
+                <path d="M12 10a2 2 0 0 0-2 2c0 .9.6 1.7 1.4 1.9"></path>
+                <path d="M18 10a6 6 0 0 1 1.9 4.3"></path>
+                <path d="M22 12a10 10 0 0 1-2.9 7.1"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="text-[12px] font-medium text-pf-text-primary">Apple Touch ID</div>
+              <div class="text-[11px] text-pf-text-secondary">Secure Enclave hardware unlock ready</div>
+            </div>
+          </div>
+          <button type="button" class="h-7 px-2.5 bg-pf-raised hover:bg-pf-overlay text-pf-text-primary border border-pf-border-moderate rounded-sm text-[11px] font-medium transition-colors flex items-center gap-1.5 shadow-sm">
+            <span>Scan</span>
+            <span class="text-[10px] font-mono text-pf-text-muted">⌘B</span>
+          </button>
+        </div>
+
+        <!-- Stateless Security Notice Banner (Spec Section 8 & Section 11) -->
+        <div class="p-3 bg-pf-base rounded-sm border border-pf-border-subtle space-y-1">
+          <div class="flex items-center gap-2 text-[11px] font-mono text-pf-text-secondary">
+            <svg class="w-3.5 h-3.5 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span class="text-pf-text-primary font-semibold">Zero-Cloud Architectural Guarantee</span>
+          </div>
+          <p class="text-[11px] text-pf-text-secondary leading-relaxed font-sans">
+            PassForge is completely stateless. Passwords exist strictly in volatile memory during generation and are never written to disk or synced across servers.
+          </p>
+        </div>
+
+        <!-- Primary Action Trigger -->
+        <div class="pt-2 flex items-center gap-3">
+          <button 
+            type="button" 
+            class="flex-1 h-9 px-4 bg-pf-accent-primary hover:bg-pf-accent-hover active:bg-[#0E7490] text-pf-canvas font-medium text-[13px] rounded-sm transition-all flex items-center justify-center gap-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-pf-accent-primary focus:ring-offset-2 focus:ring-offset-pf-raised cursor-pointer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span>Unlock Vault Workbench</span>
+            <span class="text-[11px] font-mono font-normal opacity-80 ml-1">↵</span>
+          </button>
+
+          <button 
+            type="button" 
+            class="h-9 px-3 bg-pf-base hover:bg-pf-overlay text-pf-text-secondary hover:text-pf-text-primary border border-pf-border-moderate rounded-sm text-[12px] font-medium transition-colors flex items-center gap-1.5"
+            title="Switch Vault Profile">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Profile</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Card Footer: Memory Register Diagnostics -->
+      <div class="px-6 py-3 bg-pf-canvas border-t border-pf-border-subtle flex items-center justify-between text-[11px] font-mono text-pf-text-muted">
+        <div class="flex items-center gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span>RAM REGISTERS: 0x00 (ZEROIZED)</span>
+        </div>
+        <div class="hover:text-pf-text-secondary cursor-pointer transition-colors">
+          Security Specs ↗
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Desktop Bottom Status Bar (24px - Strict Spec Alignment) -->
+  <footer class="h-6 px-3 bg-pf-base border-t border-pf-border-subtle flex items-center justify-between text-[11px] font-mono text-pf-text-muted shrink-0 z-20">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 text-pf-text-secondary">
+        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+        <span>Local SQLite: Encrypted (`~/Library/Application Support/PassForge`)</span>
+      </div>
+      <span class="text-pf-border-strong">•</span>
+      <span>KDF: PBKDF2-HMAC-SHA256 (100,000 iter)</span>
+      <span class="text-pf-border-strong">•</span>
+      <span>Memory Latency: 0.0ms</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-pf-text-secondary">Worker:</span>
+        <span class="text-pf-text-primary">CryptoEngine #0</span>
+      </div>
+      <span class="text-pf-border-strong">•</span>
+      <div class="flex items-center gap-1">
+        <span class="text-pf-text-secondary">Lock Status:</span>
+        <span class="text-amber-400 font-semibold">DORMANT</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

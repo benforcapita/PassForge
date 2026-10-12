@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={"darkMode":"class","theme":{"extend":{"colors":{"inverse-surface":"#e2e2e6","on-surface-variant":"#b9cacb","on-background":"#e2e2e6","surface-dim":"#111317","surface":"#111317","outline":"#849495","tertiary-container":"#ffcdd0","primary":"#dbfcff","tertiary-fixed-dim":"#ffb2b9","on-tertiary-container":"#be003f","on-secondary-container":"#005842","surface-container-highest":"#333538","on-surface":"#e2e2e6","on-tertiary":"#67001e","on-primary-fixed-variant":"#004f54","surface-tint":"#00dbe9","surface-variant":"#333538","error-container":"#93000a","primary-fixed-dim":"#00dbe9","on-primary":"#00363a","tertiary":"#fff3f3","surface-container-high":"#282a2d","secondary-container":"#07d7a6","primary-fixed":"#7df4ff","surface-container-lowest":"#0c0e11","on-tertiary-fixed-variant":"#91002e","on-error-container":"#ffdad6","primary-container":"#00f0ff","on-secondary":"#003829","tertiary-fixed":"#ffdadc","surface-container-low":"#1a1c1f","surface-bright":"#37393d","background":"#111317","surface-container":"#1e2023","inverse-on-surface":"#2f3034","on-secondary-fixed-variant":"#00513d","on-secondary-fixed":"#002117","secondary-fixed":"#53fdc9","error":"#ffb4ab","secondary-fixed-dim":"#24e0ae","inverse-primary":"#006970","on-error":"#690005","on-primary-fixed":"#002022","secondary":"#47f4c1","on-primary-container":"#006970","on-tertiary-fixed":"#40000f","outline-variant":"#3b494b"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"gutter-compact":"0.5rem","space-md":"0.75rem","margin-window":"0.75rem","gutter":"1rem","space-lg":"1rem","space-xl":"1.5rem","space-xs":"0.25rem","space-sm":"0.5rem","margin":"1.25rem"},"fontFamily":{"headline-lg":["Geist"],"label-md":["JetBrains Mono"],"body-sm":["Geist"],"body-lg":["Geist"],"headline-md":["Geist"],"body-md":["Geist"],"code-body":["JetBrains Mono"],"label-sm":["JetBrains Mono"],"code-display":["JetBrains Mono"],"headline-xl":["Geist"]},"fontSize":{"headline-lg":["22px",{"lineHeight":"28px","letterSpacing":"-0.015em","fontWeight":"600"}],"label-md":["11px",{"lineHeight":"14px","letterSpacing":"0.06em","fontWeight":"500"}],"body-sm":["12px",{"lineHeight":"16px","letterSpacing":"0.01em","fontWeight":"400"}],"body-lg":["15px",{"lineHeight":"22px","letterSpacing":"0em","fontWeight":"400"}],"headline-md":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"500"}],"body-md":["13px",{"lineHeight":"18px","letterSpacing":"0em","fontWeight":"400"}],"code-body":["13px",{"lineHeight":"18px","letterSpacing":"0.01em","fontWeight":"400"}],"label-sm":["10px",{"lineHeight":"12px","letterSpacing":"0.08em","fontWeight":"500"}],"code-display":["20px",{"lineHeight":"28px","letterSpacing":"0.04em","fontWeight":"500"}],"headline-xl":["28px",{"lineHeight":"36px","letterSpacing":"-0.02em","fontWeight":"600"}]}}}};</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased select-none"><header class="fixed top-0 left-0 right-0 z-50 h-10 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.4)] flex items-center justify-between px-space-md"><div class="flex items-center gap-space-md"><div class="flex items-center gap-1.5 pl-1"><div class="w-3 h-3 rounded-full bg-[#ff5f56]"></div><div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div><div class="w-3 h-3 rounded-full bg-[#27c93f]"></div></div><div class="flex items-center gap-space-xs pl-2"><span class="material-symbols-outlined text-primary text-[18px]">terminal</span><span class="font-label-md text-label-md text-primary tracking-wider uppercase font-medium">PassForge</span><span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container px-1 py-0.5 rounded">v2.4.0</span></div></div><div class="flex items-center gap-space-md flex-1 max-w-md mx-space-lg"><div class="w-full flex items-center justify-between bg-surface-container-low px-space-md py-1 rounded-lg text-on-surface-variant hover:text-on-surface cursor-pointer"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-code-body text-body-sm">Search profiles, domains, rules...</span></div><kbd class="font-label-sm text-label-sm bg-surface-container-high px-1.5 py-0.5 rounded text-on-surface-variant">⌘K</kbd></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs bg-surface-container-low px-space-sm py-1 rounded-lg"><div class="w-2 h-2 rounded-full bg-secondary animate-pulse"></div><span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider">SQLite Encrypted</span></div><button class="flex items-center gap-1 bg-surface-container px-space-sm py-1 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[16px]">lock</span><span class="font-label-sm text-label-sm">Lock</span><kbd class="font-label-sm text-label-sm opacity-60 ml-0.5">⌘L</kbd></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><aside class="fixed left-0 top-10 bottom-6 w-60 bg-surface-container-lowest z-40 flex flex-col justify-between py-space-md px-space-sm"><div class="space-y-space-md"><div class="px-space-sm"><p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Deterministic Engines</p></div><nav class="flex flex-col gap-0.5" data-active-classes="bg-surface-container text-primary font-medium rounded-lg"><a class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-body-sm text-body-sm" data-path="generator" href="#"><span class="material-symbols-outlined text-[18px]">key</span>Generator</a><a aria-current="page" class="flex items-center gap-space-xs px-space-sm py-1.5 transition-colors bg-surface-container text-primary font-medium rounded-lg" data-path="profile-vault" href="#"><span class="material-symbols-outlined text-[18px]">shield</span>Profile Vault</a><a class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-body-sm text-body-sm" data-path="entropy-telemetry" href="#"><span class="material-symbols-outlined text-[18px]">analytics</span>Entropy Telemetry</a><a class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-body-sm text-body-sm" data-path="batch-synthesis" href="#"><span class="material-symbols-outlined text-[18px]">dataset</span>Batch Synthesis</a></nav><div class="px-space-sm pt-space-xs"><p class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Cryptographic Config</p></div><nav class="flex flex-col gap-0.5" data-active-classes="bg-surface-container text-primary font-medium rounded-lg"><a class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-body-sm text-body-sm" data-path="kdf-parameters" href="#"><span class="material-symbols-outlined text-[18px]">tune</span>KDF Parameters</a><a class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-body-sm text-body-sm" data-path="session-security" href="#"><span class="material-symbols-outlined text-[18px]">timer</span>Session Wipe</a><a class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-body-sm text-body-sm" data-path="sync-bridge" href="#"><span class="material-symbols-outlined text-[18px]">sync_alt</span>Sync & Export</a></nav></div><div class="p-space-sm bg-surface-container-low rounded-lg space-y-1.5"><div class="flex items-center justify-between font-label-sm text-label-sm"><span class="text-outline">BUFFER PURGE</span><span class="text-secondary font-code-body">ARMED</span></div><div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden"><div class="bg-secondary h-full w-4/5"></div></div><p class="font-label-sm text-label-sm text-on-surface-variant">Transient RAM zeroed on unfocus</p></div></aside><div class="pl-60 pb-6"><main class="w-full pt-10 min-h-screen bg-surface px-space-lg"><div class="flex flex-col w-full h-[calc(100vh-4rem)]">
+<!-- 3-PANE OBSIDIAN WORKBENCH -->
+<div class="flex flex-1 w-full h-full overflow-hidden bg-surface-container-lowest rounded-lg border border-outline-variant/40 shadow-2xl">
+<!-- ========================================== -->
+<!-- PANE 1: LEFT SIDEBAR (Vault Workspace)     -->
+<!-- ========================================== -->
+<aside class="w-[220px] shrink-0 bg-surface-container-lowest flex flex-col justify-between border-r border-outline-variant/30 select-none">
+<div class="flex flex-col">
+<!-- Section Header -->
+<div class="px-space-md pt-space-md pb-space-xs flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline tracking-wider uppercase font-semibold">Vault Workspace</span>
+<span class="font-code-body text-[10px] text-on-surface-variant bg-surface-container px-1 py-0.2 rounded">LOCAL</span>
+</div>
+<!-- Navigation Group -->
+<nav class="flex flex-col gap-0.5 px-space-xs mt-space-xs">
+<!-- All Entries (Active) -->
+<a class="flex items-center justify-between px-space-sm py-1.5 rounded bg-primary-container/10 text-primary border-l-2 border-primary-container font-body-sm text-body-sm transition-colors group" href="#">
+<div class="flex items-center gap-space-xs truncate">
+<span class="material-symbols-outlined text-[17px] text-primary-container">folder_special</span>
+<span class="truncate font-medium text-inverse-surface">All Entries</span>
+</div>
+<span class="font-code-body text-[11px] text-primary-container font-medium px-1 bg-primary-container/15 rounded">24</span>
+</a>
+<!-- Logins & Portals -->
+<a class="flex items-center justify-between px-space-sm py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface font-body-sm text-body-sm transition-colors group" href="#">
+<div class="flex items-center gap-space-xs truncate">
+<span class="material-symbols-outlined text-[17px] text-outline group-hover:text-on-surface">key</span>
+<span class="truncate">Logins & Portals</span>
+</div>
+<span class="font-code-body text-[11px] text-outline">14</span>
+</a>
+<!-- Cloud & Infrastructure -->
+<a class="flex items-center justify-between px-space-sm py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface font-body-sm text-body-sm transition-colors group" href="#">
+<div class="flex items-center gap-space-xs truncate">
+<span class="material-symbols-outlined text-[17px] text-outline group-hover:text-on-surface">dns</span>
+<span class="truncate">Cloud & Infra</span>
+</div>
+<span class="font-code-body text-[11px] text-outline">6</span>
+</a>
+<!-- Developer & SSH Seeds -->
+<a class="flex items-center justify-between px-space-sm py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface font-body-sm text-body-sm transition-colors group" href="#">
+<div class="flex items-center gap-space-xs truncate">
+<span class="material-symbols-outlined text-[17px] text-outline group-hover:text-on-surface">terminal</span>
+<span class="truncate">Dev & SSH Seeds</span>
+</div>
+<span class="font-code-body text-[11px] text-outline">4</span>
+</a>
+</nav>
+<!-- Divider -->
+<div class="h-px bg-outline-variant/30 mx-space-sm my-space-md"></div>
+<!-- TAGS & ALGORITHMS -->
+<div class="px-space-md pb-space-xs">
+<span class="font-label-sm text-label-sm text-outline tracking-wider uppercase font-semibold">Derivation Core</span>
+</div>
+<div class="flex flex-col gap-0.5 px-space-xs">
+<a class="flex items-center justify-between px-space-sm py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high/40 hover:text-on-surface font-body-sm text-body-sm transition-colors" href="#">
+<div class="flex items-center gap-space-xs truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="truncate font-code-body text-[12px]">LessPass v2</span>
+</div>
+<span class="font-code-body text-[10px] text-outline">18</span>
+</a>
+<a class="flex items-center justify-between px-space-sm py-1.5 rounded text-on-surface-variant hover:bg-surface-container-high/40 hover:text-on-surface font-body-sm text-body-sm transition-colors" href="#">
+<div class="flex items-center gap-space-xs truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span class="truncate font-code-body text-[12px]">Argon2id Custom</span>
+</div>
+<span class="font-code-body text-[10px] text-outline">6</span>
+</a>
+</div>
+</div>
+<!-- Bottom Pinned Action -->
+<div class="p-space-xs border-t border-outline-variant/30 flex flex-col gap-1 bg-surface-container-lowest/80">
+<button class="w-full h-8 px-space-sm flex items-center justify-between rounded bg-surface-container hover:bg-surface-container-high text-inverse-surface border border-outline-variant/40 hover:border-primary-container/40 transition-all font-body-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary-container">add_circle</span>
+<span class="text-[12px] font-medium">New Profile</span>
+</div>
+<kbd class="font-label-sm text-[10px] text-outline px-1 py-0.5 rounded bg-surface-container-low border border-outline-variant/40">⌘N</kbd>
+</button>
+<a class="flex items-center justify-between px-space-sm py-1 rounded text-on-surface-variant hover:text-error hover:bg-error-container/20 font-body-sm text-body-sm transition-colors" href="#">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px]">delete_sweep</span>
+<span class="text-[12px]">Trash</span>
+</div>
+<span class="font-code-body text-[10px] text-outline">2</span>
+</a>
+</div>
+</aside>
+<!-- ========================================== -->
+<!-- PANE 2: ENTRY LIST COLUMN                  -->
+<!-- ========================================== -->
+<section class="w-[320px] shrink-0 bg-surface-container-low flex flex-col border-r border-outline-variant/30 select-none">
+<!-- Search & Sort Filter Toolbar -->
+<div class="h-11 px-2 flex items-center justify-between gap-1.5 border-b border-outline-variant/30 shrink-0 bg-surface-container-low/95">
+<div class="relative flex-1 flex items-center">
+<span class="material-symbols-outlined text-[15px] text-outline absolute left-2 pointer-events-none">search</span>
+<input class="w-full h-7 pl-7 pr-2 bg-surface-container-lowest border border-outline-variant/40 rounded text-body-sm text-inverse-surface placeholder:text-outline font-code-body focus:outline-none focus:border-primary-container transition-colors" placeholder="Filter entries..." type="text"/>
+</div>
+<button class="h-7 px-2 bg-surface-container-lowest border border-outline-variant/40 hover:border-outline hover:bg-surface-container rounded flex items-center gap-1 text-[11px] font-label-md text-on-surface-variant shrink-0">
+<span>Sort</span>
+<span class="material-symbols-outlined text-[13px]">expand_more</span>
+</button>
+<span class="font-code-body text-[10px] text-outline px-1.5 py-1 bg-surface-container rounded shrink-0">24</span>
+</div>
+<!-- Entry List (Scrollable) -->
+<div class="flex-1 overflow-y-auto divide-y divide-outline-variant/15 flex flex-col">
+<!-- Row 1: github.com (Active Selected) -->
+<div class="h-[54px] px-3 flex items-center justify-between bg-primary-container/10 border-l-2 border-primary-container cursor-pointer transition-colors group">
+<div class="flex items-center gap-2.5 min-w-0 pr-1">
+<div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center font-code-body text-xs font-semibold text-primary-container border border-primary-container/30 shrink-0">
+              GH
+            </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-md text-body-md font-semibold text-inverse-surface truncate group-hover:text-primary-container transition-colors">github.com</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant truncate">admin@octocat.io</span>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<!-- Cryptographic Glyphs -->
+<div class="flex items-center gap-1 opacity-90">
+<span class="w-2 h-2 rounded-full bg-primary-container shadow-[0_0_6px_rgba(0,240,255,0.4)]"></span>
+<span class="w-2 h-2 rotate-45 bg-[#ffbd2e]"></span>
+<span class="w-2 h-2 rounded-sm bg-secondary"></span>
+</div>
+<span class="font-code-body text-[10px] text-primary-container bg-primary-container/20 border border-primary-container/30 px-1 py-0.5 rounded font-medium">C:2</span>
+</div>
+</div>
+<!-- Row 2: aws.amazon.com -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-high/40 cursor-pointer transition-colors border-l-2 border-transparent group">
+<div class="flex items-center gap-2.5 min-w-0 pr-1">
+<div class="w-7 h-7 rounded bg-surface-container-lowest flex items-center justify-center font-code-body text-xs font-semibold text-outline border border-outline-variant/30 shrink-0">
+              AW
+            </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-md text-body-md font-medium text-inverse-surface truncate group-hover:text-primary transition-colors">AWS Console</span>
+<span class="font-label-sm text-[11px] text-outline truncate">secops-root</span>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<div class="flex items-center gap-1 opacity-70">
+<span class="w-2 h-2 rounded-full bg-[#bf7af0]"></span>
+<span class="w-2 h-2 rotate-45 bg-primary-container"></span>
+<span class="w-2 h-2 rounded-sm bg-error"></span>
+</div>
+<span class="font-code-body text-[10px] text-outline bg-surface-container px-1 py-0.5 rounded">C:1</span>
+</div>
+</div>
+<!-- Row 3: proton.me -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-high/40 cursor-pointer transition-colors border-l-2 border-transparent group">
+<div class="flex items-center gap-2.5 min-w-0 pr-1">
+<div class="w-7 h-7 rounded bg-surface-container-lowest flex items-center justify-center font-code-body text-xs font-semibold text-outline border border-outline-variant/30 shrink-0">
+              PM
+            </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-md text-body-md font-medium text-inverse-surface truncate group-hover:text-primary transition-colors">Proton Mail Core</span>
+<span class="font-label-sm text-[11px] text-outline truncate">lead-primary</span>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<div class="flex items-center gap-1 opacity-70">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="w-2 h-2 rotate-45 bg-secondary-fixed"></span>
+<span class="w-2 h-2 rounded-sm bg-primary-container"></span>
+</div>
+<span class="font-code-body text-[10px] text-outline bg-surface-container px-1 py-0.5 rounded">C:4</span>
+</div>
+</div>
+<!-- Row 4: cloudflare.com -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-high/40 cursor-pointer transition-colors border-l-2 border-transparent group">
+<div class="flex items-center gap-2.5 min-w-0 pr-1">
+<div class="w-7 h-7 rounded bg-surface-container-lowest flex items-center justify-center font-code-body text-xs font-semibold text-outline border border-outline-variant/30 shrink-0">
+              CF
+            </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-md text-body-md font-medium text-inverse-surface truncate group-hover:text-primary transition-colors">Cloudflare</span>
+<span class="font-label-sm text-[11px] text-outline truncate">api-deployer</span>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<div class="flex items-center gap-1 opacity-70">
+<span class="w-2 h-2 rounded-full bg-[#ffbd2e]"></span>
+<span class="w-2 h-2 rotate-45 bg-primary-container"></span>
+<span class="w-2 h-2 rounded-sm bg-secondary"></span>
+</div>
+<span class="font-code-body text-[10px] text-outline bg-surface-container px-1 py-0.5 rounded">C:1</span>
+</div>
+</div>
+<!-- Row 5: hetzner.cloud -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-high/40 cursor-pointer transition-colors border-l-2 border-transparent group">
+<div class="flex items-center gap-2.5 min-w-0 pr-1">
+<div class="w-7 h-7 rounded bg-surface-container-lowest flex items-center justify-center font-code-body text-xs font-semibold text-outline border border-outline-variant/30 shrink-0">
+              HZ
+            </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-md text-body-md font-medium text-inverse-surface truncate group-hover:text-primary transition-colors">Hetzner Robot</span>
+<span class="font-label-sm text-[11px] text-outline truncate">admin-cluster</span>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<div class="flex items-center gap-1 opacity-70">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="w-2 h-2 rotate-45 bg-secondary"></span>
+<span class="w-2 h-2 rounded-sm bg-primary-container"></span>
+</div>
+<span class="font-code-body text-[10px] text-outline bg-surface-container px-1 py-0.5 rounded">C:3</span>
+</div>
+</div>
+<!-- Row 6: digitalocean.com -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-high/40 cursor-pointer transition-colors border-l-2 border-transparent group">
+<div class="flex items-center gap-2.5 min-w-0 pr-1">
+<div class="w-7 h-7 rounded bg-surface-container-lowest flex items-center justify-center font-code-body text-xs font-semibold text-outline border border-outline-variant/30 shrink-0">
+              DO
+            </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-md text-body-md font-medium text-inverse-surface truncate group-hover:text-primary transition-colors">DigitalOcean Infra</span>
+<span class="font-label-sm text-[11px] text-outline truncate">cluster-root</span>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<div class="flex items-center gap-1 opacity-70">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="w-2 h-2 rotate-45 bg-[#bf7af0]"></span>
+<span class="w-2 h-2 rounded-sm bg-secondary"></span>
+</div>
+<span class="font-code-body text-[10px] text-outline bg-surface-container px-1 py-0.5 rounded">C:1</span>
+</div>
+</div>
+<!-- Row 7: npmjs.org -->
+<div class="h-[54px] px-3 flex items-center justify-between hover:bg-surface-container-high/40 cursor-pointer transition-colors border-l-2 border-transparent group">
+<div class="flex items-center gap-2.5 min-w-0 pr-1">
+<div class="w-7 h-7 rounded bg-surface-container-lowest flex items-center justify-center font-code-body text-xs font-semibold text-outline border border-outline-variant/30 shrink-0">
+              NP
+            </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-md text-body-md font-medium text-inverse-surface truncate group-hover:text-primary transition-colors">npm Registry</span>
+<span class="font-label-sm text-[11px] text-outline truncate">core-maintainer</span>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<div class="flex items-center gap-1 opacity-70">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="w-2 h-2 rotate-45 bg-error"></span>
+<span class="w-2 h-2 rounded-sm bg-outline"></span>
+</div>
+<span class="font-code-body text-[10px] text-outline bg-surface-container px-1 py-0.5 rounded">C:2</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================== -->
+<!-- PANE 3: DETAIL & INSPECTOR PANE            -->
+<!-- ========================================== -->
+<main class="flex-1 min-w-[440px] bg-surface-container-lowest p-space-lg flex flex-col justify-between overflow-y-auto">
+<div class="flex flex-col gap-space-lg">
+<!-- PANE HEADER -->
+<div class="flex items-start justify-between pb-space-md border-b border-outline-variant/30">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-space-sm">
+<h2 class="font-headline-lg text-headline-lg text-inverse-surface tracking-tight">github.com</h2>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-body text-[11px] border border-outline-variant/30">Deterministic Profile</span>
+</div>
+<div class="flex items-center gap-space-md font-label-md text-label-md text-on-surface-variant">
+<span>Identity: <span class="text-inverse-surface font-code-body">admin@octocat.io</span></span>
+<span class="text-outline">•</span>
+<span>Last synthesized: <span class="text-inverse-surface">Today, 14:22</span></span>
+</div>
+<!-- Cryptographic Verification Fingerprint -->
+<div class="flex items-center gap-2 mt-1.5 bg-surface-container-low px-2 py-1 rounded border border-outline-variant/20 w-fit">
+<span class="font-label-sm text-[10px] text-outline tracking-wider font-semibold uppercase">HASH FINGERPRINT</span>
+<div class="flex items-center gap-1 px-1">
+<span class="w-2 h-2 rounded-full bg-primary-container shadow-[0_0_4px_rgba(0,240,255,0.6)]"></span>
+<span class="w-2 h-2 rotate-45 bg-[#ffbd2e]"></span>
+<span class="w-2 h-2 rounded-sm bg-secondary"></span>
+</div>
+<span class="font-code-body text-[11px] text-primary-container tracking-wider font-medium">7F2A..90C1</span>
+</div>
+</div>
+<!-- Header Right Action Group -->
+<div class="flex items-center gap-1.5 shrink-0">
+<button class="h-[30px] px-2.5 bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/40 hover:border-outline rounded flex items-center gap-1.5 text-body-sm font-medium transition-colors">
+<span class="material-symbols-outlined text-[15px]">tune</span>
+<span>Edit Parameters</span>
+</button>
+<button class="w-[30px] h-[30px] bg-surface-container hover:bg-surface-container-high text-primary-container border border-outline-variant/40 rounded flex items-center justify-center transition-colors" title="Regenerate">
+<span class="material-symbols-outlined text-[17px]">sync</span>
+</button>
+<button class="w-[30px] h-[30px] bg-surface-container hover:bg-error-container/30 text-outline hover:text-error border border-outline-variant/40 rounded flex items-center justify-center transition-colors" title="Delete Profile">
+<span class="material-symbols-outlined text-[17px]">delete</span>
+</button>
+</div>
+</div>
+<!-- SECRET DISPLAY SECTION (SIGNATURE COMPONENT) -->
+<div class="bg-surface-dim rounded-md border border-outline-variant/50 p-space-md shadow-lg relative overflow-hidden">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-sm text-label-sm text-outline tracking-wider font-semibold uppercase">GENERATED EPHEMERAL SECRET</span>
+<div class="flex items-center gap-1.5 bg-surface-container-high px-2 py-0.5 rounded border border-primary-container/30">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+<span class="font-code-body text-[10px] text-primary-container tracking-wide font-medium">STATELESS • MEMORY ONLY</span>
+</div>
+</div>
+<!-- Secret Well -->
+<div class="h-12 bg-surface-container-lowest border border-outline-variant/50 rounded px-3 flex items-center justify-between shadow-inner">
+<!-- Plaintext secret in pure neutral monospace -->
+<div class="flex items-center">
+<span class="font-code-display text-[17px] text-inverse-surface tracking-widest select-all select-text font-medium font-mono" id="secret-text">wR9#mK2$xP8!vL5@</span>
+</div>
+<!-- Action Cluster -->
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-inverse-surface flex items-center justify-center transition-colors" id="toggle-reveal" title="Reveal plaintext">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+<button class="h-8 px-3.5 bg-primary-container hover:bg-primary-fixed-dim text-on-primary-container font-code-body font-medium rounded flex items-center gap-1.5 text-body-sm shadow-[0_0_12px_rgba(0,240,255,0.2)] transition-all active:scale-[0.98]" id="copy-btn">
+<span class="material-symbols-outlined text-[15px] font-bold">content_copy</span>
+<span class="font-bold">Copy</span>
+<kbd class="text-[10px] bg-on-primary-container/15 px-1 py-0.2 rounded ml-0.5">⌘C</kbd>
+</button>
+</div>
+</div>
+<!-- Ephemeral Buffer Progress Tracker -->
+<div class="mt-2.5">
+<div class="flex items-center justify-between text-[11px] font-body-sm text-on-surface-variant">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified_user</span>
+<span>Buffer primed in RAM • Zeroing transient registers in <strong class="text-inverse-surface font-code-body font-normal">18s</strong></span>
+</span>
+<span class="font-code-body text-primary-container font-medium text-[10px]">72%</span>
+</div>
+<!-- Progress Track -->
+<div class="h-[3px] bg-surface-container-high rounded-full overflow-hidden mt-1.5">
+<div class="h-full bg-primary-container w-[72%] transition-all duration-1000 shadow-[0_0_6px_#00f0ff]"></div>
+</div>
+</div>
+</div>
+<!-- GENERATION PARAMETERS & MATH INPUTS -->
+<div class="grid grid-cols-2 gap-space-md">
+<!-- Target Domain -->
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-[11px] text-outline font-semibold tracking-wider uppercase">Site Target / Namespace</label>
+<div class="h-8 px-2.5 bg-surface-container-lowest border border-outline-variant/40 rounded flex items-center justify-between">
+<span class="font-code-body text-body-sm text-inverse-surface truncate">github.com</span>
+<span class="material-symbols-outlined text-[15px] text-outline">language</span>
+</div>
+</div>
+<!-- Identity / Handle -->
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-[11px] text-outline font-semibold tracking-wider uppercase">Identity / Login Handle</label>
+<div class="h-8 px-2.5 bg-surface-container-lowest border border-outline-variant/40 rounded flex items-center justify-between">
+<span class="font-code-body text-body-sm text-inverse-surface truncate">admin@octocat.io</span>
+<span class="material-symbols-outlined text-[15px] text-outline">alternate_email</span>
+</div>
+</div>
+<!-- Counter Stepper -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<label class="font-label-sm text-[11px] text-outline font-semibold tracking-wider uppercase">Derivation Counter</label>
+<span class="font-label-sm text-[10px] text-on-surface-variant font-code-body">EPOCH 2024</span>
+</div>
+<div class="h-8 px-1.5 bg-surface-container-lowest border border-outline-variant/40 rounded flex items-center justify-between">
+<div class="flex items-center gap-1.5 pl-1.5">
+<span class="font-code-body text-[13px] font-semibold text-primary-container">2</span>
+<span class="font-label-sm text-[10px] text-outline bg-surface-container px-1 py-0.2 rounded font-code-body">REV-ACTIVE</span>
+</div>
+<div class="flex items-center gap-0.5">
+<button class="w-6 h-6 hover:bg-surface-container rounded flex items-center justify-center text-outline hover:text-inverse-surface transition-colors">
+<span class="material-symbols-outlined text-[15px]">remove</span>
+</button>
+<button class="w-6 h-6 hover:bg-surface-container rounded flex items-center justify-center text-outline hover:text-inverse-surface transition-colors">
+<span class="material-symbols-outlined text-[15px]">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Master Key Validation -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<label class="font-label-sm text-[11px] text-outline font-semibold tracking-wider uppercase">Master Key Status</label>
+<span class="font-label-sm text-[10px] text-secondary font-code-body">VALIDATED</span>
+</div>
+<div class="h-8 px-2.5 bg-surface-container-lowest border border-outline-variant/40 rounded flex items-center justify-between">
+<span class="font-code-body text-body-sm text-on-surface-variant tracking-widest font-bold">••••••••••••••</span>
+<div class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[15px]">lock_open</span>
+<span class="font-label-sm text-[11px] font-medium">Session Valid</span>
+</div>
+</div>
+</div>
+</div>
+<!-- CRYPTOGRAPHIC RULES & CHARACTER SET TOGGLES -->
+<div class="bg-surface-container-low/70 rounded-md p-space-md border border-outline-variant/30 flex flex-col gap-space-md">
+<!-- Length Slider -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="text-outline uppercase tracking-wider text-[11px] font-semibold">OUTPUT LENGTH</span>
+<span class="font-code-body text-inverse-surface text-body-sm font-semibold">16 characters</span>
+</div>
+<!-- Tactical Monospace Length Control -->
+<div class="relative flex items-center h-4">
+<div class="w-full h-1 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-container w-[50%]"></div>
+</div>
+<div class="absolute left-[50%] -translate-x-1/2 w-3.5 h-3.5 bg-primary-container rounded-full border-2 border-surface-container-lowest shadow-[0_0_8px_rgba(0,240,255,0.6)] cursor-pointer"></div>
+</div>
+</div>
+<!-- Character Set Rule Chips -->
+<div class="flex flex-col gap-1.5">
+<span class="text-outline uppercase tracking-wider text-[11px] font-semibold font-label-sm">ALLOWED CHARACTER DOMAINS</span>
+<div class="grid grid-cols-4 gap-2">
+<!-- Uppercase -->
+<div class="h-8 px-2 rounded bg-primary-container/10 border border-primary-container/40 flex items-center justify-between cursor-pointer">
+<span class="font-code-body text-[12px] text-primary-container font-medium">A-Z</span>
+<span class="material-symbols-outlined text-[15px] text-primary-container">check</span>
+</div>
+<!-- Lowercase -->
+<div class="h-8 px-2 rounded bg-primary-container/10 border border-primary-container/40 flex items-center justify-between cursor-pointer">
+<span class="font-code-body text-[12px] text-primary-container font-medium">a-z</span>
+<span class="material-symbols-outlined text-[15px] text-primary-container">check</span>
+</div>
+<!-- Numbers -->
+<div class="h-8 px-2 rounded bg-primary-container/10 border border-primary-container/40 flex items-center justify-between cursor-pointer">
+<span class="font-code-body text-[12px] text-primary-container font-medium">0-9</span>
+<span class="material-symbols-outlined text-[15px] text-primary-container">check</span>
+</div>
+<!-- Symbols -->
+<div class="h-8 px-2 rounded bg-primary-container/10 border border-primary-container/40 flex items-center justify-between cursor-pointer">
+<span class="font-code-body text-[12px] text-primary-container font-medium">!@#$%</span>
+<span class="material-symbols-outlined text-[15px] text-primary-container">check</span>
+</div>
+</div>
+</div>
+<!-- Derivation Engine Spec Tag -->
+<div class="flex items-center justify-between pt-1 border-t border-outline-variant/20 font-label-sm text-label-sm">
+<span class="text-outline font-code-body">Engine: LessPass v2 Core</span>
+<span class="text-on-surface-variant font-code-body">PBKDF2-HMAC-SHA256 (100,000 iter)</span>
+</div>
+</div>
+</div>
+<!-- BOTTOM ACTION ROW / HOTKEY LEGEND -->
+<div class="pt-space-md border-t border-outline-variant/30 flex items-center justify-between font-label-sm text-label-sm text-outline select-none">
+<div class="flex items-center gap-space-md">
+<span class="flex items-center gap-1">
+<kbd class="px-1.5 py-0.5 bg-surface-container rounded border border-outline-variant/40 text-on-surface font-code-body text-[10px]">⌘C</kbd>
+<span>Copy Secret</span>
+</span>
+<span class="flex items-center gap-1">
+<kbd class="px-1.5 py-0.5 bg-surface-container rounded border border-outline-variant/40 text-on-surface font-code-body text-[10px]">⌘⇧C</kbd>
+<span>Copy Username</span>
+</span>
+<span class="flex items-center gap-1">
+<kbd class="px-1.5 py-0.5 bg-surface-container rounded border border-outline-variant/40 text-on-surface font-code-body text-[10px]">⌘R</kbd>
+<span>Bump Counter</span>
+</span>
+</div>
+<div class="flex items-center gap-1">
+<kbd class="px-1.5 py-0.5 bg-surface-container rounded border border-outline-variant/40 text-on-surface font-code-body text-[10px]">⌘L</kbd>
+<span class="text-secondary font-medium">Lock Vault</span>
+</div>
+</div>
+</main>
+</div>
+</div>
+<script>
+  // Micro-interactions: Secret reveal and copy feedback
+  const secretEl = document.getElementById('secret-text');
+  const revealBtn = document.getElementById('toggle-reveal');
+  const copyBtn = document.getElementById('copy-btn');
+  let isMasked = false;
+  const originalSecret = 'wR9#mK2$xP8!vL5@';
+
+  if (revealBtn && secretEl) {
+    revealBtn.addEventListener('click', () => {
+      isMasked = !isMasked;
+      if (isMasked) {
+        secretEl.textContent = '••••••••••••••••';
+        revealBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">visibility_off</span>';
+        revealBtn.title = 'Mask plaintext';
+      } else {
+        secretEl.textContent = originalSecret;
+        revealBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">visibility</span>';
+        revealBtn.title = 'Reveal plaintext';
+      }
+    });
+  }
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard?.writeText(originalSecret);
+      const originalHTML = copyBtn.innerHTML;
+      copyBtn.innerHTML = '<span class="material-symbols-outlined text-[15px] text-on-secondary">check</span><span class="font-bold text-on-secondary">Copied!</span>';
+      copyBtn.classList.remove('bg-primary-container');
+      copyBtn.classList.add('bg-secondary');
+      setTimeout(() => {
+        copyBtn.innerHTML = originalHTML;
+        copyBtn.classList.add('bg-primary-container');
+        copyBtn.classList.remove('bg-secondary');
+      }, 1600);
+    });
+  }
+</script></main></div><footer class="fixed bottom-0 left-0 right-0 h-6 z-50 bg-surface-container-lowest flex items-center justify-between px-space-md font-label-sm text-label-sm shadow-[0_-1px_4px_rgba(0,0,0,0.3)]"><div class="flex items-center gap-space-md text-on-surface-variant"><span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>Local SQLite</span><span class="text-outline">•</span><span>LessPass v2 SHA-256</span><span class="text-outline">•</span><span>Argon2id m=64M, t=4</span></div><div class="flex items-center gap-space-md text-on-surface-variant"><span>Worker Core: <strong class="text-primary font-normal">Thread #3</strong></span><span class="text-outline">•</span><span class="text-secondary">Latency: 0.8ms</span></div></footer></body></html>

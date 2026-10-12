@@ -188,3 +188,64 @@ fn entry_summary_includes_counter_and_folder_id() {
     assert_eq!(matches[0].counter, 3);
     assert_eq!(matches[0].folder_id, folder.id);
 }
+
+#[test]
+fn encrypted_vault_persists_entries_and_settings_across_reopen() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("passforge.db");
+    let key = [7u8; 32];
+
+    {
+        let db = VaultDb::open_encrypted(&db_path, &key).unwrap();
+        db.migrate().unwrap();
+        let folder = db
+            .create_folder(FolderInput { parent_id: None, name: "Work".into() })
+            .unwrap();
+        db.create_entry(sample_entry(folder.id.clone())).unwrap();
+        db.set_kv("settings", "{\"idle_lock_seconds\":42}").unwrap();
+    }
+
+    {
+        let db = VaultDb::open_encrypted(&db_path, &key).unwrap();
+        db.migrate().unwrap();
+        let entries = db.search_entries("").unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].site, "example.com");
+        assert_eq!(
+            db.get_kv("settings").unwrap().as_deref(),
+            Some("{\"idle_lock_seconds\":42}")
+        );
+    }
+}
+
+#[test]
+fn encrypted_vault_rejects_wrong_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("passforge.db");
+    {
+        let db = VaultDb::open_encrypted(&db_path, &[7u8; 32]).unwrap();
+        db.migrate().unwrap();
+    }
+    let bad = VaultDb::open_encrypted(&db_path, &[9u8; 32]).and_then(|db| db.migrate());
+    assert!(bad.is_err());
+}
+
+#[test]
+fn vault_open_creates_db_and_key_file_then_reopens() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("nested").join("passforge.db");
+
+    {
+        let db = passforge_desktop::vault::open_at(&db_path).unwrap();
+        let folder = db
+            .create_folder(FolderInput { parent_id: None, name: "Work".into() })
+            .unwrap();
+        db.create_entry(sample_entry(folder.id)).unwrap();
+    }
+
+    // key file was created beside the db
+    assert!(dir.path().join("nested").join("passforge.key").exists());
+
+    let db = passforge_desktop::vault::open_at(&db_path).unwrap();
+    assert_eq!(db.search_entries("").unwrap().len(), 1);
+}

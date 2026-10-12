@@ -35,6 +35,34 @@ fn platform_secret_store(dir: &std::path::Path) -> PlatformSecretStore {
     }
 }
 
+fn load_or_create_key(dir: &std::path::Path) -> Result<Vec<u8>> {
+    let store = platform_secret_store(dir);
+    match store.load_database_key()? {
+        Some(key) => Ok(key),
+        None => {
+            let key = new_db_key();
+            store.save_database_key(&key)?;
+            Ok(key)
+        }
+    }
+}
+
+fn load_key(dir: &std::path::Path) -> Result<Vec<u8>> {
+    platform_secret_store(dir).load_database_key()?.ok_or_else(|| {
+        PassForgeError::InvalidRequest("vault is not initialized".into())
+    })
+}
+
+/// Opens the vault only if it already exists — never creates the file or
+/// key. Used by the native-messaging host, which must not create state.
+pub fn open_existing_at(db_path: &std::path::Path) -> Result<VaultDb> {
+    let dir = db_path
+        .parent()
+        .ok_or_else(|| PassForgeError::InvalidRequest("invalid vault path".into()))?;
+    let key = load_key(dir)?;
+    VaultDb::open_encrypted(db_path, &key)
+}
+
 /// Opens (or creates) the SQLCipher vault at `db_path`, using a random key
 /// held in the platform secret store — never derived from the master
 /// password, so the master password stays a pure generation input.
@@ -43,15 +71,7 @@ pub fn open_at(db_path: &std::path::Path) -> Result<VaultDb> {
         .parent()
         .ok_or_else(|| PassForgeError::InvalidRequest("invalid vault path".into()))?;
     std::fs::create_dir_all(dir)?;
-    let store = platform_secret_store(dir);
-    let key = match store.load_database_key()? {
-        Some(key) => key,
-        None => {
-            let key = new_db_key();
-            store.save_database_key(&key)?;
-            key
-        }
-    };
+    let key = load_or_create_key(dir)?;
     let db = VaultDb::open_encrypted(db_path, &key)?;
     db.migrate()?;
     Ok(db)

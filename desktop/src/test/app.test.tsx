@@ -67,7 +67,10 @@ import { CharChip } from "../components/ui/CharChip";
 beforeEach(() => {
   vi.clearAllMocks();
   Object.defineProperty(navigator, "clipboard", {
-    value: { writeText: vi.fn(async () => {}) },
+    value: {
+      writeText: vi.fn(async () => {}),
+      readText: vi.fn(async () => "S3cret-Value!"),
+    },
     configurable: true,
   });
 });
@@ -128,6 +131,24 @@ describe("Workbench", () => {
 
     await vi.advanceTimersByTimeAsync(20_000);
     expect(writeText).toHaveBeenCalledWith("");
+  });
+
+  it("wipe leaves the clipboard alone if the user copied something else", async () => {
+    render(<Workbench onLock={vi.fn()} />);
+    fireEvent.click(await screen.findByText("github.com"));
+    await waitFor(() => expect(api.getEntry).toHaveBeenCalled());
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Copy password" }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    // user copies something else before the timer fires
+    vi.mocked(navigator.clipboard.readText).mockResolvedValue("something-else");
+    const writeText = vi.mocked(navigator.clipboard.writeText);
+    writeText.mockClear();
+
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(writeText).not.toHaveBeenCalledWith("");
   });
 });
 

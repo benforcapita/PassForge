@@ -249,3 +249,42 @@ fn vault_open_creates_db_and_key_file_then_reopens() {
     let db = passforge_desktop::vault::open_at(&db_path).unwrap();
     assert_eq!(db.search_entries("").unwrap().len(), 1);
 }
+
+#[test]
+fn native_messaging_frame_roundtrip_and_dispatch() {
+    use passforge_desktop::native_messaging::{dispatch, read_frame, write_frame};
+
+    let mut buf = Vec::new();
+    write_frame(&mut buf, r#"{"op":"ping"}"#).unwrap();
+    let mut cur = std::io::Cursor::new(buf);
+    assert_eq!(read_frame(&mut cur).unwrap().as_deref(), Some(r#"{"op":"ping"}"#));
+    assert_eq!(read_frame(&mut cur).unwrap(), None); // clean EOF
+
+    // dispatch on a real vault
+    let db = VaultDb::memory().unwrap();
+    db.migrate().unwrap();
+    let folder = db
+        .create_folder(FolderInput { parent_id: None, name: "Work".into() })
+        .unwrap();
+    db.create_entry(sample_entry(folder.id)).unwrap();
+
+    let resp = dispatch(Some(&db), r#"{"op":"search","query":"example"}"#);
+    let json = serde_json::to_value(&resp).unwrap();
+    assert_eq!(json["status"], "ok");
+    assert_eq!(json["result"].as_array().unwrap().len(), 1);
+
+    let id = json["result"][0]["id"].as_str().unwrap();
+    let resp = dispatch(
+        Some(&db),
+        &format!(
+            r#"{{"op":"generate","entry_id":"{id}","master_password":"hunter2"}}"#
+        ),
+    );
+    let json = serde_json::to_value(&resp).unwrap();
+    assert_eq!(json["status"], "ok");
+    assert!(json["result"]["password"].as_str().unwrap().len() > 0);
+
+    // locked host (no vault) degrades, doesn't die
+    let resp = dispatch(None, r#"{"op":"search"}"#);
+    assert_eq!(serde_json::to_value(&resp).unwrap()["status"], "err");
+}

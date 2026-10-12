@@ -1,4 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isTauri } from "@tauri-apps/api/core";
+import {
+  readText as tauriReadText,
+  writeText as tauriWriteText,
+} from "@tauri-apps/plugin-clipboard-manager";
+
+const writeClipboard = (text: string) =>
+  isTauri() ? tauriWriteText(text) : navigator.clipboard.writeText(text);
+
+const readClipboard = () =>
+  isTauri() ? tauriReadText() : navigator.clipboard.readText();
 
 type ToastState = {
   message: string;
@@ -25,10 +36,12 @@ export function useClipboard(clipboardClearSeconds: number) {
     setCopied(false);
   }, [clearTimers]);
 
+  const lastCopied = useRef<string | null>(null);
+
   const copy = useCallback(
     async (text: string, onWipe?: () => void) => {
       try {
-        await navigator.clipboard.writeText(text);
+        await writeClipboard(text);
       } catch {
         clearTimers();
         setCopied(false);
@@ -45,13 +58,20 @@ export function useClipboard(clipboardClearSeconds: number) {
         countdownSeconds: clipboardClearSeconds,
       });
       onWipeRef.current = onWipe ?? null;
+      lastCopied.current = text;
       iconTimer.current = window.setTimeout(() => setCopied(false), 1200);
       wipeTimer.current = window.setTimeout(async () => {
         try {
-          await navigator.clipboard.writeText("");
+          // Only wipe if the clipboard still holds what we copied —
+          // never clobber something the user copied afterwards.
+          const current = await readClipboard();
+          if (current === lastCopied.current) {
+            await writeClipboard("");
+          }
         } catch {
           // best effort: clipboard may be unavailable
         }
+        lastCopied.current = null;
         onWipeRef.current?.();
         setToast(null);
       }, clipboardClearSeconds * 1000);

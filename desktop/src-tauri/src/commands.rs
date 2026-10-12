@@ -10,6 +10,7 @@ use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
 use crate::models::{EntryInput, EntrySummary, Folder, FolderInput, Settings, VaultEntry};
 use crate::session::SessionState;
+use zeroize::Zeroize;
 use lesspass_core::{
     build_fingerprint_hash, calc_entropy, create_fingerprint, render_password, CryptoConfig,
     Fingerprint,
@@ -26,7 +27,17 @@ pub struct AppState {
     pub db: Mutex<VaultDb>,
 }
 
-fn load_settings(db: &VaultDb) -> Settings {
+/// Every vault command requires an unlocked session; using the app counts
+/// as activity for the idle timer.
+fn require_unlocked(session: &SessionState) -> Result<()> {
+    if session.is_locked() {
+        return Err(PassForgeError::Locked);
+    }
+    session.touch();
+    Ok(())
+}
+
+pub fn load_settings(db: &VaultDb) -> Settings {
     db.get_kv("settings")
         .ok()
         .flatten()
@@ -93,6 +104,11 @@ pub fn unlock_with_master_password(
 }
 
 #[tauri::command]
+pub fn record_activity(session: State<SessionState>) {
+    session.touch();
+}
+
+#[tauri::command]
 pub fn lock(session: State<SessionState>) -> Result<()> {
     session.lock()
 }
@@ -110,22 +126,26 @@ pub fn master_fingerprint(master_password: &str) -> Result<Fingerprint> {
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn create_folder(input: FolderInput, state: State<AppState>) -> Result<Folder> {
+pub fn create_folder(input: FolderInput, state: State<AppState>, session: State<SessionState>) -> Result<Folder> {
+    require_unlocked(&session)?;
     state.db.lock().expect("db mutex poisoned").create_folder(input)
 }
 
 #[tauri::command]
-pub fn create_entry(input: crate::models::EntryInput, state: State<AppState>) -> Result<VaultEntry> {
+pub fn create_entry(input: crate::models::EntryInput, state: State<AppState>, session: State<SessionState>) -> Result<VaultEntry> {
+    require_unlocked(&session)?;
     state.db.lock().expect("db mutex poisoned").create_entry(input)
 }
 
 #[tauri::command]
-pub fn list_folders(state: State<AppState>) -> Result<Vec<Folder>> {
+pub fn list_folders(state: State<AppState>, session: State<SessionState>) -> Result<Vec<Folder>> {
+    require_unlocked(&session)?;
     state.db.lock().expect("db mutex poisoned").list_folders()
 }
 
 #[tauri::command]
-pub fn get_entry(entry_id: String, state: State<AppState>) -> Result<VaultEntry> {
+pub fn get_entry(entry_id: String, state: State<AppState>, session: State<SessionState>) -> Result<VaultEntry> {
+    require_unlocked(&session)?;
     state
         .db
         .lock()
@@ -139,7 +159,9 @@ pub fn update_entry(
     entry_id: String,
     input: EntryInput,
     state: State<AppState>,
+    session: State<SessionState>,
 ) -> Result<VaultEntry> {
+    require_unlocked(&session)?;
     state
         .db
         .lock()
@@ -148,7 +170,8 @@ pub fn update_entry(
 }
 
 #[tauri::command]
-pub fn delete_entry(entry_id: String, state: State<AppState>) -> Result<()> {
+pub fn delete_entry(entry_id: String, state: State<AppState>, session: State<SessionState>) -> Result<()> {
+    require_unlocked(&session)?;
     state
         .db
         .lock()
@@ -162,7 +185,8 @@ pub fn preview_fingerprint(master_password: String) -> Result<Fingerprint> {
 }
 
 #[tauri::command]
-pub fn search_entries(query: String, state: State<AppState>) -> Result<Vec<EntrySummary>> {
+pub fn search_entries(query: String, state: State<AppState>, session: State<SessionState>) -> Result<Vec<EntrySummary>> {
+    require_unlocked(&session)?;
     let mut entries = state.db.lock().expect("db mutex poisoned").search_entries(&query)?;
     synthesize_fingerprints(&mut entries)?;
     Ok(entries)
@@ -174,15 +198,20 @@ pub fn generate_password(
     state: State<AppState>,
     session: State<SessionState>,
 ) -> Result<String> {
-    let master_password =
-        String::from_utf8(session.master_password_bytes()?)
-            .map_err(|_| PassForgeError::InvalidRequest("master password is not valid UTF-8".into()))?;
+    let mut master_bytes = session.master_password_bytes()?;
+    let mut master_password = String::from_utf8(std::mem::take(&mut master_bytes))
+        .map_err(|err| {
+            master_bytes.zeroize();
+            PassForgeError::InvalidRequest(format!("master password is not valid UTF-8: {err}"))
+        })?;
     let db = state.db.lock().expect("db mutex poisoned");
     let settings = load_settings(&db);
     let entry = db
         .get_entry(&entry_id)?
         .ok_or_else(|| PassForgeError::EntryNotFound(entry_id.clone()))?;
-    let password = derive_password(&entry, &master_password, &settings)?;
+    let password = derive_password(&entry, &master_password, &settings);
+    master_password.zeroize();
+    let password = password?;
     db.mark_used(&entry_id)?;
     Ok(password)
 }
@@ -192,7 +221,8 @@ pub fn generate_password(
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn get_settings(state: State<AppState>) -> Result<Settings> {
+pub fn get_settings(state: State<AppState>, session: State<SessionState>) -> Result<Settings> {
+    require_unlocked(&session)?;
     let db = state.db.lock().expect("db mutex poisoned");
     Ok(load_settings(&db))
 }
@@ -203,6 +233,7 @@ pub fn save_settings(
     state: State<AppState>,
     session: State<SessionState>,
 ) -> Result<Settings> {
+    require_unlocked(&session)?;
     session.set_idle_timeout(settings.idle_lock_seconds);
     let db = state.db.lock().expect("db mutex poisoned");
     db.set_kv("settings", &serde_json::to_string(&settings)?)?;

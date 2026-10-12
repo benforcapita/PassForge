@@ -231,6 +231,10 @@ fn encrypted_vault_rejects_wrong_key() {
 }
 
 #[test]
+#[cfg_attr(
+    target_os = "macos",
+    ignore = "macOS keeps the key in the login Keychain, not a key file"
+)]
 fn vault_open_creates_db_and_key_file_then_reopens() {
     let dir = tempfile::tempdir().unwrap();
     let db_path = dir.path().join("nested").join("passforge.db");

@@ -9,6 +9,31 @@ import type {
   VaultEntry,
 } from "./types";
 
+/** Wire shape of `VaultEntry.profile`: lesspass-core flattens `options`
+ * into the profile and keeps `salt_fields` snake_case. */
+type WireProfile = Omit<VaultEntry["profile"], "options" | "saltFields" | "crypto"> &
+  VaultEntry["profile"]["options"] & {
+    salt_fields?: VaultEntry["profile"]["saltFields"];
+    crypto?: VaultEntry["profile"]["crypto"];
+  };
+type WireEntry = Omit<VaultEntry, "profile"> & { profile: WireProfile };
+
+export function fromWireEntry(entry: WireEntry): VaultEntry {
+  const { site, login, counter, lowercase, uppercase, digits, symbols, length, salt_fields, crypto } =
+    entry.profile;
+  return {
+    ...entry,
+    profile: {
+      site,
+      login,
+      counter,
+      options: { lowercase, uppercase, digits, symbols, length },
+      saltFields: salt_fields ?? [],
+      crypto: crypto ?? null,
+    },
+  };
+}
+
 export type Api = {
   isLocked: () => Promise<boolean>;
   unlockWithMasterPassword: (masterPassword: string) => Promise<void>;
@@ -40,10 +65,11 @@ const tauriApi: Api = {
   lock: () => invoke<void>("lock"),
   createFolder: (input: FolderInput) => invoke<Folder>("create_folder", { input }),
   listFolders: () => invoke<Folder[]>("list_folders"),
-  createEntry: (input: EntryInput) => invoke<VaultEntry>("create_entry", { input }),
-  getEntry: (entryId: string) => invoke<VaultEntry>("get_entry", { entryId }),
+  createEntry: (input: EntryInput) =>
+    invoke<WireEntry>("create_entry", { input }).then(fromWireEntry),
+  getEntry: (entryId: string) => invoke<WireEntry>("get_entry", { entryId }).then(fromWireEntry),
   updateEntry: (entryId: string, input: EntryInput) =>
-    invoke<VaultEntry>("update_entry", { entryId, input }),
+    invoke<WireEntry>("update_entry", { entryId, input }).then(fromWireEntry),
   deleteEntry: (entryId: string) => invoke<void>("delete_entry", { entryId }),
   previewFingerprint: (masterPassword: string) =>
     invoke<Finger[]>("preview_fingerprint", { masterPassword }),

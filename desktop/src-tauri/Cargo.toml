@@ -3,6 +3,7 @@ name = "passforge-desktop"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+default-run = "passforge-desktop"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -25,6 +26,7 @@ dirs = "6"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6"
+objc2 = "0.6"
 objc2-foundation = "0.3"
 objc2-local-authentication = "0.3.2"
 security-framework = "3"

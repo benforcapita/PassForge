@@ -12,6 +12,8 @@ pub enum PassForgeError {
     Locked,
     #[error("keychain error: {0}")]
     Keychain(String),
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("invalid request: {0}")]
     InvalidRequest(String),
 }

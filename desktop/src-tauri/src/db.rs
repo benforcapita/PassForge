@@ -68,6 +68,11 @@ impl VaultDb {
               PRIMARY KEY (entry_id, group_id)
             );
 
+            CREATE TABLE IF NOT EXISTS kv (
+              key TEXT PRIMARY KEY,
+              value TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS tags (
               id TEXT PRIMARY KEY,
               name TEXT NOT NULL UNIQUE
@@ -321,4 +326,26 @@ fn is_simple_identifier(value: &str) -> bool {
 
     (first == '_' || first.is_ascii_alphabetic())
         && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+}
+
+impl VaultDb {
+    pub fn get_kv(&self, key: &str) -> Result<Option<String>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT value FROM kv WHERE key = ?1")?;
+        let mut rows = stmt.query(params![key])?;
+        match rows.next()? {
+            Some(row) => Ok(Some(row.get(0)?)),
+            None => Ok(None),
+        }
+    }
+
+    pub fn set_kv(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO kv (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
 }

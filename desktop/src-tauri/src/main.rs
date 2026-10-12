@@ -4,20 +4,18 @@ mod error;
 mod keychain;
 mod models;
 mod session;
+mod vault;
 
 use commands::AppState;
-use models::Settings;
 use std::sync::Mutex;
 
 fn main() {
-    let db = db::VaultDb::memory().expect("database opens");
-    db.migrate().expect("database migrates");
+    let db = vault::open().expect("vault opens");
 
     let builder = tauri::Builder::default()
         .manage(session::SessionState::default())
         .manage(AppState {
             db: Mutex::new(db),
-            settings: Mutex::new(Settings::default()),
         })
         .invoke_handler(tauri::generate_handler![
             commands::is_locked,

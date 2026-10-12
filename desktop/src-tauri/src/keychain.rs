@@ -56,3 +56,53 @@ impl SecretStore for MacKeychain {
         }
     }
 }
+
+/// Stores the vault encryption key as a 0600-permission file next to the
+/// database. Used on platforms without an OS secret store wired up yet; the
+/// vault holds only profile parameters (never passwords), so this keeps the
+/// file out of casual reach rather than pretending to be the Keychain.
+pub struct FileSecretStore {
+    path: std::path::PathBuf,
+}
+
+impl FileSecretStore {
+    pub fn new(path: std::path::PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+impl SecretStore for FileSecretStore {
+    fn save_master_password(&self, _value: &[u8]) -> Result<()> {
+        Err(PassForgeError::Keychain(
+            "master password storage is unsupported on this platform".into(),
+        ))
+    }
+
+    fn load_master_password(&self) -> Result<Option<Vec<u8>>> {
+        Ok(None)
+    }
+
+    fn delete_master_password(&self) -> Result<()> {
+        Ok(())
+    }
+
+    fn save_database_key(&self, value: &[u8]) -> Result<()> {
+        std::fs::write(&self.path, hex::encode(value))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600))?;
+        }
+        Ok(())
+    }
+
+    fn load_database_key(&self) -> Result<Option<Vec<u8>>> {
+        match std::fs::read_to_string(&self.path) {
+            Ok(contents) => hex::decode(contents.trim())
+                .map(Some)
+                .map_err(|err| PassForgeError::Keychain(err.to_string())),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(err) => Err(err.into()),
+        }
+    }
+}

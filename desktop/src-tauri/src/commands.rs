@@ -24,7 +24,14 @@ use tauri::State;
 /// timing.
 pub struct AppState {
     pub db: Mutex<VaultDb>,
-    pub settings: Mutex<Settings>,
+}
+
+fn load_settings(db: &VaultDb) -> Settings {
+    db.get_kv("settings")
+        .ok()
+        .flatten()
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .unwrap_or_default()
 }
 
 // ---------------------------------------------------------------------------
@@ -170,12 +177,8 @@ pub fn generate_password(
     let master_password =
         String::from_utf8(session.master_password_bytes()?)
             .map_err(|_| PassForgeError::InvalidRequest("master password is not valid UTF-8".into()))?;
-    let settings = state
-        .settings
-        .lock()
-        .expect("settings mutex poisoned")
-        .clone();
     let db = state.db.lock().expect("db mutex poisoned");
+    let settings = load_settings(&db);
     let entry = db
         .get_entry(&entry_id)?
         .ok_or_else(|| PassForgeError::EntryNotFound(entry_id.clone()))?;
@@ -189,12 +192,9 @@ pub fn generate_password(
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn get_settings(state: State<AppState>) -> Settings {
-    state
-        .settings
-        .lock()
-        .expect("settings mutex poisoned")
-        .clone()
+pub fn get_settings(state: State<AppState>) -> Result<Settings> {
+    let db = state.db.lock().expect("db mutex poisoned");
+    Ok(load_settings(&db))
 }
 
 #[tauri::command]
@@ -204,6 +204,7 @@ pub fn save_settings(
     session: State<SessionState>,
 ) -> Result<Settings> {
     session.set_idle_timeout(settings.idle_lock_seconds);
-    *state.settings.lock().expect("settings mutex poisoned") = settings.clone();
+    let db = state.db.lock().expect("db mutex poisoned");
+    db.set_kv("settings", &serde_json::to_string(&settings)?)?;
     Ok(settings)
 }

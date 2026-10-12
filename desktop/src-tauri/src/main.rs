@@ -12,9 +12,11 @@ use std::sync::Mutex;
 
 fn main() {
     let db = vault::open().expect("vault opens");
+    let session = session::SessionState::default();
+    session.set_idle_timeout(commands::load_settings(&db).idle_lock_seconds);
 
     let builder = tauri::Builder::default()
-        .manage(session::SessionState::default())
+        .manage(session)
         .manage(AppState {
             db: Mutex::new(db),
         })

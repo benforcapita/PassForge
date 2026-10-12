@@ -26,13 +26,18 @@ Things to verify on a real Mac (cannot be checked on Linux):
   webview `navigator.clipboard` which needs user activation).
 
 ## Native messaging
-- `./native-messaging/install-host.sh /path/to/passforge-host <EXT_ID>`
+- `scripts/build-mac.sh` builds everything and installs the manifest:
+  `tauri build` runs `desktop/scripts/build-sidecar.sh` (stages
+  `src-tauri/binaries/passforge-host-<triple>`) and bundles the host into
+  `PassForge.app/Contents/MacOS/passforge-host` via `externalBin`.
+- Or by hand: `./native-messaging/install-host.sh \
+  "/Applications/PassForge.app/Contents/MacOS/passforge-host" <EXT_ID>`
   writes `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/
   com.passforge.desktop.json` (also chromium/edge/brave).
-- The host binary must be built for macOS (`cargo build --bin
-  passforge-host`). To ship inside the `.app`, register it as a Tauri
-  `externalBin` sidecar (`binaries/passforge-host-<target-triple>`) — not
-  yet configured in `tauri.conf.json`; the dev flow is a standalone binary.
+- Verify the sidecar is actually inside the bundle
+  (`ls PassForge.app/Contents/MacOS/`), that the manifest points at it,
+  and that `ping` from the extension answers (first use may show Keychain
+  prompts for `database-key`).
 
 ## Touch ID
 Implemented in `src/biometric.rs` via `LAContext`

@@ -5,7 +5,7 @@
   "identifier": "com.passforge.desktop",
   "build": {
     "beforeDevCommand": "yarn dev",
-    "beforeBuildCommand": "yarn build",
+    "beforeBuildCommand": "yarn build && bash scripts/build-sidecar.sh",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
@@ -30,6 +30,9 @@
     "targets": "app",
     "macOS": {
       "minimumSystemVersion": "13.0"
-    }
+    },
+    "externalBin": [
+      "binaries/passforge-host"
+    ]
   }
 }

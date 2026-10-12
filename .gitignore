@@ -31,3 +31,4 @@ target/
 desktop/dist/
 desktop/src-tauri/gen/schemas/
 translation_old.json
+desktop/src-tauri/binaries/

@@ -8,10 +8,11 @@
 
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
-use crate::models::{EntrySummary, Folder, FolderInput, Settings, VaultEntry};
+use crate::models::{EntryInput, EntrySummary, Folder, FolderInput, Settings, VaultEntry};
 use crate::session::SessionState;
 use lesspass_core::{
     build_fingerprint_hash, calc_entropy, create_fingerprint, render_password, CryptoConfig,
+    Fingerprint,
 };
 use std::sync::Mutex;
 use tauri::State;
@@ -89,6 +90,14 @@ pub fn lock(session: State<SessionState>) -> Result<()> {
     session.lock()
 }
 
+/// Preview the master-password fingerprint shown on the lock screen while
+/// typing. Derived from the master password alone via the same LessPass
+/// fingerprint pipeline used elsewhere.
+pub fn master_fingerprint(master_password: &str) -> Result<Fingerprint> {
+    create_fingerprint(&build_fingerprint_hash(master_password))
+        .map_err(|err| PassForgeError::InvalidRequest(err.to_string()))
+}
+
 // ---------------------------------------------------------------------------
 // Vault commands
 // ---------------------------------------------------------------------------
@@ -101,6 +110,48 @@ pub fn create_folder(input: FolderInput, state: State<AppState>) -> Result<Folde
 #[tauri::command]
 pub fn create_entry(input: crate::models::EntryInput, state: State<AppState>) -> Result<VaultEntry> {
     state.db.lock().expect("db mutex poisoned").create_entry(input)
+}
+
+#[tauri::command]
+pub fn list_folders(state: State<AppState>) -> Result<Vec<Folder>> {
+    state.db.lock().expect("db mutex poisoned").list_folders()
+}
+
+#[tauri::command]
+pub fn get_entry(entry_id: String, state: State<AppState>) -> Result<VaultEntry> {
+    state
+        .db
+        .lock()
+        .expect("db mutex poisoned")
+        .get_entry(&entry_id)?
+        .ok_or(PassForgeError::EntryNotFound(entry_id))
+}
+
+#[tauri::command]
+pub fn update_entry(
+    entry_id: String,
+    input: EntryInput,
+    state: State<AppState>,
+) -> Result<VaultEntry> {
+    state
+        .db
+        .lock()
+        .expect("db mutex poisoned")
+        .update_entry(&entry_id, input)
+}
+
+#[tauri::command]
+pub fn delete_entry(entry_id: String, state: State<AppState>) -> Result<()> {
+    state
+        .db
+        .lock()
+        .expect("db mutex poisoned")
+        .delete_entry(&entry_id)
+}
+
+#[tauri::command]
+pub fn preview_fingerprint(master_password: String) -> Result<Fingerprint> {
+    master_fingerprint(&master_password)
 }
 
 #[tauri::command]

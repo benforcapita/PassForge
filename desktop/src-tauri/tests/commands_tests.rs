@@ -108,3 +108,16 @@ fn unlock_then_derive_password_is_consistent() {
     let pw_b = derive_password(&entry, &master, &settings).unwrap();
     assert_eq!(pw_a, pw_b);
 }
+
+#[test]
+fn master_fingerprint_is_deterministic_and_varies() {
+    use passforge_desktop::commands::master_fingerprint;
+
+    let a1 = master_fingerprint("correct horse").unwrap();
+    let a2 = master_fingerprint("correct horse").unwrap();
+    let b = master_fingerprint("battery staple").unwrap();
+
+    assert_eq!(a1, a2);
+    assert_eq!(a1.len(), 3);
+    assert_ne!(format!("{a1:?}"), format!("{b:?}"));
+}

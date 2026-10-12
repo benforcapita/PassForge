@@ -49,6 +49,8 @@ pub struct EntrySummary {
     pub id: String,
     pub site: String,
     pub login: String,
+    pub counter: u32,
+    pub folder_id: String,
     pub fingerprint: Option<Fingerprint>,
     pub last_used_at: Option<String>,
 }

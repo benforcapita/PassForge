@@ -93,6 +93,11 @@ pub fn unlock_with_master_password(
 }
 
 #[tauri::command]
+pub fn record_activity(session: State<SessionState>) {
+    session.touch();
+}
+
+#[tauri::command]
 pub fn lock(session: State<SessionState>) -> Result<()> {
     session.lock()
 }

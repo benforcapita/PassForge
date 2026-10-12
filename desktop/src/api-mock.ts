@@ -144,6 +144,7 @@ function mockPassword(entry: MockEntry): string {
 
 export const mockApi: Api = {
   isLocked: async () => locked,
+  recordActivity: async () => {},
   unlockWithMasterPassword: async (pw: string) => {
     if (!pw) throw new Error("Authentication failed. Master key does not match local vault signature.");
     masterPassword = pw;

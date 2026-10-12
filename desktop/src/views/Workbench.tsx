@@ -20,6 +20,7 @@ import { FingerprintGlyphs } from "../components/ui/FingerprintGlyphs";
 import { Kbd } from "../components/ui/Kbd";
 import { CounterBadge, TagPill } from "../components/ui/Pills";
 import { SecretWell } from "../components/ui/SecretWell";
+import { Select } from "../components/ui/Select";
 import { Slider } from "../components/ui/Slider";
 import { TextInput } from "../components/ui/TextInput";
 import { Toast } from "../components/ui/Toast";
@@ -186,9 +187,13 @@ export function Workbench({ onLock }: { onLock: () => void }) {
 
   const copyPassword = useCallback(async () => {
     if (!detail) return;
-    const value = await ensurePassword();
-    if (value == null) return;
-    await copy(value, () => setPassword(null));
+    try {
+      const value = await ensurePassword();
+      if (value == null) return;
+      await copy(value, () => setPassword(null));
+    } catch {
+      // generation or clipboard failure: nothing copied, nothing to surface
+    }
   }, [detail, ensurePassword, copy]);
 
   const copyLogin = useCallback(async () => {
@@ -288,7 +293,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search vault"
-              className="h-7 w-full rounded-sm border border-pf-border-subtle bg-pf-input pl-8 pr-10 text-[12px] text-pf-text-primary placeholder:text-pf-text-muted outline-none focus:border-pf-border-focus"
+              className="h-7 w-full rounded-sm border border-pf-border-subtle bg-pf-input pl-8 pr-10 text-[13px] text-pf-text-primary placeholder:text-pf-text-muted outline-none focus:border-pf-border-focus"
             />
             <span className="absolute right-2 top-1/2 -translate-y-1/2">
               <Kbd>⌘K</Kbd>
@@ -421,7 +426,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter entries..."
-              className="h-7 w-full bg-transparent font-mono text-[12px] text-pf-text-primary placeholder:text-pf-text-muted outline-none"
+              className="h-7 w-full bg-transparent text-[13px] text-pf-text-primary placeholder:text-pf-text-muted outline-none"
             />
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -479,7 +484,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
                 <div className="flex items-center gap-3">
                   <FingerprintGlyphs
                     fingers={entries.find((e) => e.id === detail.id)?.fingerprint}
-                    size={16}
+                    size={14}
                   />
                 </div>
               </div>
@@ -589,17 +594,16 @@ export function Workbench({ onLock }: { onLock: () => void }) {
                   </div>
                   <div>
                     <label className="mb-1 block text-[13px] font-medium text-pf-text-secondary">Folder</label>
-                    <select
+                    <Select
                       value={draft.folderId}
                       onChange={(e) => setDraft({ ...draft, folderId: e.target.value })}
-                      className="h-8 w-full rounded-sm border border-pf-border-subtle bg-pf-input px-2 text-[13px] text-pf-text-primary outline-none focus:border-pf-border-focus"
                     >
                       {folders.map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 </div>
 
@@ -737,7 +741,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
                       </div>
                       <div>
                         <label className="mb-1 block text-[11px] text-pf-text-secondary">Digest</label>
-                        <select
+                        <Select
                           value={draft.crypto.digest}
                           onChange={(e) =>
                             setDraft({
@@ -748,14 +752,13 @@ export function Workbench({ onLock }: { onLock: () => void }) {
                               },
                             })
                           }
-                          className="h-8 w-full rounded-sm border border-pf-border-subtle bg-pf-input px-2 font-mono text-[13px] text-pf-text-primary outline-none focus:border-pf-border-focus"
                         >
                           {DIGESTS.map((d) => (
                             <option key={d} value={d}>
                               {d}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     </div>
                   )}

@@ -146,6 +146,31 @@ describe("DeleteEntryModal", () => {
   });
 });
 
+describe("fingerprintIcon", () => {
+  const ALL_FINGERPRINT_ICONS = [
+    "fa-hashtag", "fa-heart", "fa-hotel", "fa-university", "fa-plug",
+    "fa-ambulance", "fa-bus", "fa-car", "fa-plane", "fa-rocket", "fa-ship",
+    "fa-subway", "fa-truck", "fa-jpy", "fa-eur", "fa-btc", "fa-usd", "fa-gbp",
+    "fa-archive", "fa-area-chart", "fa-bed", "fa-beer", "fa-bell",
+    "fa-binoculars", "fa-birthday-cake", "fa-bomb", "fa-briefcase", "fa-bug",
+    "fa-camera", "fa-cart-plus", "fa-certificate", "fa-coffee", "fa-cloud",
+    "fa-comment", "fa-cube", "fa-cutlery", "fa-database", "fa-diamond",
+    "fa-exclamation-circle", "fa-eye", "fa-flag", "fa-flask", "fa-futbol-o",
+    "fa-gamepad", "fa-graduation-cap",
+  ];
+
+  it("maps every LessPass fa-* icon to a defined non-fallback lucide component", async () => {
+    const { fingerprintIcon } = await import("../components/ui/FingerprintGlyphs");
+    const { Circle } = await import("lucide-react");
+    expect(ALL_FINGERPRINT_ICONS).toHaveLength(45);
+    for (const name of ALL_FINGERPRINT_ICONS) {
+      const icon = fingerprintIcon(name);
+      expect(icon, name).toBeDefined();
+      expect(icon, name).not.toBe(Circle);
+    }
+  });
+});
+
 describe("CharChip", () => {
   it("prevents deactivating the last active set", () => {
     const onToggle = vi.fn();

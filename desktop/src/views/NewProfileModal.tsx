@@ -3,6 +3,7 @@ import { api } from "../api";
 import { Button } from "../components/ui/Button";
 import { CharChip } from "../components/ui/CharChip";
 import { Modal } from "../components/ui/Modal";
+import { Select } from "../components/ui/Select";
 import { Slider } from "../components/ui/Slider";
 import { TextInput } from "../components/ui/TextInput";
 import type { Folder, PasswordOptions } from "../types";
@@ -128,18 +129,14 @@ export function NewProfileModal({ folders, onClose, onCreated }: Props) {
           </div>
           <div className="flex-1">
             <label className="mb-1 block text-[13px] font-medium text-pf-text-secondary">Folder</label>
-            <select
-              value={folderId}
-              onChange={(e) => setFolderId(e.target.value)}
-              className="h-8 w-full rounded-sm border border-pf-border-subtle bg-pf-input px-2 text-[13px] text-pf-text-primary outline-none focus:border-pf-border-focus"
-            >
+            <Select value={folderId} onChange={(e) => setFolderId(e.target.value)}>
               {folders.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}
                 </option>
               ))}
               {folders.length === 0 && <option value="">General</option>}
-            </select>
+            </Select>
           </div>
         </div>
         <div>

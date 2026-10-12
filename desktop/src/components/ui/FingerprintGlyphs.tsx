@@ -102,10 +102,10 @@ type Props = {
   size?: number;
 };
 
-export function FingerprintGlyphs({ fingers, size = 14 }: Props) {
+export function FingerprintGlyphs({ fingers, size = 12 }: Props) {
   if (!fingers || fingers.length === 0) return null;
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex h-[18px] items-center gap-1 rounded-sm bg-[#F0F6FC] px-1">
       {fingers.map((finger, i) => {
         const Icon = fingerprintIcon(finger.icon);
         return (

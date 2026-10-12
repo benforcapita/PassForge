@@ -22,3 +22,6 @@ AGENTS.md
 context/
 docs/superpowers/
 graphify-out/
+
+# Generated per-OS Tauri schema
+desktop/src-tauri/gen/schemas/linux-schema.json

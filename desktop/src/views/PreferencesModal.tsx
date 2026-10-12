@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
+import { Select } from "../components/ui/Select";
 import { TextInput } from "../components/ui/TextInput";
 import type { Settings } from "../types";
 
@@ -81,17 +82,17 @@ export function PreferencesModal({ settings, onClose, onSaved }: Props) {
           </div>
           <div>
             <label className="mb-1 block text-[13px] font-medium text-pf-text-secondary">Digest</label>
-            <select
+            <Select
               value={digest}
               onChange={(e) => setDigest(e.target.value as Settings["defaultCrypto"]["digest"])}
-              className="h-8 w-full rounded-sm border border-pf-border-subtle bg-pf-input px-2 font-mono text-[13px] text-pf-text-primary outline-none focus:border-pf-border-focus"
+              className="font-mono"
             >
               {DIGESTS.map((d) => (
                 <option key={d} value={d}>
                   {d}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 pt-2">

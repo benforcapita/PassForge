@@ -27,7 +27,17 @@ export function useClipboard(clipboardClearSeconds: number) {
 
   const copy = useCallback(
     async (text: string, onWipe?: () => void) => {
-      await navigator.clipboard.writeText(text);
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        clearTimers();
+        setCopied(false);
+        setToast({
+          message: "Clipboard write failed. Password not copied.",
+          countdownSeconds: 0,
+        });
+        return;
+      }
       clearTimers();
       setCopied(true);
       setToast({

@@ -109,7 +109,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                   }
                 }}
                 placeholder="Master password"
-                className="h-9 w-full rounded-sm border border-pf-border-subtle bg-pf-input px-3 pr-9 font-mono text-[13px] text-pf-text-primary placeholder:text-pf-text-muted outline-none transition-colors duration-100 hover:border-pf-border-moderate focus:border-pf-border-focus focus:bg-pf-input-focus"
+                className="h-8 w-full rounded-sm border border-pf-border-subtle bg-pf-input px-3 pr-9 font-mono text-[13px] text-pf-text-primary placeholder:text-pf-text-muted outline-none transition-colors duration-100 hover:border-pf-border-moderate focus:border-pf-border-focus focus:bg-pf-input-focus"
               />
               <button
                 type="button"
@@ -126,7 +126,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
             <div className="mt-3 flex h-5 items-center justify-center gap-2">
               {password && fingers && (
                 <>
-                  <FingerprintGlyphs fingers={fingers} />
+                  <FingerprintGlyphs fingers={fingers} size={14} />
                   <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-pf-text-muted">
                     Key fingerprint
                   </span>

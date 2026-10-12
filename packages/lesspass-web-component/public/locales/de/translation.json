@@ -4,17 +4,11 @@
     "Change": "Ändern",
     "Copied": "Kopiert",
     "Copy": "Kopieren",
-    "Generate": "Generieren",
     "Hide": "Verbergen",
     "Reset": "Zurücksetzen",
     "Save": "Speichern",
     "Send": "Senden",
-    "Show": "Anzeigen",
-    "Update": "Aktualisieren"
-  },
-  "DeleteMyAccountModal": {
-    "DeleteMyAccount": "Mein Konto löschen",
-    "WarningMessage": "Geben Sie Ihr Master-Passwort ein, um Ihr Konto zu löschen. Warnung! Diese Aktion ist unwiderruflich."
+    "Show": "Anzeigen"
   },
   "ForgotPasswordPage": {
     "ConfirmLinkSendMessage": "Ein Link zum Ändern Ihres Passworts wurde an {{email}} gesendet",
@@ -31,34 +25,10 @@
     "signIn": "Anmelden",
     "SignOut": "Abmelden"
   },
-  "Help": {
-    "HowDoesItWorkDescription": "LessPass ist ein Passwort-Manager, der keine Daten speichert. Er berechnet ein eindeutiges Passwort anhand einer Website, eines Logins und eines Master-Passworts. Sie müssen keinen Passwort-Tresor auf allen Geräten synchronisieren, da LessPass offline funktioniert! Es wird immer dasselbe Passwort generieren, solange sich diese Parameter nicht ändern.",
-    "HowDoesItWorkTitle": "Wie funktioniert es?",
-    "MasterPasswordIconsDescription": "Ihr Master-Passwort ist das Einzige, was Sie sich merken sollten. Die Symbole rechts helfen Ihnen zu überprüfen, dass Sie das richtige Master-Passwort eingegeben haben. Sie müssen etwa eine Sekunde warten, bevor die finalen Symbole erscheinen (die Verzögerung dient der Sicherheit; würden die Symbole sofort angezeigt, könnte ein Schulterblicker Ihr Passwort anhand der angezeigten Symbolreihe ableiten).",
-    "MasterPasswordIconsTitle": "Master-Passwort-Symbole",
-    "PasswordGeneratorOptions": "Passwort-Generator-Optionen",
-    "PasswordOptionsDescription": "Manchmal haben Websites spezifische Passwort-Regeln. Zum Beispiel akzeptieren manche Banken nur Passwörter aus Ziffern. LessPass ermöglicht es Ihnen, Parameter für das generierte Passwort festzulegen (das sogenannte \"Passwort-Profil\"). Der Zähler insbesondere erlaubt es, ein neues Passwort zu generieren, ohne das Master-Passwort ändern zu müssen.",
-    "SelfHostedDescription": "Wenn Sie eine selbst gehostete LessPass-Datenbank verwenden, können Sie die Basis-URL in den Einstellungen ändern, um auf Ihren eigenen Server zu zeigen.",
-    "SelfHostedLessPassDatabase": "Selbst gehostete LessPass-Datenbank",
-    "SendUsAnEmail": "Senden Sie uns eine E-Mail",
-    "SignIn": "Anmelden",
-    "SignInDescription1": "Standardmäßig funktioniert LessPass offline und sendet keine Daten über das Netzwerk. Für mehr Komfort gibt es einen optionalen verbundenen Modus. Dieser Modus ermöglicht es, die nötigen Profile zur Passwort-Generierung auf unserem (oder alternativ Ihrem eigenen) LessPass-Server zu speichern. Das ist besonders nützlich, wenn viele Ihrer Passwörter nicht auf dem Standard-Profil basieren (Länge von 16 Zeichen, alle Zeichen erlaubt). Da ein Passwort-Profil weder das Master-Passwort noch das generierte Passwort enthält, werden keine kritischen Informationen an den Server gesendet.",
-    "SignInDescription2": "Das Anmeldeformular fragt nach Ihrem Master-Passwort. Standardmäßig wird es verwendet, um ein Passwort für Ihr LessPass-Konto auf dieselbe Weise wie für jede andere Website zu generieren. Das bedeutet, dass das Master-Passwort selbst niemals an unsere Server gesendet wird. Falls Sie aus irgendeinem Grund kein solches von LessPass generiertes Passwort für Ihr LessPass-Konto verwenden möchten, können Sie dies in den Einstellungen deaktivieren.",
-    "Support": "Unterstützung",
-    "SupportDescription": "Benötigen Sie noch Hilfe? Oder haben Sie eine Idee, wie man LessPass verbessern kann? Sie können uns eine E-Mail an contact@lesspass.com senden. Sie können Ihre E-Mail auf Englisch oder Französisch schreiben."
-  },
   "MyProfilePage": {
     "SignOut": "Abmelden",
     "ThankYouMessage": "Ihr Konto wird auf dem Server https://api.lesspass.com gespeichert. Vielen Dank, dass Sie zu den ersten Nutzern von LessPass gehören.",
     "Welcome": "Willkommen, {{email}}"
-  },
-  "Name": "LessPass",
-  "Navigation": {
-    "Help": "Hilfe",
-    "MyAccount": "Mein Konto",
-    "PasswordProfiles": "Passwort-Profile",
-    "Settings": "Einstellungen",
-    "SignIn": "Anmelden"
   },
   "NewPasswordProfilePage": {
     "NewPassword": "Neues Passwort"
@@ -73,11 +43,8 @@
     "MasterPassword": "Master-Passwort",
     "Options": "Optionen",
     "PasswordProfileCopiedInClipboard": "Die URL des Passwortprofils wurde in die Zwischenablage kopiert.",
-    "PasswordProfileSaved": "Passwort-Profil gespeichert",
-    "PasswordProfileUpdated": "Passwort-Profil aktualisiert",
     "Share": "Teilen",
-    "Site": "Website",
-    "SiteRequired": "Passwort-Profil ist ungültig, Passwort kann nicht generiert werden. Website ist erforderlich."
+    "Site": "Website"
   },
   "PasswordProfilePage": {
     "AreYouSure": "Sind Sie sicher, dass Sie das Profil {{site}}/{{login}} löschen möchten?",
@@ -104,41 +71,14 @@
     "PasswordChangedSuccessfullyMessage": "Sie können sich jetzt anmelden.",
     "PasswordChangedSuccessfullyTitle": "Ihr Passwort wurde erfolgreich geändert."
   },
-  "ProfilesScreen": {
-    "SearchPlaceholder": "Suchen Sie in Ihren Passwort-Profilen"
-  },
   "Settings": {
-    "Activated": "aktiviert",
-    "Application": "Anwendung",
-    "CopyPasswordAutomatically": "Passwort automatisch kopieren",
-    "Deactivated": "deaktiviert",
-    "DefaultCounter": "Standard-Zähler",
-    "DefaultLogin": "Standard-Benutzername",
-    "DefaultPasswordLength": "Standard-Passwortlänge",
-    "DefaultPasswordProfile": "Standard-Passwort-Profil",
-    "DefaultURL": "Standard-URL",
     "EncryptMyMasterPassword": "Mein Master-Passwort beim Anmelden verschlüsseln",
-    "EnterMasterPassword": "Geben Sie Ihr Master-Passwort ein",
     "FocusAuto": "Automatisch",
     "FocusField": "Fokusfeld",
-    "InsecureOptions": "Unsichere Optionen",
-    "KeepMasterPasswordLocally": "Master-Passwort lokal speichern",
-    "LessPassDatabase": "LessPass-Datenbank",
-    "LessPassDatabaseDefaultURL": "Standard-URL der LessPass-Datenbank",
-    "LessPassVersion": "LessPass-Version",
-    "Lowercase": "Kleinbuchstaben (a-z)",
-    "MasterPasswordEncryptedLocally": "Ihr Master-Passwort ist lokal verschlüsselt",
-    "MasterPasswordEncryptionDescription": "Ihr Master-Passwort wird lokal auf Ihrem Gerät verschlüsselt und ist nur mit Ihrem Fingerabdruck zugänglich.",
-    "Numbers": "Zahlen (0-9)",
-    "PasswordWillBeCopied": "Ihr Passwort wird automatisch kopiert, nachdem es generiert wurde.",
-    "PasswordWillNotBeCopied": "Ihr Passwort wird nicht automatisch kopiert, nachdem es generiert wurde.",
     "removeSubDomain": "Entferne die Subdomain",
     "removeTopLevelDomain": "Entferne die Top-Level-Domain",
     "SignIn": "Anmelden",
-    "Symbols": "Symbole (%!@)",
-    "Title": "Einstellungen",
-    "Uppercase": "Großbuchstaben (A-Z)",
-    "UseMasterPasswordDescription": "Verwenden Sie Ihr Master-Passwort im Anmeldeformular, aber senden Sie das verschlüsselte Passwort."
+    "Title": "Einstellungen"
   },
   "SignInForm": {
     "Email": "Email",
@@ -149,15 +89,9 @@
   "SignInPage": {
     "ForgotPassword": "Passwort vergessen?",
     "LessPassServerDecommissioned": "Die LessPass-Datenbank wurde außer Betrieb genommen. Sie müssen Ihren eigenen Server verwenden.",
-    "MasterPasswordEncryptedNote": "Ihr Master-Passwort ist verschlüsselt. Deaktivieren Sie diese Option in Ihren Einstellungen, wenn Sie sie nicht verwenden.",
-    "SeeBlogPost": "Blog-Beitrag lesen",
     "SignIn": "Anmelden",
     "SignInToLessPass": "Melden Sie sich bei LessPass an",
     "UnableToSignInMessage": "Die angegebenen Informationen sind ungültig oder der Benutzer existiert nicht.",
     "UnableToSignInTitle": "Anmeldung nicht möglich"
-  },
-  "SignOutScreen": {
-    "DangerZone": "Gefahrenbereich",
-    "DeleteAccountError": "Ihr Konto konnte nicht gelöscht werden. Stellen Sie sicher, dass Ihr Master-Passwort korrekt ist."
   }
 }

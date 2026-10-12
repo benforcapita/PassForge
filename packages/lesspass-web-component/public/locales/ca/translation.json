@@ -4,17 +4,11 @@
     "Change": "Canviar",
     "Copied": "Copiat",
     "Copy": "Copiar",
-    "Generate": "Generar",
     "Hide": "Amagar",
     "Reset": "Restablir",
     "Save": "Desar",
     "Send": "Enviar",
-    "Show": "Mostrar",
-    "Update": "Actualitzar"
-  },
-  "DeleteMyAccountModal": {
-    "DeleteMyAccount": "Eliminar el meu compte",
-    "WarningMessage": "Introdueix la teva contrasenya mestra per eliminar el teu compte. Atenció! aquesta acció és irreversible."
+    "Show": "Mostrar"
   },
   "ForgotPasswordPage": {
     "ConfirmLinkSendMessage": "S'ha enviat un enllaç per canviar la teva contrasenya a {{email}}",
@@ -31,34 +25,10 @@
     "signIn": "Iniciar sessió",
     "SignOut": "Tancar sessió"
   },
-  "Help": {
-    "HowDoesItWorkDescription": "LessPass és un gestor de contrasenyes que no emmagatzema cap dada. Calcula una contrasenya única utilitzant un lloc web, un usuari i una contrasenya mestra. No necessites sincronitzar una caixa forta de contrasenyes entre tots els dispositius perquè LessPass funciona sense connexió! Sempre generarà la mateixa contrasenya mentre aquests paràmetres no canviïn.",
-    "HowDoesItWorkTitle": "Com funciona?",
-    "MasterPasswordIconsDescription": "La teva contrasenya mestra és l'única cosa que has de recordar. Les icones de la dreta et permeten verificar que has escrit la contrasenya mestra correcta. Hauràs d'esperar un segon aproximadament abans que apareguin les icones finals (el retard és per seguretat; si les icones es mostressin instantàniament, algú que miri per sobre l'espatlla podria deduir la teva contrasenya basant-se en la sèrie d'icones mostrades).",
-    "MasterPasswordIconsTitle": "Icones de la contrasenya mestra",
-    "PasswordGeneratorOptions": "Opcions del generador de contrasenyes",
-    "PasswordOptionsDescription": "Algunes vegades els llocs web tenen regles específiques per a les contrasenyes. Per exemple, alguns bancs només accepten contrasenyes fetes de dígits. LessPass et permet definir paràmetres per a la contrasenya generada (l'anomenat \"perfil de contrasenya\"). El comptador en particular et permet generar una nova contrasenya sense haver de canviar la teva contrasenya mestra.",
-    "SelfHostedDescription": "Si estàs utilitzant una base de dades LessPass auto-allotjada, pots canviar l'URL base a la configuració per apuntar al teu propi servidor.",
-    "SelfHostedLessPassDatabase": "Base de dades LessPass auto-allotjada",
-    "SendUsAnEmail": "Envia'ns un correu electrònic",
-    "SignIn": "Iniciar sessió",
-    "SignInDescription1": "Per defecte, LessPass funciona sense connexió i no envia cap dada per la xarxa. Per comoditat, hi ha un mode connectat opcional. Aquest mode et permet emmagatzemar els perfils necessaris per generar les teves contrasenyes al nostre servidor LessPass (o alternativament al teu propi). Això és especialment útil si moltes de les teves contrasenyes no estan basades en el perfil per defecte (longitud de 16 caràcters, tots els caràcters permesos). Com que un perfil de contrasenya no inclou ni la contrasenya mestra ni la contrasenya generada, no s'envia cap informació crítica al servidor.",
-    "SignInDescription2": "El formulari d'inici de sessió demana la teva contrasenya mestra. Per defecte, s'utilitza per generar una contrasenya per al teu compte LessPass de la mateixa manera que per a qualsevol altre lloc web. Això significa que la contrasenya mestra en si mateixa mai s'envia als nostres servidors. Si per qualsevol raó no vols utilitzar aquesta contrasenya generada per LessPass per al teu compte LessPass, pots desactivar-ho a la configuració.",
-    "Support": "Suport",
-    "SupportDescription": "Encara necessites ajuda? O tens una idea sobre com millorar LessPass. Pots enviar-nos un correu electrònic a contact@lesspass.com. Pots escriure el teu correu en anglès o francès."
-  },
   "MyProfilePage": {
     "SignOut": "Tancar sessió",
     "ThankYouMessage": "El teu compte es guarda al servidor https://api.lesspass.com. Gràcies per ser un dels primers usuaris de LessPass.",
     "Welcome": "Benvingut/da, {{email}}"
-  },
-  "Name": "LessPass",
-  "Navigation": {
-    "Help": "Ajuda",
-    "MyAccount": "El meu compte",
-    "PasswordProfiles": "Perfils de contrasenyes",
-    "Settings": "Configuració",
-    "SignIn": "Iniciar sessió"
   },
   "NewPasswordProfilePage": {
     "NewPassword": "Nova contrasenya"
@@ -73,11 +43,8 @@
     "MasterPassword": "Contrasenya mestra",
     "Options": "Opcions",
     "PasswordProfileCopiedInClipboard": "L'URL del perfil de la contrasenya s'ha copiat al porta-retalls.",
-    "PasswordProfileSaved": "Perfil de contrasenya desat",
-    "PasswordProfileUpdated": "Perfil de contrasenya actualitzat",
     "Share": "Compartir",
-    "Site": "Lloc web",
-    "SiteRequired": "El perfil de contrasenya no és vàlid, no es pot generar la contrasenya. Es requereix el lloc web."
+    "Site": "Lloc web"
   },
   "PasswordProfilePage": {
     "AreYouSure": "Segur que vols esborrar el perfil de {{site}}/{{login}}?",
@@ -104,41 +71,14 @@
     "PasswordChangedSuccessfullyMessage": "Ara ja pots iniciar sessió.",
     "PasswordChangedSuccessfullyTitle": "La teva contrasenya s'ha canviat correctament."
   },
-  "ProfilesScreen": {
-    "SearchPlaceholder": "Cerca als teus perfils de contrasenya"
-  },
   "Settings": {
-    "Activated": "activat",
-    "Application": "Aplicació",
-    "CopyPasswordAutomatically": "Copiar contrasenya automàticament",
-    "Deactivated": "desactivat",
-    "DefaultCounter": "Comptador per defecte",
-    "DefaultLogin": "Usuari per defecte",
-    "DefaultPasswordLength": "Longitud de contrasenya per defecte",
-    "DefaultPasswordProfile": "Perfil de contrasenya per defecte",
-    "DefaultURL": "URL per defecte",
     "EncryptMyMasterPassword": "Encripta la meva contrasenya mestra en iniciar sessió",
-    "EnterMasterPassword": "Introdueix la teva contrasenya mestra",
     "FocusAuto": "Automàtic",
     "FocusField": "Camp de focus",
-    "InsecureOptions": "Opcions no segures",
-    "KeepMasterPasswordLocally": "Mantenir la contrasenya mestra localment",
-    "LessPassDatabase": "Base de dades LessPass",
-    "LessPassDatabaseDefaultURL": "URL per defecte de la base de dades LessPass",
-    "LessPassVersion": "LessPass versió",
-    "Lowercase": "Minúscules (a-z)",
-    "MasterPasswordEncryptedLocally": "La teva contrasenya mestra està encriptada localment",
-    "MasterPasswordEncryptionDescription": "La teva contrasenya mestra s'encriptarà localment al teu dispositiu i serà accessible només amb la teva empremta digital.",
-    "Numbers": "Números (0-9)",
-    "PasswordWillBeCopied": "La teva contrasenya es copiarà automàticament després de ser generada.",
-    "PasswordWillNotBeCopied": "La teva contrasenya no es copiarà automàticament després de ser generada.",
     "removeSubDomain": "Elimina el subdomini",
     "removeTopLevelDomain": "Elimina el domini de nivell superior",
     "SignIn": "Iniciar sessió",
-    "Symbols": "Símbols (%!@)",
-    "Title": "Configuració",
-    "Uppercase": "Majúscules (A-Z)",
-    "UseMasterPasswordDescription": "Utilitza la teva contrasenya mestra al formulari d'inici de sessió però envia la contrasenya encriptada."
+    "Title": "Configuració"
   },
   "SignInForm": {
     "Email": "Correu electrònic",
@@ -149,15 +89,9 @@
   "SignInPage": {
     "ForgotPassword": "Has oblidat la contrasenya?",
     "LessPassServerDecommissioned": "La base de dades de LessPass s'ha desactivat. Has d'utilitzar el teu propi servidor.",
-    "MasterPasswordEncryptedNote": "La teva contrasenya mestra està encriptada. Desmarca aquesta opció a la configuració si no la fas servir.",
-    "SeeBlogPost": "Veure entrada del blog",
     "SignIn": "Iniciar sessió",
     "SignInToLessPass": "Inicia sessió a LessPass",
     "UnableToSignInMessage": "Les dades proporcionades són incorrectes o l'usuari no existeix.",
     "UnableToSignInTitle": "No s'ha pogut iniciar sessió"
-  },
-  "SignOutScreen": {
-    "DangerZone": "Zona de perill",
-    "DeleteAccountError": "No s'ha pogut eliminar el teu compte. Si us plau, assegura't que la teva contrasenya mestra és correcta."
   }
 }

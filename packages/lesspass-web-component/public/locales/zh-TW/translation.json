@@ -4,17 +4,11 @@
     "Change": "更改",
     "Copied": "已複製",
     "Copy": "複製",
-    "Generate": "生成",
     "Hide": "隱藏",
     "Reset": "重設",
     "Save": "儲存",
     "Send": "發送",
-    "Show": "顯示",
-    "Update": "更新"
-  },
-  "DeleteMyAccountModal": {
-    "DeleteMyAccount": "刪除我的帳戶",
-    "WarningMessage": "輸入您的主密碼以刪除您的帳戶。警告！此操作不可逆轉。"
+    "Show": "顯示"
   },
   "ForgotPasswordPage": {
     "ConfirmLinkSendMessage": "修改密碼的連結已發送至 {{email}}",
@@ -31,34 +25,10 @@
     "signIn": "登入",
     "SignOut": "登出"
   },
-  "Help": {
-    "HowDoesItWorkDescription": "LessPass 是一個不儲存任何資料的密碼管理器。它使用網站、登入名和主密碼計算唯一密碼。您不需要在每個裝置上同步密碼庫，因為 LessPass 可以離線工作！只要這些參數不變，它總是生成相同的密碼。",
-    "HowDoesItWorkTitle": "它是如何運作的？",
-    "MasterPasswordIconsDescription": "您的主密碼是您唯一需要記住的東西。右側的圖示讓您驗證是否輸入了正確的主密碼。您需要等待大約一秒才會顯示最終的圖示（這個延遲是為了安全；如果圖示立即顯示，旁觀者可能根據顯示的圖示序列推導出您的密碼）。",
-    "MasterPasswordIconsTitle": "主密碼圖示",
-    "PasswordGeneratorOptions": "密碼生成器選項",
-    "PasswordOptionsDescription": "有時網站有特定的密碼規則。例如，某些銀行只接受由數字組成的密碼。LessPass 允許您為生成的密碼設定參數（所謂的\"密碼設定檔\"）。特別是計數器允許您生成新密碼而不必更改您的主密碼。",
-    "SelfHostedDescription": "如果您使用自托管的 LessPass 資料庫，您可以在設定中更改基礎 URL 以指向您自己的伺服器。",
-    "SelfHostedLessPassDatabase": "自托管 LessPass 資料庫",
-    "SendUsAnEmail": "給我們發送電子郵件",
-    "SignIn": "登入",
-    "SignInDescription1": "預設情況下，LessPass 離線工作，不會透過網路發送任何資料。為了方便起見，有一個可選的連接模式。這種模式允許您在我們的（或者您自己的）LessPass 伺服器上儲存生成密碼所需的設定檔。如果您的許多密碼不基於預設設定檔（16 個字元長度，允許所有字元），這特別有用。由於密碼設定檔不包含主密碼也不包含生成的密碼，因此不會向伺服器發送任何關鍵資訊。",
-    "SignInDescription2": "登入表單要求您輸入主密碼。預設情況下，它用於為您的 LessPass 帳戶生成密碼，方式與任何其他網站相同。這意味著主密碼本身永遠不會發送到我們的伺服器。如果出於任何原因您不希望為您的 LessPass 帳戶使用這樣的 LessPass 生成密碼，您可以在設定中禁用此功能。",
-    "Support": "支援",
-    "SupportDescription": "仍然需要幫助嗎？或者您有關於如何改進 LessPass 的想法。您可以向 contact@lesspass.com 發送電子郵件。您可以用英語或法語寫電子郵件。"
-  },
   "MyProfilePage": {
     "SignOut": "登出",
     "ThankYouMessage": "您的帳戶存儲於 https://api.lesspass.com 伺服器，感謝您成為 LessPass 的早期使用者。",
     "Welcome": "歡迎, {{email}}"
-  },
-  "Name": "LessPass",
-  "Navigation": {
-    "Help": "幫助",
-    "MyAccount": "我的帳戶",
-    "PasswordProfiles": "密碼設定檔",
-    "Settings": "設定",
-    "SignIn": "登入"
   },
   "NewPasswordProfilePage": {
     "NewPassword": "新密碼"
@@ -73,11 +43,8 @@
     "MasterPassword": "主密碼",
     "Options": "選項",
     "PasswordProfileCopiedInClipboard": "密碼設定檔的 URL 已複製到剪貼簿。",
-    "PasswordProfileSaved": "密碼設定檔已儲存",
-    "PasswordProfileUpdated": "密碼設定檔已更新",
     "Share": "分享",
-    "Site": "網站",
-    "SiteRequired": "密碼設定檔無效，無法生成密碼。需要網站。"
+    "Site": "網站"
   },
   "PasswordProfilePage": {
     "AreYouSure": "您確定要刪除 {{site}}/{{login}} 設定檔嗎？",
@@ -104,41 +71,14 @@
     "PasswordChangedSuccessfullyMessage": "您現在可以登入。",
     "PasswordChangedSuccessfullyTitle": "您的密碼已成功更改。"
   },
-  "ProfilesScreen": {
-    "SearchPlaceholder": "在您的密碼設定檔中搜尋"
-  },
   "Settings": {
-    "Activated": "已啟用",
-    "Application": "應用程式",
-    "CopyPasswordAutomatically": "自動複製密碼",
-    "Deactivated": "已禁用",
-    "DefaultCounter": "預設計數器",
-    "DefaultLogin": "預設登入名",
-    "DefaultPasswordLength": "預設密碼長度",
-    "DefaultPasswordProfile": "預設密碼設定檔",
-    "DefaultURL": "預設 URL",
     "EncryptMyMasterPassword": "登入時加密我的主密碼",
-    "EnterMasterPassword": "輸入您的主密碼",
     "FocusAuto": "自動",
     "FocusField": "焦點欄位",
-    "InsecureOptions": "不安全選項",
-    "KeepMasterPasswordLocally": "本機保存主密碼",
-    "LessPassDatabase": "LESSPASS 資料庫",
-    "LessPassDatabaseDefaultURL": "LessPass 資料庫預設 URL",
-    "LessPassVersion": "LessPass 版本",
-    "Lowercase": "小寫字母 (a-z)",
-    "MasterPasswordEncryptedLocally": "您的主密碼在本機加密",
-    "MasterPasswordEncryptionDescription": "您的主密碼將在您的裝置上本機加密，僅可透過您的指紋存取。",
-    "Numbers": "數字 (0-9)",
-    "PasswordWillBeCopied": "您的密碼在生成後將自動複製。",
-    "PasswordWillNotBeCopied": "您的密碼在生成後不會自動複製。",
     "removeSubDomain": "移除子網域",
     "removeTopLevelDomain": "移除頂級網域",
     "SignIn": "登入",
-    "Symbols": "符號 (%!@)",
-    "Title": "設定",
-    "Uppercase": "大寫字母 (A-Z)",
-    "UseMasterPasswordDescription": "在登入表單中使用您的主密碼，但發送加密密碼。"
+    "Title": "設定"
   },
   "SignInForm": {
     "Email": "電子郵件",
@@ -149,15 +89,9 @@
   "SignInPage": {
     "ForgotPassword": "忘記密碼？",
     "LessPassServerDecommissioned": "LessPass 資料庫已停用。您必須使用自己的伺服器。",
-    "MasterPasswordEncryptedNote": "您的主密碼已加密。如果您不使用此功能，請在設定中取消選取此選項。",
-    "SeeBlogPost": "查看博客文章",
     "SignIn": "登入",
     "SignInToLessPass": "登入 LessPass",
     "UnableToSignInMessage": "提供的資訊無效或使用者不存在。",
     "UnableToSignInTitle": "無法登入"
-  },
-  "SignOutScreen": {
-    "DangerZone": "危險區域",
-    "DeleteAccountError": "無法刪除您的帳戶。請確保您的主密碼正確。"
   }
 }

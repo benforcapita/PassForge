@@ -4,17 +4,11 @@
     "Change": "Zmień",
     "Copied": "Skopiowano",
     "Copy": "Kopiuj",
-    "Generate": "Generuj",
     "Hide": "Ukryj",
     "Reset": "Resetuj",
     "Save": "Zapisz",
     "Send": "Wyślij",
-    "Show": "Pokaż",
-    "Update": "Aktualizuj"
-  },
-  "DeleteMyAccountModal": {
-    "DeleteMyAccount": "Usuń moje konto",
-    "WarningMessage": "Wprowadź swoje hasło główne, aby usunąć swoje konto. Ostrzeżenie! ta akcja jest nieodwracalna."
+    "Show": "Pokaż"
   },
   "ForgotPasswordPage": {
     "ConfirmLinkSendMessage": "Link do zmiany hasła został wysłany na adres {{email}}",
@@ -31,34 +25,10 @@
     "signIn": "Zaloguj się",
     "SignOut": "Wyloguj się"
   },
-  "Help": {
-    "HowDoesItWorkDescription": "LessPass to menedżer haseł, który nie przechowuje żadnych danych. Oblicza unikalne hasło, używając strony, loginu i hasła głównego. Nie musisz synchronizować sejfu haseł na wszystkich urządzeniach, ponieważ LessPass działa offline! Będzie zawsze generować to samo hasło, dopóki te parametry się nie zmienią.",
-    "HowDoesItWorkTitle": "Jak to działa?",
-    "MasterPasswordIconsDescription": "Twoje hasło główne to jedyna rzecz, którą powinienes pamiętać. Ikony po prawej stronie pozwalają sprawdzić, czy wpisałes właściwe hasło główne. Będziesz musiał poczeæ sekundę lub dwie, zanim pojawią się ostateczne ikony (opóźnienie jest ze względów bezpieczeństwa; gdyby ikony pojawiały się natychmiast, ktoś podglądający przez ramie mógłby odgadnąć twoje hasło na podstawie serii wyświetlanych ikon).",
-    "MasterPasswordIconsTitle": "Ikony hasła głównego",
-    "PasswordGeneratorOptions": "Opcje generatora haseł",
-    "PasswordOptionsDescription": "Czasami strony mają specyficzne zasady haseł. Na przykład, niektóre banki akceptują tylko hasła złożone z cyfr. LessPass pozwala ustawić parametry dla generowanego hasła (tak zwany \"profil hasła\"). Licznik w szczególności pozwala wygenerować nowe hasło bez konieczności zmiany hasła głównego.",
-    "SelfHostedDescription": "Jeśli używasz własnej bazy danych LessPass, możesz zmienić bazowy URL w ustawieniach, aby wskazywał na twój własny serwer.",
-    "SelfHostedLessPassDatabase": "Własna baza danych LessPass",
-    "SendUsAnEmail": "Wyślij nam email",
-    "SignIn": "Zaloguj się",
-    "SignInDescription1": "Domyślnie LessPass działa offline i nie wysyła żadnych danych przez sieć. Dla wygody istnieje opcjonalny tryb połączenia. Ten tryb pozwala przechowywać profile niezbędne do generowania haseł na naszym serwerze LessPass (lub alternatywnie na twoim własnym). Jest to szczególnie przydatne, jeśli wiele twoich haseł nie opiera się na profilu domyślnym (długość 16 znaków, wszystkie znaki dozwolone). Ponieważ profil hasła nie zawiera ani hasła głównego, ani wygenerowanego hasła, żadne krytyczne informacje nie są wysyłane na serwer.",
-    "SignInDescription2": "Formularz logowania pyta o twoje hasło główne. Domyślnie jest ono używane do generowania hasła dla twojego konta LessPass w taki sam sposób jak dla każdej innej strony. Oznacza to, że hasło główne nigdy nie jest wysyłane na nasze serwery. Jeśli z jakiegoś powodu nie chcesz używać takiego hasła wygenerowanego przez LessPass dla twojego konta LessPass, możesz to wyłączyć w ustawieniach.",
-    "Support": "Wsparcie",
-    "SupportDescription": "Ciągle potrzebujesz pomocy? Lub masz pomysł na to, jak ulepszyc LessPass. Możesz wysłać nam email na contact@lesspass.com. Możesz napisać email po angielsku lub francusku."
-  },
   "MyProfilePage": {
     "SignOut": "Wyloguj się",
     "ThankYouMessage": "Twoje konto jest przechowywane na serwerze https://api.lesspass.com jako podziękowanie za bycie jednym z pierwszych użytkowników LessPass.",
     "Welcome": "Witaj, {{email}}"
-  },
-  "Name": "LessPass",
-  "Navigation": {
-    "Help": "Pomoc",
-    "MyAccount": "Moje konto",
-    "PasswordProfiles": "Profile haseł",
-    "Settings": "Ustawienia",
-    "SignIn": "Zaloguj się"
   },
   "NewPasswordProfilePage": {
     "NewPassword": "Nowe hasło"
@@ -73,11 +43,8 @@
     "MasterPassword": "Hasło główne",
     "Options": "Opcje",
     "PasswordProfileCopiedInClipboard": "URL profilu hasła został skopiowany do schowka.",
-    "PasswordProfileSaved": "Profil hasła zapisany",
-    "PasswordProfileUpdated": "Profil hasła zaktualizowany",
     "Share": "Udostępnij",
-    "Site": "Strona",
-    "SiteRequired": "Profil hasła jest niepoprawny, nie można wygenerować hasła. Strona jest wymagana."
+    "Site": "Strona"
   },
   "PasswordProfilePage": {
     "AreYouSure": "Czy na pewno chcesz usunąć profil {{site}}/{{login}}?",
@@ -104,41 +71,14 @@
     "PasswordChangedSuccessfullyMessage": "Możesz teraz się zalogować.",
     "PasswordChangedSuccessfullyTitle": "Twoje hasło zostało pomyślnie zmienione."
   },
-  "ProfilesScreen": {
-    "SearchPlaceholder": "Szukaj w swoich profilach haseł"
-  },
   "Settings": {
-    "Activated": "aktywny",
-    "Application": "Aplikacja",
-    "CopyPasswordAutomatically": "Kopiuj hasło automatycznie",
-    "Deactivated": "nieaktywny",
-    "DefaultCounter": "Domyślny licznik",
-    "DefaultLogin": "Domyślny login",
-    "DefaultPasswordLength": "Domyślna długość hasła",
-    "DefaultPasswordProfile": "Domyślny profil hasła",
-    "DefaultURL": "Domyślny URL",
     "EncryptMyMasterPassword": "Szyfruj moje hasło główne przy logowaniu",
-    "EnterMasterPassword": "Wprowadź swoje hasło główne",
     "FocusAuto": "Automatyczny",
     "FocusField": "Pole ostrości",
-    "InsecureOptions": "Opcje niebezpieczne",
-    "KeepMasterPasswordLocally": "Przechowuj hasło główne lokalnie",
-    "LessPassDatabase": "Baza danych LessPass",
-    "LessPassDatabaseDefaultURL": "Domyślny URL bazy danych LessPass",
-    "LessPassVersion": "LessPass wersja",
-    "Lowercase": "Małe litery (a-z)",
-    "MasterPasswordEncryptedLocally": "Twoje hasło główne jest zaszyfrowane lokalnie",
-    "MasterPasswordEncryptionDescription": "Twoje hasło główne będzie zaszyfrowane lokalnie na twoim urządzeniu i dostępne tylko przez odcisk palca.",
-    "Numbers": "Cyfry (0-9)",
-    "PasswordWillBeCopied": "Twoje hasło zostanie automatycznie skopiowane po wygenerowaniu.",
-    "PasswordWillNotBeCopied": "Twoje hasło nie zostanie automatycznie skopiowane po wygenerowaniu.",
     "removeSubDomain": "Usuń subdomenę",
     "removeTopLevelDomain": "Usuń domenę najwyższego poziomu",
     "SignIn": "Zaloguj się",
-    "Symbols": "Symbole (%!@)",
-    "Title": "Ustawienia",
-    "Uppercase": "Wielkie litery (A-Z)",
-    "UseMasterPasswordDescription": "Użyj swojego hasła głównego w formularzu logowania, ale wyślij zaszyfrowane hasło."
+    "Title": "Ustawienia"
   },
   "SignInForm": {
     "Email": "Email",
@@ -149,15 +89,9 @@
   "SignInPage": {
     "ForgotPassword": "Zapomniałeś hasła?",
     "LessPassServerDecommissioned": "Baza danych LessPass została wyłączona. Musisz używać własnego serwera.",
-    "MasterPasswordEncryptedNote": "Twoje hasło główne jest zaszyfrowane. Odznacz tę opcję w swoich ustawieniach, jeśli jej nie używasz.",
-    "SeeBlogPost": "Zobacz post na blogu",
     "SignIn": "Zaloguj się",
     "SignInToLessPass": "Zaloguj się do LessPass",
     "UnableToSignInMessage": "Podane dane są nieprawidłowe lub użytkownik nie istnieje.",
     "UnableToSignInTitle": "Nie można się zalogować"
-  },
-  "SignOutScreen": {
-    "DangerZone": "Strefa niebezpieczna",
-    "DeleteAccountError": "Nie można usunąć twojego konta. Upewnij się, że twoje hasło główne jest poprawne."
   }
 }

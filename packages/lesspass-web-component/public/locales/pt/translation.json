@@ -4,17 +4,11 @@
     "Change": "Alterar",
     "Copied": "Copiado",
     "Copy": "Copiar",
-    "Generate": "Gerar",
     "Hide": "Ocultar",
     "Reset": "Repor",
     "Save": "Salvar",
     "Send": "Enviar",
-    "Show": "Mostrar",
-    "Update": "Atualizar"
-  },
-  "DeleteMyAccountModal": {
-    "DeleteMyAccount": "Eliminar a minha conta",
-    "WarningMessage": "Introduza a sua palavra-passe mestre para eliminar a sua conta. Aviso! esta ação é irreversível."
+    "Show": "Mostrar"
   },
   "ForgotPasswordPage": {
     "ConfirmLinkSendMessage": "Foi enviado um link para alterar a sua palavra-passe para {{email}}",
@@ -31,34 +25,10 @@
     "signIn": "Iniciar sessão",
     "SignOut": "Terminar sessão"
   },
-  "Help": {
-    "HowDoesItWorkDescription": "LessPass é um gestor de palavras-passe que não armazena nenhuns dados. Calcula uma palavra-passe única usando um site, login e uma palavra-passe mestre. Não precisa sincronizar um cofre de palavras-passe em todos os dispositivos porque o LessPass funciona offline! Irá sempre gerar a mesma palavra-passe enquanto esses parâmetros não mudarem.",
-    "HowDoesItWorkTitle": "Como funciona?",
-    "MasterPasswordIconsDescription": "A sua palavra-passe mestre é a única coisa que deve guardar na memória. Os ícones à direita permitem verificar se digitou a palavra-passe mestre correta. Terá de esperar cerca de um segundo antes dos ícones finais aparecerem (o atraso é por segurança; se os ícones fossem mostrados instantaneamente, alguém a espreitar por trás do ombro poderia deduzir a sua palavra-passe baseando-se na série de ícones apresentados).",
-    "MasterPasswordIconsTitle": "Ícones da palavra-passe mestre",
-    "PasswordGeneratorOptions": "Opções do gerador de palavras-passe",
-    "PasswordOptionsDescription": "Por vezes os sites têm regras específicas para palavras-passe. Por exemplo, alguns bancos só aceitam palavras-passe feitas de dígitos. O LessPass permite definir parâmetros para a palavra-passe gerada (o chamado \"perfil de palavra-passe\"). O contador em particular permite gerar uma nova palavra-passe sem ter de alterar a sua palavra-passe mestre.",
-    "SelfHostedDescription": "Se está a usar uma base de dados LessPass auto-hospedada, pode alterar o URL base nas definições para apontar para o seu próprio servidor.",
-    "SelfHostedLessPassDatabase": "Base de dados LessPass auto-hospedada",
-    "SendUsAnEmail": "Envie-nos um e-mail",
-    "SignIn": "Iniciar sessão",
-    "SignInDescription1": "Por padrão, o LessPass funciona offline e não envia nenhuns dados pela rede. Por conveniência, existe um modo ligado opcional. Este modo permite armazenar os perfis necessários para gerar as suas palavras-passe no nosso servidor LessPass (ou alternativamente no seu próprio). Isto é especialmente útil se muitas das suas palavras-passe não se baseiam no perfil padrão (comprimento de 16 caracteres, todos os caracteres permitidos). Como um perfil de palavra-passe não inclui nem a palavra-passe mestre nem a palavra-passe gerada, nenhuma informação crítica é enviada para o servidor.",
-    "SignInDescription2": "O formulário de início de sessão pede a sua palavra-passe mestre. Por padrão, é usada para gerar uma palavra-passe para a sua conta LessPass da mesma forma que para qualquer outro site. Isto significa que a palavra-passe mestre em si nunca é enviada para os nossos servidores. Se por alguma razão não quiser usar tal palavra-passe gerada pelo LessPass para a sua conta LessPass, pode desativar isto nas definições.",
-    "Support": "Suporte",
-    "SupportDescription": "Ainda precisa de ajuda? Ou tem uma ideia sobre como melhorar o LessPass. Pode enviar-nos um e-mail para contact@lesspass.com. Pode escrever o seu e-mail em inglês ou francês."
-  },
   "MyProfilePage": {
     "SignOut": "Terminar sessão",
     "ThankYouMessage": "A sua conta é armazenada no servidor https://api.lesspass.com como forma de agradecimento por ser um dos primeiros utilizadores do LessPass.",
     "Welcome": "Bem-vindo, {{email}}"
-  },
-  "Name": "LessPass",
-  "Navigation": {
-    "Help": "Ajuda",
-    "MyAccount": "A minha conta",
-    "PasswordProfiles": "Perfis de palavras-passe",
-    "Settings": "Definições",
-    "SignIn": "Iniciar sessão"
   },
   "NewPasswordProfilePage": {
     "NewPassword": "Nova palavra-passe"
@@ -73,11 +43,8 @@
     "MasterPassword": "Palavra-passe mestre",
     "Options": "Opções",
     "PasswordProfileCopiedInClipboard": "A URL do perfil da senha foi copiada para a área de transferência.",
-    "PasswordProfileSaved": "Perfil de palavra-passe guardado",
-    "PasswordProfileUpdated": "Perfil de palavra-passe atualizado",
     "Share": "Compartilhar",
-    "Site": "Site",
-    "SiteRequired": "O perfil de palavra-passe é inválido, não é possível gerar a palavra-passe. O site é obrigatório."
+    "Site": "Site"
   },
   "PasswordProfilePage": {
     "AreYouSure": "Tem a certeza de que deseja eliminar o perfil {{site}}/{{login}}?",
@@ -104,41 +71,14 @@
     "PasswordChangedSuccessfullyMessage": "Agora pode iniciar sessão.",
     "PasswordChangedSuccessfullyTitle": "A sua palavra-passe foi alterada com sucesso."
   },
-  "ProfilesScreen": {
-    "SearchPlaceholder": "Pesquisar nos seus perfis de palavras-passe"
-  },
   "Settings": {
-    "Activated": "ativado",
-    "Application": "Aplicação",
-    "CopyPasswordAutomatically": "Copiar palavra-passe automaticamente",
-    "Deactivated": "desativado",
-    "DefaultCounter": "Contador padrão",
-    "DefaultLogin": "Login padrão",
-    "DefaultPasswordLength": "Comprimento de palavra-passe padrão",
-    "DefaultPasswordProfile": "Perfil de palavra-passe padrão",
-    "DefaultURL": "URL padrão",
     "EncryptMyMasterPassword": "Encriptar a minha palavra-passe mestre ao iniciar sessão",
-    "EnterMasterPassword": "Introduza a sua palavra-passe mestre",
     "FocusAuto": "Automático",
     "FocusField": "Campo de foco",
-    "InsecureOptions": "Opções inseguras",
-    "KeepMasterPasswordLocally": "Manter palavra-passe mestre localmente",
-    "LessPassDatabase": "Base de dados LessPass",
-    "LessPassDatabaseDefaultURL": "URL padrão da base de dados LessPass",
-    "LessPassVersion": "LessPass versão",
-    "Lowercase": "Minúsculas (a-z)",
-    "MasterPasswordEncryptedLocally": "A sua palavra-passe mestre está encriptada localmente",
-    "MasterPasswordEncryptionDescription": "A sua palavra-passe mestre será encriptada localmente no seu dispositivo e acessível apenas com a sua impressão digital.",
-    "Numbers": "Números (0-9)",
-    "PasswordWillBeCopied": "A sua palavra-passe será copiada automaticamente após ser gerada.",
-    "PasswordWillNotBeCopied": "A sua palavra-passe não será copiada automaticamente após ser gerada.",
     "removeSubDomain": "Remover o subdomínio",
     "removeTopLevelDomain": "Remover o domínio de nível superior",
     "SignIn": "Iniciar sessão",
-    "Symbols": "Símbolos (%!@)",
-    "Title": "Definições",
-    "Uppercase": "Maiúsculas (A-Z)",
-    "UseMasterPasswordDescription": "Use a sua palavra-passe mestre no formulário de início de sessão mas envie a palavra-passe encriptada."
+    "Title": "Definições"
   },
   "SignInForm": {
     "Email": "Email",
@@ -149,15 +89,9 @@
   "SignInPage": {
     "ForgotPassword": "Esqueceu-se da palavra-passe?",
     "LessPassServerDecommissioned": "A base de dados do LessPass foi desativada. Tem de utilizar o seu próprio servidor.",
-    "MasterPasswordEncryptedNote": "A sua palavra-passe mestre está encriptada. Desmarque esta opção nas suas definições se não a usa.",
-    "SeeBlogPost": "Ver publicação do blog",
     "SignIn": "Iniciar sessão",
     "SignInToLessPass": "Iniciar sessão no LessPass",
     "UnableToSignInMessage": "As informações fornecidas são inválidas ou o utilizador não existe.",
     "UnableToSignInTitle": "Não foi possível iniciar sessão"
-  },
-  "SignOutScreen": {
-    "DangerZone": "Zona de perigo",
-    "DeleteAccountError": "Não foi possível eliminar a sua conta. Certifique-se de que a sua palavra-passe mestre está correta."
   }
 }

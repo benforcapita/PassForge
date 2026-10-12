@@ -4,17 +4,11 @@
     "Change": "Modifica",
     "Copied": "Copiato",
     "Copy": "Copia",
-    "Generate": "Genera",
     "Hide": "Nascondi",
     "Reset": "Reimposta",
     "Save": "Salva",
     "Send": "Invia",
-    "Show": "Mostra",
-    "Update": "Aggiorna"
-  },
-  "DeleteMyAccountModal": {
-    "DeleteMyAccount": "Elimina il mio account",
-    "WarningMessage": "Inserisci la tua password principale per eliminare il tuo account. Attenzione! questa azione è irreversibile."
+    "Show": "Mostra"
   },
   "ForgotPasswordPage": {
     "ConfirmLinkSendMessage": "Un link per modificare la tua password è stato inviato a {{email}}",
@@ -31,34 +25,10 @@
     "signIn": "Accedi",
     "SignOut": "Esci"
   },
-  "Help": {
-    "HowDoesItWorkDescription": "LessPass è un gestore di password che non memorizza alcun dato. Calcola una password unica utilizzando un sito, un login e una password principale. Non è necessario sincronizzare un archivio di password su tutti i dispositivi perché LessPass funziona offline! Genererà sempre la stessa password finché questi parametri non cambiano.",
-    "HowDoesItWorkTitle": "Come funziona?",
-    "MasterPasswordIconsDescription": "La tua password principale è l'unica cosa che dovresti tenere a mente. Le icone a destra ti permettono di verificare di aver digitato la password principale corretta. Dovrai aspettare circa un secondo prima che appaiano le icone finali (il ritardo è per sicurezza; se le icone fossero mostrate istantaneamente, un curioso potrebbe derivare la tua password basandosi sulla serie di icone visualizzate).",
-    "MasterPasswordIconsTitle": "Icone della password principale",
-    "PasswordGeneratorOptions": "Opzioni del generatore di password",
-    "PasswordOptionsDescription": "A volte i siti hanno regole specifiche per le password. Ad esempio, alcune banche accettano solo password composte da cifre. LessPass ti permette di impostare parametri per la password generata (il cosiddetto \"profilo password\"). Il contatore in particolare ti permette di generare una nuova password senza dover cambiare la tua password principale.",
-    "SelfHostedDescription": "Se stai utilizzando un database LessPass auto-ospitato, puoi cambiare l'URL base nelle impostazioni per puntare al tuo server.",
-    "SelfHostedLessPassDatabase": "Database LessPass auto-ospitato",
-    "SendUsAnEmail": "Inviaci un'email",
-    "SignIn": "Accedi",
-    "SignInDescription1": "Per impostazione predefinita, LessPass funziona offline e non invia alcun dato attraverso la rete. Per comodità, c'è una modalità connessa opzionale. Questa modalità ti permette di memorizzare i profili necessari per generare le tue password sul nostro server LessPass (o alternativamente sul tuo). Questo è particolarmente utile se molte delle tue password non sono basate sul profilo predefinito (lunghezza di 16 caratteri, tutti i caratteri permessi). Poiché un profilo password non include né la password principale né la password generata, nessuna informazione critica viene inviata al server.",
-    "SignInDescription2": "Il modulo di accesso richiede la tua password principale. Per impostazione predefinita, viene utilizzata per generare una password per il tuo account LessPass nello stesso modo di qualsiasi altro sito. Questo significa che la password principale stessa non viene mai inviata ai nostri server. Se per qualsiasi motivo non vuoi utilizzare tale password generata da LessPass per il tuo account LessPass, puoi disabilitare questo nelle impostazioni.",
-    "Support": "Supporto",
-    "SupportDescription": "Hai ancora bisogno di aiuto? O hai un'idea su come migliorare LessPass. Puoi inviarci un'email a contact@lesspass.com. Puoi scrivere la tua email in inglese o francese."
-  },
   "MyProfilePage": {
     "SignOut": "Esci",
     "ThankYouMessage": "Il tuo account è conservato sul server https://api.lesspass.com per ringraziarti di essere tra i primi utenti di LessPass.",
     "Welcome": "Benvenuto {{email}}"
-  },
-  "Name": "LessPass",
-  "Navigation": {
-    "Help": "Aiuto",
-    "MyAccount": "Il mio account",
-    "PasswordProfiles": "Profili password",
-    "Settings": "Impostazioni",
-    "SignIn": "Accedi"
   },
   "NewPasswordProfilePage": {
     "NewPassword": "Nuova password"
@@ -73,11 +43,8 @@
     "MasterPassword": "Password principale",
     "Options": "Opzioni",
     "PasswordProfileCopiedInClipboard": "L'URL del profilo della password è stato copiato negli appunti",
-    "PasswordProfileSaved": "Profilo password salvato",
-    "PasswordProfileUpdated": "Profilo password aggiornato",
     "Share": "Condividi",
-    "Site": "Sito",
-    "SiteRequired": "Il profilo password non è valido, impossibile generare la password. Il sito è richiesto."
+    "Site": "Sito"
   },
   "PasswordProfilePage": {
     "AreYouSure": "Sei sicuro di voler eliminare il profilo {{site}}/{{login}}?",
@@ -104,41 +71,14 @@
     "PasswordChangedSuccessfullyMessage": "Ora puoi accedere.",
     "PasswordChangedSuccessfullyTitle": "La tua password è stata modificata con successo."
   },
-  "ProfilesScreen": {
-    "SearchPlaceholder": "Cerca nei tuoi profili password"
-  },
   "Settings": {
-    "Activated": "attivato",
-    "Application": "Applicazione",
-    "CopyPasswordAutomatically": "Copia password automaticamente",
-    "Deactivated": "disattivato",
-    "DefaultCounter": "Contatore predefinito",
-    "DefaultLogin": "Login predefinito",
-    "DefaultPasswordLength": "Lunghezza password predefinita",
-    "DefaultPasswordProfile": "Profilo password predefinito",
-    "DefaultURL": "URL predefinito",
     "EncryptMyMasterPassword": "Cripta la mia password principale all'accesso",
-    "EnterMasterPassword": "Inserisci la tua password principale",
     "FocusAuto": "Automatico",
     "FocusField": "Campo attivo",
-    "InsecureOptions": "Opzioni non sicure",
-    "KeepMasterPasswordLocally": "Mantieni password principale localmente",
-    "LessPassDatabase": "Database LessPass",
-    "LessPassDatabaseDefaultURL": "URL predefinito del database LessPass",
-    "LessPassVersion": "LessPass versione ",
-    "Lowercase": "Minuscole (a-z)",
-    "MasterPasswordEncryptedLocally": "La tua password principale è crittografata localmente",
-    "MasterPasswordEncryptionDescription": "La tua password principale sarà crittografata localmente sul tuo dispositivo e accessibile solo con la tua impronta digitale.",
-    "Numbers": "Numeri (0-9)",
-    "PasswordWillBeCopied": "La tua password sarà copiata automaticamente dopo essere stata generata.",
-    "PasswordWillNotBeCopied": "La tua password non sarà copiata automaticamente dopo essere stata generata.",
     "removeSubDomain": "Rimuovi il sottodominio",
     "removeTopLevelDomain": "Rimuovi il dominio di primo livello",
     "SignIn": "Accedi",
-    "Symbols": "Simboli (%!@)",
-    "Title": "Impostazioni",
-    "Uppercase": "Maiuscole (A-Z)",
-    "UseMasterPasswordDescription": "Usa la tua password principale nel modulo di accesso ma invia la password crittografata."
+    "Title": "Impostazioni"
   },
   "SignInForm": {
     "Email": "Email",
@@ -149,15 +89,9 @@
   "SignInPage": {
     "ForgotPassword": "Password dimenticata?",
     "LessPassServerDecommissioned": "Il database di LessPass è stato dismesso. Devi usare il tuo server.",
-    "MasterPasswordEncryptedNote": "La tua password principale è crittografata. Deseleziona questa opzione nelle tue impostazioni se non la usi.",
-    "SeeBlogPost": "Vedi post del blog",
     "SignIn": "Accedi",
     "SignInToLessPass": "Accedi a LessPass",
     "UnableToSignInMessage": "Le informazioni fornite non sono valide o l'utente non esiste.",
     "UnableToSignInTitle": "Impossibile accedere"
-  },
-  "SignOutScreen": {
-    "DangerZone": "Zona pericolosa",
-    "DeleteAccountError": "Impossibile eliminare il tuo account. Assicurati che la tua password principale sia corretta."
   }
 }

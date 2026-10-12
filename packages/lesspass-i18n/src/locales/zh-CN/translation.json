@@ -4,17 +4,11 @@
     "Change": "更改",
     "Copied": "已复制",
     "Copy": "复制",
-    "Generate": "生成",
     "Hide": "隐藏",
     "Reset": "重置",
     "Save": "保存",
     "Send": "发送",
-    "Show": "显示",
-    "Update": "更新"
-  },
-  "DeleteMyAccountModal": {
-    "DeleteMyAccount": "删除我的账户",
-    "WarningMessage": "输入您的主密码以删除您的账户。警告！此操作不可逆转。"
+    "Show": "显示"
   },
   "ForgotPasswordPage": {
     "ConfirmLinkSendMessage": "修改密码的链接已发送到 {{email}}",
@@ -31,34 +25,10 @@
     "signIn": "登录",
     "SignOut": "退出登录"
   },
-  "Help": {
-    "HowDoesItWorkDescription": "LessPass 是一个不存储任何数据的密码管理器。它使用网站、登录名和主密码计算唯一密码。您不需要在每个设备上同步密码库，因为 LessPass 可以离线工作！只要这些参数不变，它总是生成相同的密码。",
-    "HowDoesItWorkTitle": "它是如何工作的？",
-    "MasterPasswordIconsDescription": "您的主密码是您唯一需要记住的东西。右侧的图标让您验证是否输入了正确的主密码。您需要等待大约一秒钟才会显示最终的图标（这个延迟是为了安全；如果图标立即显示，旁观者可能根据显示的图标序列推导出您的密码）。",
-    "MasterPasswordIconsTitle": "主密码图标",
-    "PasswordGeneratorOptions": "密码生成器选项",
-    "PasswordOptionsDescription": "有时网站有特定的密码规则。例如，某些银行只接受由数字组成的密码。LessPass 允许您为生成的密码设置参数（所谓的\"密码配置文件\"）。特别是计数器允许您生成新密码而不必更改您的主密码。",
-    "SelfHostedDescription": "如果您使用自托管的 LessPass 数据库，您可以在设置中更改基础 URL 以指向您自己的服务器。",
-    "SelfHostedLessPassDatabase": "自托管 LessPass 数据库",
-    "SendUsAnEmail": "给我们发送邮件",
-    "SignIn": "登录",
-    "SignInDescription1": "默认情况下，LessPass 离线工作，不会通过网络发送任何数据。为了方便起见，有一个可选的连接模式。这种模式允许您在我们的（或者您自己的）LessPass 服务器上存储生成密码所需的配置文件。如果您的许多密码不基于默认配置文件（16 个字符长度，允许所有字符），这特别有用。由于密码配置文件不包含主密码也不包含生成的密码，因此不会向服务器发送任何关键信息。",
-    "SignInDescription2": "登录表单要求您输入主密码。默认情况下，它用于为您的 LessPass 账户生成密码，方式与任何其他网站相同。这意味着主密码本身永远不会发送到我们的服务器。如果出于任何原因您不希望为您的 LessPass 账户使用这样的 LessPass 生成密码，您可以在设置中禁用此功能。",
-    "Support": "支持",
-    "SupportDescription": "仍然需要帮助吗？或者您有关于如何改进 LessPass 的想法。您可以向 contact@lesspass.com 发送邮件。您可以用英语或法语写邮件。"
-  },
   "MyProfilePage": {
     "SignOut": "退出登录",
     "ThankYouMessage": "您的账户存储在 https://api.lesspass.com 服务器上，感谢您成为 LessPass 的早期用户。",
     "Welcome": "欢迎, {{email}}"
-  },
-  "Name": "LessPass",
-  "Navigation": {
-    "Help": "帮助",
-    "MyAccount": "我的账户",
-    "PasswordProfiles": "密码配置文件",
-    "Settings": "设置",
-    "SignIn": "登录"
   },
   "NewPasswordProfilePage": {
     "NewPassword": "新密码"
@@ -73,11 +43,8 @@
     "MasterPassword": "主密码",
     "Options": "选项",
     "PasswordProfileCopiedInClipboard": "密码配置文件的 URL 已复制到剪贴板。",
-    "PasswordProfileSaved": "密码配置文件已保存",
-    "PasswordProfileUpdated": "密码配置文件已更新",
     "Share": "分享",
-    "Site": "网站",
-    "SiteRequired": "密码配置文件无效，无法生成密码。需要网站。"
+    "Site": "网站"
   },
   "PasswordProfilePage": {
     "AreYouSure": "您确定要删除 {{site}}/{{login}} 配置文件吗？",
@@ -104,41 +71,14 @@
     "PasswordChangedSuccessfullyMessage": "您现在可以登录。",
     "PasswordChangedSuccessfullyTitle": "您的密码已成功更改。"
   },
-  "ProfilesScreen": {
-    "SearchPlaceholder": "在您的密码配置文件中搜索"
-  },
   "Settings": {
-    "Activated": "已激活",
-    "Application": "应用程序",
-    "CopyPasswordAutomatically": "自动复制密码",
-    "Deactivated": "已禁用",
-    "DefaultCounter": "默认计数器",
-    "DefaultLogin": "默认登录名",
-    "DefaultPasswordLength": "默认密码长度",
-    "DefaultPasswordProfile": "默认密码配置文件",
-    "DefaultURL": "默认 URL",
     "EncryptMyMasterPassword": "在登录时加密我的主密码",
-    "EnterMasterPassword": "输入您的主密码",
     "FocusAuto": "自动",
     "FocusField": "焦点字段",
-    "InsecureOptions": "不安全选项",
-    "KeepMasterPasswordLocally": "本地保存主密码",
-    "LessPassDatabase": "LESSPASS 数据库",
-    "LessPassDatabaseDefaultURL": "LessPass 数据库默认 URL",
-    "LessPassVersion": "LessPass 版本",
-    "Lowercase": "小写字母 (a-z)",
-    "MasterPasswordEncryptedLocally": "您的主密码在本地加密",
-    "MasterPasswordEncryptionDescription": "您的主密码将在您的设备上本地加密，仅可通过您的指纹访问。",
-    "Numbers": "数字 (0-9)",
-    "PasswordWillBeCopied": "您的密码在生成后将自动复制。",
-    "PasswordWillNotBeCopied": "您的密码在生成后不会自动复制。",
     "removeSubDomain": "移除子域名",
     "removeTopLevelDomain": "移除顶级域名",
     "SignIn": "登录",
-    "Symbols": "符号 (%!@)",
-    "Title": "设置",
-    "Uppercase": "大写字母 (A-Z)",
-    "UseMasterPasswordDescription": "在登录表单中使用您的主密码，但发送加密密码。"
+    "Title": "设置"
   },
   "SignInForm": {
     "Email": "邮箱",
@@ -149,15 +89,9 @@
   "SignInPage": {
     "ForgotPassword": "忘记密码？",
     "LessPassServerDecommissioned": "LessPass 数据库已停用。您必须使用自己的服务器。",
-    "MasterPasswordEncryptedNote": "您的主密码已加密。如果您不使用此功能，请在设置中取消选中此选项。",
-    "SeeBlogPost": "查看博客文章",
     "SignIn": "登录",
     "SignInToLessPass": "登录 LessPass",
     "UnableToSignInMessage": "提供的信息无效或用户不存在。",
     "UnableToSignInTitle": "无法登录"
-  },
-  "SignOutScreen": {
-    "DangerZone": "危险区域",
-    "DeleteAccountError": "无法删除您的账户。请确保您的主密码正确。"
   }
 }

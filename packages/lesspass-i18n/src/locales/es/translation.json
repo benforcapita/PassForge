@@ -4,17 +4,11 @@
     "Change": "Cambiar",
     "Copied": "Copiado",
     "Copy": "Copiar",
-    "Generate": "Generar",
     "Hide": "Ocultar",
     "Reset": "Restablecer",
     "Save": "Guardar",
     "Send": "Enviar",
-    "Show": "Mostrar",
-    "Update": "Actualizar"
-  },
-  "DeleteMyAccountModal": {
-    "DeleteMyAccount": "Eliminar mi cuenta",
-    "WarningMessage": "Introduce tu contraseña maestra para eliminar tu cuenta. ¡Advertencia! esta acción es irreversible."
+    "Show": "Mostrar"
   },
   "ForgotPasswordPage": {
     "ConfirmLinkSendMessage": "Se ha enviado un enlace para cambiar tu contraseña a {{email}}",
@@ -31,34 +25,10 @@
     "signIn": "Iniciar sesión",
     "SignOut": "Cerrar sesión"
   },
-  "Help": {
-    "HowDoesItWorkDescription": "LessPass es un gestor de contraseñas que no almacena ningún dato. Calcula una contraseña única usando un sitio, usuario y una contraseña maestra. ¡No necesitas sincronizar una bóveda de contraseñas en todos tus dispositivos porque LessPass funciona sin conexión! Siempre generará la misma contraseña mientras esos parámetros no cambien.",
-    "HowDoesItWorkTitle": "¿Cómo funciona?",
-    "MasterPasswordIconsDescription": "Tu contraseña maestra es lo único que debes recordar. Los iconos de la derecha te permiten verificar que has introducido la contraseña maestra correcta. Tendrás que esperar un segundo aproximadamente antes de que aparezcan los iconos finales (el retraso es por seguridad; si los iconos se mostraran instantáneamente, alguien que mire por encima del hombro podría deducir tu contraseña basándose en la serie de iconos mostrados).",
-    "MasterPasswordIconsTitle": "Iconos de contraseña maestra",
-    "PasswordGeneratorOptions": "Opciones del generador de contraseñas",
-    "PasswordOptionsDescription": "A veces los sitios web tienen reglas específicas para las contraseñas. Por ejemplo, algunos bancos solo aceptan contraseñas compuestas de dígitos. LessPass te permite establecer parámetros para la contraseña generada (el llamado \"perfil de contraseña\"). El contador en particular te permite generar una nueva contraseña sin tener que cambiar tu contraseña maestra.",
-    "SelfHostedDescription": "Si estás usando una base de datos LessPass auto-hospedada, puedes cambiar la URL base en la configuración para apuntar a tu propio servidor.",
-    "SelfHostedLessPassDatabase": "Base de datos LessPass auto-hospedada",
-    "SendUsAnEmail": "Envíanos un correo electrónico",
-    "SignIn": "Iniciar sesión",
-    "SignInDescription1": "Por defecto, LessPass funciona sin conexión y no envía ningún dato por la red. Por comodidad, hay un modo conectado opcional. Este modo te permite almacenar los perfiles necesarios para generar tus contraseñas en nuestro servidor LessPass (o alternativamente en el tuyo propio). Esto es especialmente útil si muchas de tus contraseñas no están basadas en el perfil por defecto (longitud de 16 caracteres, todos los caracteres permitidos). Como un perfil de contraseña no incluye ni la contraseña maestra ni la contraseña generada, no se envía información crítica al servidor.",
-    "SignInDescription2": "El formulario de inicio de sesión solicita tu contraseña maestra. Por defecto, se usa para generar una contraseña para tu cuenta LessPass de la misma manera que para cualquier otro sitio. Esto significa que la contraseña maestra en sí misma nunca se envía a nuestros servidores. Si por alguna razón no quieres usar tal contraseña generada por LessPass para tu cuenta LessPass, puedes desactivar esto en la configuración.",
-    "Support": "Soporte",
-    "SupportDescription": "¿Aún necesitas ayuda? ¿O tienes una idea sobre cómo mejorar LessPass? Puedes enviarnos un correo electrónico a contact@lesspass.com. Puedes escribir tu correo en inglés o francés."
-  },
   "MyProfilePage": {
     "SignOut": "Cerrar sesión",
     "ThankYouMessage": "Tu cuenta se almacena en el servidor https://api.lesspass.com para agradecerte por ser uno de los primeros usuarios de LessPass.",
     "Welcome": "Bienvenido {{email}}"
-  },
-  "Name": "LessPass",
-  "Navigation": {
-    "Help": "Ayuda",
-    "MyAccount": "Mi cuenta",
-    "PasswordProfiles": "Perfiles de contraseñas",
-    "Settings": "Configuración",
-    "SignIn": "Iniciar sesión"
   },
   "NewPasswordProfilePage": {
     "NewPassword": "Nueva contraseña"
@@ -73,11 +43,8 @@
     "MasterPassword": "Contraseña maestra",
     "Options": "Opciones",
     "PasswordProfileCopiedInClipboard": "La URL del perfil de la contraseña se ha copiado en tu portapapeles.",
-    "PasswordProfileSaved": "Perfil de contraseña guardado",
-    "PasswordProfileUpdated": "Perfil de contraseña actualizado",
     "Share": "Compartir",
-    "Site": "Sitio",
-    "SiteRequired": "El perfil de contraseña no es válido, no se puede generar la contraseña. Se requiere el sitio."
+    "Site": "Sitio"
   },
   "PasswordProfilePage": {
     "AreYouSure": "¿Estás seguro de que deseas eliminar el perfil de {{site}}/{{login}}?",
@@ -104,41 +71,14 @@
     "PasswordChangedSuccessfullyMessage": "Ahora puedes iniciar sesión.",
     "PasswordChangedSuccessfullyTitle": "Tu contraseña ha sido cambiada con éxito."
   },
-  "ProfilesScreen": {
-    "SearchPlaceholder": "Buscar en tus perfiles de contraseña"
-  },
   "Settings": {
-    "Activated": "activado",
-    "Application": "Aplicación",
-    "CopyPasswordAutomatically": "Copiar contraseña automáticamente",
-    "Deactivated": "desactivado",
-    "DefaultCounter": "Contador por defecto",
-    "DefaultLogin": "Usuario por defecto",
-    "DefaultPasswordLength": "Longitud de contraseña por defecto",
-    "DefaultPasswordProfile": "Perfil de contraseña por defecto",
-    "DefaultURL": "URL por defecto",
     "EncryptMyMasterPassword": "Cifrar mi contraseña maestra al iniciar sesión",
-    "EnterMasterPassword": "Introduce tu contraseña maestra",
     "FocusAuto": "Automático",
     "FocusField": "Campo de enfoque",
-    "InsecureOptions": "Opciones inseguras",
-    "KeepMasterPasswordLocally": "Mantener contraseña maestra localmente",
-    "LessPassDatabase": "Base de datos LessPass",
-    "LessPassDatabaseDefaultURL": "URL por defecto de la base de datos LessPass",
-    "LessPassVersion": "LessPass versión",
-    "Lowercase": "Minúsculas (a-z)",
-    "MasterPasswordEncryptedLocally": "Tu contraseña maestra está cifrada localmente",
-    "MasterPasswordEncryptionDescription": "Tu contraseña maestra será cifrada localmente en tu dispositivo y accesible solo con tu huella dactilar.",
-    "Numbers": "Números (0-9)",
-    "PasswordWillBeCopied": "Tu contraseña será copiada automáticamente después de ser generada.",
-    "PasswordWillNotBeCopied": "Tu contraseña no será copiada automáticamente después de ser generada.",
     "removeSubDomain": "Eliminar el subdominio",
     "removeTopLevelDomain": "Eliminar el dominio de nivel superior",
     "SignIn": "Iniciar sesión",
-    "Symbols": "Símbolos (%!@)",
-    "Title": "Configuración",
-    "Uppercase": "Mayúsculas (A-Z)",
-    "UseMasterPasswordDescription": "Usa tu contraseña maestra en el formulario de inicio de sesión pero envía la contraseña cifrada."
+    "Title": "Configuración"
   },
   "SignInForm": {
     "Email": "Correo electrónico",
@@ -149,15 +89,9 @@
   "SignInPage": {
     "ForgotPassword": "¿Olvidaste tu contraseña?",
     "LessPassServerDecommissioned": "La base de datos de LessPass está fuera de servicio. Debes usar tu propio servidor.",
-    "MasterPasswordEncryptedNote": "Tu contraseña maestra está cifrada. Desmarca esta opción en tu configuración si no la usas.",
-    "SeeBlogPost": "Ver entrada del blog",
     "SignIn": "Iniciar sesión",
     "SignInToLessPass": "Inicia sesión en LessPass",
     "UnableToSignInMessage": "La información proporcionada es inválida o el usuario no existe.",
     "UnableToSignInTitle": "No se puede iniciar sesión"
-  },
-  "SignOutScreen": {
-    "DangerZone": "Zona de peligro",
-    "DeleteAccountError": "No se puede eliminar tu cuenta. Por favor, asegúrate de que tu contraseña maestra es correcta."
   }
 }

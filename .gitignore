@@ -30,3 +30,4 @@ desktop/src-tauri/gen/schemas/linux-schema.json
 target/
 desktop/dist/
 desktop/src-tauri/gen/schemas/
+translation_old.json

@@ -44,10 +44,6 @@ If you want to use LessPass in your terminal, you can use `pip` to install LessP
     python3 -m pip install --user lesspass
     lesspass --help
 
-### Mobile application
-
-Install the mobile application for [iOS](https://apps.apple.com/app/id1531215924) or [Android](https://play.google.com/store/apps/details?id=com.lesspass.android) or [FDroid](https://f-droid.org/en/packages/com.lesspass.android/).
-
 ### Web site
 
 You can use the password generator functionnality on the web site directly. Even if for security reason, we recommend to use the web extensions.
@@ -55,19 +51,6 @@ You can use the password generator functionnality on the web site directly. Even
 ## Todo
 
 - [ ] :speech_balloon: Translation on the website #456
-- [ ] :memo: Guide to self host a LessPass server on Digital Ocean
-
-## :rotating_light: LessPass Server Access Update
-
-LessPass Server is now reserved for existing users of the LessPass service. New registrations are no longer possible. This change is a way to thank our initial users for being part of the journey :beers:.
-
-For new users who wish to use LessPass connected, you will need to self-host your own LessPass server. I will provide a guide in the future on how to deploy this using DigitalOcean. Currently, LessPass uses App Platform for automatic server deployment.
-
-Referral link:
-
-[![DigitalOcean Referral Badge](https://web-platforms.sfo2.cdn.digitaloceanspaces.com/WWW/Badge%203.svg)](https://www.digitalocean.com/?refcode=7780bf9be762)
-
-There are also [alternative server implementations](https://github.com/lesspass/lesspass/wiki/Third-party-implementations-of-LessPass#api-servers) available. However, please use them with caution, as I cannot guarantee that these implementations fully support the latest API.
 
 ## Questions
 
@@ -83,8 +66,6 @@ Based on an original idea from [masterpassword app](https://masterpassword.app/)
 ## License
 
 This project is licensed under the terms of the GNU GPLv3.
-
-[LessPass mobile](https://github.com/lesspass/lesspass/tree/master/packages/lesspass-mobile) is bi-licensed under both the Mozilla Public License Version 2 as well as the GNU GPLv3.
 
 ## Contributors
 

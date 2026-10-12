@@ -4,17 +4,11 @@
     "Change": "Changer",
     "Copied": "Copié",
     "Copy": "Copier",
-    "Generate": "Générer",
     "Hide": "Cacher",
     "Reset": "Réinitialiser",
     "Save": "Enregistrer",
     "Send": "Envoyer",
-    "Show": "Voir",
-    "Update": "Mettre à jour"
-  },
-  "DeleteMyAccountModal": {
-    "DeleteMyAccount": "Supprimer mon compte",
-    "WarningMessage": "Saisissez votre mot de passe maître pour supprimer votre compte. Attention ! cette action est irréversible."
+    "Show": "Voir"
   },
   "ForgotPasswordPage": {
     "ConfirmLinkSendMessage": "Un lien pour changer votre mot de passe a été envoyé à {{email}}",
@@ -31,34 +25,10 @@
     "signIn": "Connexion",
     "SignOut": "Se déconnecter"
   },
-  "Help": {
-    "HowDoesItWorkDescription": "LessPass est un gestionnaire de mots de passe qui ne stocke aucune donnée. Il calcule un mot de passe unique en utilisant un site, un identifiant et un mot de passe maître. Vous n'avez pas besoin de synchroniser un coffre-fort de mots de passe sur tous vos appareils car LessPass fonctionne hors ligne ! Il générera toujours le même mot de passe tant que ces paramètres ne changent pas.",
-    "HowDoesItWorkTitle": "Comment ça marche ?",
-    "MasterPasswordIconsDescription": "Votre mot de passe maître est la seule chose que vous devez retenir. Les icônes à droite vous permettent de vérifier que vous avez tapé le bon mot de passe maître. Vous devrez attendre une seconde environ avant que les icônes finales apparaissent (ce délai est pour la sécurité ; si les icônes étaient affichées instantanément, un indiscret pourrait dériver votre mot de passe en se basant sur la série d'icônes affichées).",
-    "MasterPasswordIconsTitle": "Icônes du mot de passe maître",
-    "PasswordGeneratorOptions": "Options du générateur de mots de passe",
-    "PasswordOptionsDescription": "Parfois, les sites ont des règles de mot de passe spécifiques. Par exemple, certaines banques n'acceptent que des mots de passe composés de chiffres. LessPass vous permet de définir des paramètres pour le mot de passe généré (le \"profil de mot de passe\"). Le compteur en particulier vous permet de générer un nouveau mot de passe sans avoir à changer votre mot de passe maître.",
-    "SelfHostedDescription": "Si vous utilisez une base de données LessPass auto-hébergée, vous pouvez changer l'URL de base dans les paramètres pour pointer vers votre propre serveur.",
-    "SelfHostedLessPassDatabase": "Base de données LessPass auto-hébergée",
-    "SendUsAnEmail": "Envoyez-nous un e-mail",
-    "SignIn": "Se connecter",
-    "SignInDescription1": "Par défaut, LessPass fonctionne hors ligne et n'envoie aucune donnée sur le réseau. Pour plus de commodité, il existe un mode connecté optionnel. Ce mode vous permet de stocker les profils nécessaires pour générer vos mots de passe sur notre serveur LessPass (ou alternativement le vôtre). Ceci est particulièrement utile si beaucoup de vos mots de passe ne sont pas basés sur le profil par défaut (longueur de 16 caractères, tous les caractères autorisés). Comme un profil de mot de passe n'inclut ni le mot de passe maître ni le mot de passe généré, aucune information critique n'est envoyée au serveur.",
-    "SignInDescription2": "Le formulaire de connexion demande votre mot de passe maître. Par défaut, il est utilisé pour générer un mot de passe pour votre compte LessPass de la même manière que pour tout autre site. Cela signifie que le mot de passe maître lui-même n'est jamais envoyé à nos serveurs. Si pour une raison quelconque vous ne voulez pas utiliser un tel mot de passe généré par LessPass pour votre compte LessPass, vous pouvez le désactiver dans les paramètres.",
-    "Support": "Assistance",
-    "SupportDescription": "Vous avez encore besoin d'aide ? Ou vous avez une idée sur comment améliorer LessPass. Vous pouvez nous envoyer un e-mail à contact@lesspass.com. Vous pouvez écrire votre e-mail en anglais ou en français."
-  },
   "MyProfilePage": {
     "SignOut": "Se déconnecter",
     "ThankYouMessage": "Votre compte est conservé sur le serveur https://api.lesspass.com pour vous remercier d'être parmi les premiers utilisateurs de LessPass.",
     "Welcome": "Bienvenue {{email}}"
-  },
-  "Name": "LessPass",
-  "Navigation": {
-    "Help": "Aide",
-    "MyAccount": "Mon compte",
-    "PasswordProfiles": "Mot de passes",
-    "Settings": "Paramètres",
-    "SignIn": "Se connecter"
   },
   "NewPasswordProfilePage": {
     "NewPassword": "Nouveau mot de passe"
@@ -73,11 +43,8 @@
     "MasterPassword": "Mot de passe maître",
     "Options": "Options",
     "PasswordProfileCopiedInClipboard": "L'URL du mot de passe a été copié dans le presse papier",
-    "PasswordProfileSaved": "Profil de mot de passe enregistré",
-    "PasswordProfileUpdated": "Profil de mot de passe mis à jour",
     "Share": "Partager",
-    "Site": "Site",
-    "SiteRequired": "Le profil de mot de passe est invalide, impossible de générer le mot de passe. Le site est requis."
+    "Site": "Site"
   },
   "PasswordProfilePage": {
     "AreYouSure": "Êtes-vous sûr de vouloir supprimer le mot de passe pour {{site}}/{{login}} ?",
@@ -104,41 +71,14 @@
     "PasswordChangedSuccessfullyMessage": "Vous pouvez maintenant vous connecter.",
     "PasswordChangedSuccessfullyTitle": "Votre mot de passe a été modifié avec succès."
   },
-  "ProfilesScreen": {
-    "SearchPlaceholder": "Rechercher dans vos profils de mot de passe"
-  },
   "Settings": {
-    "Activated": "activé",
-    "Application": "Application",
-    "CopyPasswordAutomatically": "Copier le mot de passe automatiquement",
-    "Deactivated": "désactivé",
-    "DefaultCounter": "Compteur par défaut",
-    "DefaultLogin": "Identifiant par défaut",
-    "DefaultPasswordLength": "Longueur de mot de passe par défaut",
-    "DefaultPasswordProfile": "Profil de mot de passe par défaut",
-    "DefaultURL": "URL par défaut",
     "EncryptMyMasterPassword": "Chiffrer mon mot de passe à la connexion",
-    "EnterMasterPassword": "Saisissez votre mot de passe maître",
     "FocusAuto": "Automatique",
     "FocusField": "Champ sélectionné",
-    "InsecureOptions": "Options non sécurisées",
-    "KeepMasterPasswordLocally": "Conserver le mot de passe maître localement",
-    "LessPassDatabase": "Base de données LessPass",
-    "LessPassDatabaseDefaultURL": "URL par défaut de la base de données LessPass",
-    "LessPassVersion": "LessPass version",
-    "Lowercase": "Minuscules (a-z)",
-    "MasterPasswordEncryptedLocally": "Votre mot de passe maître est chiffré localement",
-    "MasterPasswordEncryptionDescription": "Votre mot de passe maître sera chiffré localement sur votre appareil et accessible uniquement avec votre empreinte digitale.",
-    "Numbers": "Chiffres (0-9)",
-    "PasswordWillBeCopied": "Votre mot de passe sera copié automatiquement après sa génération.",
-    "PasswordWillNotBeCopied": "Votre mot de passe ne sera pas copié automatiquement après sa génération.",
     "removeSubDomain": "Supprimer le sous-domaine",
     "removeTopLevelDomain": "Supprimer le domaine de premier niveau",
     "SignIn": "Connexion",
-    "Symbols": "Symboles (%!@)",
-    "Title": "Paramètres",
-    "Uppercase": "Majuscules (A-Z)",
-    "UseMasterPasswordDescription": "Utilisez votre mot de passe maître dans le formulaire de connexion mais envoyez le mot de passe chiffré."
+    "Title": "Paramètres"
   },
   "SignInForm": {
     "Email": "Email",
@@ -149,15 +89,9 @@
   "SignInPage": {
     "ForgotPassword": "mot de passe oublié ?",
     "LessPassServerDecommissioned": "Le serveur LessPass est désactivé. Vous devez utiliser votre propre serveur.",
-    "MasterPasswordEncryptedNote": "Votre mot de passe maître est chiffré. Décochez cette option dans vos paramètres si vous ne l'utilisez pas.",
-    "SeeBlogPost": "Voir l'article de blog",
     "SignIn": "Se connecter",
     "SignInToLessPass": "Se connecter à LessPass",
     "UnableToSignInMessage": "Les informations fournies ne sont pas valides ou l'utilisateur n'existe pas.",
     "UnableToSignInTitle": "Impossible de se connecter"
-  },
-  "SignOutScreen": {
-    "DangerZone": "Zone dangereuse",
-    "DeleteAccountError": "Impossible de supprimer votre compte. Veuillez vous assurer que votre mot de passe maître est correct."
   }
 }

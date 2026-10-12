@@ -1,3 +1,4 @@
+mod biometric;
 mod commands;
 mod db;
 mod error;
@@ -33,6 +34,11 @@ fn main() {
             commands::generate_password,
             commands::get_settings,
             commands::save_settings,
+            commands::biometric_supported,
+            commands::master_password_stored,
+            commands::biometric_unlock,
+            commands::remember_master_password,
+            commands::forget_master_password,
         ]);
 
     let builder = builder

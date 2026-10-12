@@ -9,6 +9,7 @@
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
 use crate::models::{EntryInput, EntrySummary, Folder, FolderInput, Settings, VaultEntry};
+use crate::keychain::SecretStore;
 use crate::session::SessionState;
 use zeroize::Zeroize;
 use lesspass_core::{
@@ -106,6 +107,53 @@ pub fn unlock_with_master_password(
 #[tauri::command]
 pub fn record_activity(session: State<SessionState>) {
     session.touch();
+}
+
+/// Whether this device supports biometric unlock (Touch ID hardware +
+/// enrolled fingerprint). macOS only; false elsewhere.
+#[tauri::command]
+pub fn biometric_supported() -> bool {
+    crate::biometric::available()
+}
+
+/// Whether a master password is stored in the platform secret store, so
+/// Touch ID unlock can actually be offered.
+#[tauri::command]
+pub fn master_password_stored() -> bool {
+    crate::vault::resolved_secret_store()
+        .and_then(|store| store.load_master_password())
+        .map(|pw| pw.is_some())
+        .unwrap_or(false)
+}
+
+/// Touch ID → reads the Keychain-stored master password → unlocks.
+/// Convenience only: opt-in storage happens via `remember_master_password`.
+#[tauri::command]
+pub fn biometric_unlock(session: State<SessionState>) -> Result<()> {
+    crate::biometric::authenticate("unlock PassForge")?;
+    let master = crate::vault::resolved_secret_store()?
+        .load_master_password()?
+        .ok_or_else(|| {
+            PassForgeError::InvalidRequest(
+                "no master password stored in the keychain".into(),
+            )
+        })?;
+    session.unlock(master)
+}
+
+/// Stores the current session's master password in the platform secret
+/// store so Touch ID can unlock next time. Explicit opt-in.
+#[tauri::command]
+pub fn remember_master_password(session: State<SessionState>) -> Result<()> {
+    require_unlocked(&session)?;
+    let bytes = session.master_password_bytes()?;
+    crate::vault::resolved_secret_store()?.save_master_password(&bytes)
+}
+
+/// Removes the Keychain-stored master password (disables Touch ID unlock).
+#[tauri::command]
+pub fn forget_master_password() -> Result<()> {
+    crate::vault::resolved_secret_store()?.delete_master_password()
 }
 
 #[tauri::command]

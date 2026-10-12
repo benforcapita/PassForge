@@ -145,6 +145,13 @@ function mockPassword(entry: MockEntry): string {
 export const mockApi: Api = {
   isLocked: async () => locked,
   recordActivity: async () => {},
+  biometricSupported: async () => false,
+  masterPasswordStored: async () => false,
+  biometricUnlock: async () => {
+    throw new Error("Biometrics unsupported on this platform");
+  },
+  rememberMasterPassword: async () => {},
+  forgetMasterPassword: async () => {},
   unlockWithMasterPassword: async (pw: string) => {
     if (!pw) throw new Error("Authentication failed. Master key does not match local vault signature.");
     masterPassword = pw;

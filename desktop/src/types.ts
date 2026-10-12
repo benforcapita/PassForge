@@ -61,6 +61,8 @@ export type EntrySummary = {
   id: string;
   site: string;
   login: string;
+  counter: number;
+  folderId: string;
   fingerprint: Finger[] | null;
   lastUsedAt: string | null;
 };

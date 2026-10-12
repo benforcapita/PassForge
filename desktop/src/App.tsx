@@ -1,12 +1,25 @@
+import { useEffect, useState } from "react";
+import { api } from "./api";
+import { LockScreen } from "./views/LockScreen";
+import { Workbench } from "./views/Workbench";
+
 export function App() {
-  return (
-    <main className="min-h-screen bg-pf-surface text-slate-100">
-      <section className="mx-auto flex min-h-screen max-w-6xl items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-3xl font-semibold tracking-normal">PassForge</h1>
-          <p className="mt-3 text-sm text-slate-300">Stateless passwords, local control.</p>
-        </div>
-      </section>
-    </main>
+  const [locked, setLocked] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void api
+      .isLocked()
+      .then(setLocked)
+      .catch(() => setLocked(true));
+  }, []);
+
+  if (locked === null) {
+    return <div className="h-full bg-pf-canvas" />;
+  }
+
+  return locked ? (
+    <LockScreen onUnlock={() => setLocked(false)} />
+  ) : (
+    <Workbench onLock={() => setLocked(true)} />
   );
 }

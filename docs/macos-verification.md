@@ -34,8 +34,19 @@ Things to verify on a real Mac (cannot be checked on Linux):
   `externalBin` sidecar (`binaries/passforge-host-<target-triple>`) — not
   yet configured in `tauri.conf.json`; the dev flow is a standalone binary.
 
-## Touch ID — NOT implemented on desktop
-`tauri-plugin-biometric` is compiled for `#[cfg(mobile)]` only; the desktop
-app has no biometric unlock today. macOS Touch ID would need LAContext
-via `security-framework`/`swift` FFI or a dedicated plugin — open item.
-Unlock is currently: type master password → `unlock` IPC.
+## Touch ID
+Implemented in `src/biometric.rs` via `LAContext`
+(`objc2-local-authentication`), gated `#[cfg(macos)]`; other platforms get
+a stub that reports unsupported so the UI hides it. Still a convenience
+gate only — there is no authentication by design.
+
+- Lock screen offers "Remember on this Mac (Touch ID)" after a typed
+  unlock when `biometric_supported` and nothing is stored →
+  `remember_master_password` saves the master password in Keychain.
+- Next visit shows "Unlock with Touch ID" → `biometric_unlock` runs
+  `evaluatePolicy(DeviceOwnerAuthenticationWithBiometrics)` and feeds the
+  stored password into `unlock`.
+- `forget_master_password` clears the stored password.
+- Verify on a real Mac: the system Touch ID prompt appears, success
+  unlocks, cancel/deny stays on the lock screen, and a fresh install
+  (no stored password) hides the button.

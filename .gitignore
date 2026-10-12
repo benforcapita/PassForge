@@ -25,3 +25,8 @@ graphify-out/
 
 # Generated per-OS Tauri schema
 desktop/src-tauri/gen/schemas/linux-schema.json
+
+# Build artifacts
+target/
+desktop/dist/
+desktop/src-tauri/gen/schemas/

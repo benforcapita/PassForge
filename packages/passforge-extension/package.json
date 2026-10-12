@@ -1,0 +1,28 @@
+{
+  "name": "passforge-extension",
+  "version": "0.1.0",
+  "description": "PassForge Chromium MV3 extension — stateless password generator with optional vault profile lookup via the passforge-host native messenger.",
+  "license": "GPL-3.0-only",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "yarn clean && vite build",
+    "clean": "rm -rf dist",
+    "dev": "vite",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "lesspass": "*",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.8",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4",
+    "vitest": "^4.0.16"
+  }
+}

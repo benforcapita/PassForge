@@ -2387,6 +2387,7 @@ dependencies = [
  "dirs",
  "hex",
  "lesspass-core",
+ "objc2",
  "objc2-foundation",
  "objc2-local-authentication",
  "rusqlite",

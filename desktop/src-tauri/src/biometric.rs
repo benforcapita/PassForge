@@ -12,7 +12,8 @@
 mod imp {
     use crate::error::{PassForgeError, Result};
     use block2::RcBlock;
-    use objc2_foundation::{Bool, NSError, NSString};
+    use objc2::runtime::Bool;
+    use objc2_foundation::{NSError, NSString};
     use objc2_local_authentication::{LAContext, LAPolicy};
     use std::sync::mpsc::channel;
 

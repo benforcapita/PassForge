@@ -73,6 +73,8 @@ def parse_args(args):
     parser.add_argument(
         "-C", "--counter", default=1, type=int, help="password counter (default: 1)"
     )
+    parser.add_argument("--server", help="algorithm server URL")
+    parser.add_argument("--algorithm", help="algorithm server algorithm ID")
     parser.add_argument(
         "-p",
         "--prompt",

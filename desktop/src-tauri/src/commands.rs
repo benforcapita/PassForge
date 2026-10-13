@@ -8,7 +8,10 @@
 
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
-use crate::models::{EntryInput, EntrySummary, Folder, FolderInput, Settings, VaultEntry};
+use crate::models::{
+    EntryInput, EntrySummary, Folder, FolderInput, ImportReport, Settings, VaultEntry,
+    VaultExport,
+};
 use crate::keychain::SecretStore;
 use crate::session::SessionState;
 use zeroize::Zeroize;
@@ -21,9 +24,8 @@ use tauri::State;
 
 /// Process-wide application state managed by Tauri.
 ///
-/// The database is in-memory for v1 (persistence deferred to a later task). The
-/// settings mutex guards the global default crypto config and idle/clipboard
-/// timing.
+/// The database is the SQLCipher vault file (see `vault.rs`). The settings
+/// mutex guards the global default crypto config and idle/clipboard timing.
 pub struct AppState {
     pub db: Mutex<VaultDb>,
 }
@@ -286,4 +288,47 @@ pub fn save_settings(
     let db = state.db.lock().expect("db mutex poisoned");
     db.set_kv("settings", &serde_json::to_string(&settings)?)?;
     Ok(settings)
+}
+
+// ---------------------------------------------------------------------------
+// Backup commands
+// ---------------------------------------------------------------------------
+
+/// Write every folder and entry profile to `path` as JSON. The export holds
+/// no generated passwords (PassForge never stores them) but is still
+/// sensitive metadata.
+#[tauri::command]
+pub fn export_vault(path: String, state: State<AppState>, session: State<SessionState>) -> Result<()> {
+    require_unlocked(&session)?;
+    let db = state.db.lock().expect("db mutex poisoned");
+    let export = VaultExport {
+        version: 1,
+        exported_at: chrono::Utc::now().to_rfc3339(),
+        folders: db.list_folders()?,
+        entries: db.list_all_entries()?,
+    };
+    std::fs::write(&path, serde_json::to_string_pretty(&export)?)?;
+    Ok(())
+}
+
+/// Merge an export file into the vault. Entries/folders are matched by id and
+/// existing rows are skipped, so re-importing the same file is a no-op.
+#[tauri::command]
+pub fn import_vault(
+    path: String,
+    state: State<AppState>,
+    session: State<SessionState>,
+) -> Result<ImportReport> {
+    require_unlocked(&session)?;
+    let json = std::fs::read_to_string(&path)?;
+    let export: VaultExport = serde_json::from_str(&json).map_err(|e| {
+        PassForgeError::InvalidRequest(format!("not a PassForge export file: {e}"))
+    })?;
+    if export.version != 1 {
+        return Err(PassForgeError::InvalidRequest(format!(
+            "unsupported export version {}",
+            export.version
+        )));
+    }
+    state.db.lock().expect("db mutex poisoned").import_export(&export)
 }

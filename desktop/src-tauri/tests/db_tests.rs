@@ -292,3 +292,75 @@ fn native_messaging_frame_roundtrip_and_dispatch() {
     let resp = dispatch(None, r#"{"op":"search"}"#);
     assert_eq!(serde_json::to_value(&resp).unwrap()["status"], "err");
 }
+
+#[test]
+fn export_import_roundtrips_folders_and_entries() {
+    use passforge_desktop::models::VaultExport;
+
+    let source = VaultDb::memory().unwrap();
+    source.migrate().unwrap();
+    let folder = source
+        .create_folder(FolderInput {
+            parent_id: None,
+            name: "Logins".into(),
+        })
+        .unwrap();
+    let created = source.create_entry(sample_entry(folder.id.clone())).unwrap();
+    source.mark_used(&created.id).unwrap();
+    let created = source.get_entry(&created.id).unwrap().unwrap();
+
+    // Serialize through the same JSON shape `export_vault` writes, so the
+    // wire format is exercised end-to-end.
+    let doc = VaultExport {
+        version: 1,
+        exported_at: "2026-01-01T00:00:00Z".into(),
+        folders: source.list_folders().unwrap(),
+        entries: source.list_all_entries().unwrap(),
+    };
+    let json = serde_json::to_string_pretty(&doc).unwrap();
+    let parsed: VaultExport = serde_json::from_str(&json).unwrap();
+
+    let target = VaultDb::memory().unwrap();
+    target.migrate().unwrap();
+    let report = target.import_export(&parsed).unwrap();
+    assert_eq!(report.folders_created, 1);
+    assert_eq!(report.entries_created, 1);
+    assert_eq!(report.entries_skipped, 0);
+
+    let imported = target.get_entry(&created.id).unwrap().unwrap();
+    assert_eq!(imported.profile.site, "example.com");
+    assert_eq!(imported.profile.login, "me@example.com");
+    assert_eq!(imported.tags, created.tags);
+    assert_eq!(imported.folder_id, folder.id);
+    assert_eq!(imported.last_used_at, created.last_used_at);
+}
+
+#[test]
+fn import_is_idempotent_and_skips_existing_rows() {
+    use passforge_desktop::models::VaultExport;
+
+    let db = VaultDb::memory().unwrap();
+    db.migrate().unwrap();
+    let folder = db
+        .create_folder(FolderInput {
+            parent_id: None,
+            name: "Logins".into(),
+        })
+        .unwrap();
+    db.create_entry(sample_entry(folder.id.clone())).unwrap();
+
+    let doc = VaultExport {
+        version: 1,
+        exported_at: "2026-01-01T00:00:00Z".into(),
+        folders: db.list_folders().unwrap(),
+        entries: db.list_all_entries().unwrap(),
+    };
+
+    // Importing the vault into itself must create nothing.
+    let report = db.import_export(&doc).unwrap();
+    assert_eq!(report.folders_created, 0);
+    assert_eq!(report.entries_created, 0);
+    assert_eq!(report.folders_skipped, 1);
+    assert_eq!(report.entries_skipped, 1);
+    assert_eq!(db.list_all_entries().unwrap().len(), 1);
+}

@@ -5,6 +5,7 @@ import type {
   Finger,
   Folder,
   FolderInput,
+  ImportReport,
   Settings,
   VaultEntry,
 } from "./types";
@@ -55,6 +56,8 @@ export type Api = {
   biometricUnlock: () => Promise<void>;
   rememberMasterPassword: () => Promise<void>;
   forgetMasterPassword: () => Promise<void>;
+  exportVault: (path: string) => Promise<void>;
+  importVault: (path: string) => Promise<ImportReport>;
 };
 
 const tauriApi: Api = {
@@ -82,6 +85,8 @@ const tauriApi: Api = {
   biometricUnlock: () => invoke<void>("biometric_unlock"),
   rememberMasterPassword: () => invoke<void>("remember_master_password"),
   forgetMasterPassword: () => invoke<void>("forget_master_password"),
+  exportVault: (path: string) => invoke<void>("export_vault", { path }),
+  importVault: (path: string) => invoke<ImportReport>("import_vault", { path }),
 };
 
 async function resolveApi(): Promise<Api> {

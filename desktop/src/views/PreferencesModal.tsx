@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { isTauri } from "@tauri-apps/api/core";
+import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { api } from "../api";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
@@ -10,11 +12,12 @@ type Props = {
   settings: Settings;
   onClose: () => void;
   onSaved: (settings: Settings) => void;
+  onVaultChanged?: () => void;
 };
 
 const DIGESTS = ["sha256", "sha512", "sha1"] as const;
 
-export function PreferencesModal({ settings, onClose, onSaved }: Props) {
+export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }: Props) {
   const [iterations, setIterations] = useState(String(settings.defaultCrypto.iterations));
   const [keylen, setKeylen] = useState(String(settings.defaultCrypto.keylen));
   const [digest, setDigest] = useState(settings.defaultCrypto.digest);
@@ -24,6 +27,80 @@ export function PreferencesModal({ settings, onClose, onSaved }: Props) {
   );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [vaultMsg, setVaultMsg] = useState<string | null>(null);
+  const [vaultBusy, setVaultBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const JSON_FILTER = { name: "JSON", extensions: ["json"] };
+
+  const errText = (err: unknown) =>
+    err && typeof err === "object" && "message" in err ? String(err.message) : String(err);
+
+  const doExport = async () => {
+    setVaultMsg(null);
+    setError(null);
+    setVaultBusy(true);
+    try {
+      if (isTauri()) {
+        const path = await saveDialog({
+          defaultPath: "passforge-export.json",
+          filters: [JSON_FILTER],
+        });
+        if (!path) return;
+        await api.exportVault(path);
+        setVaultMsg(`Exported to ${path}`);
+      } else {
+        await api.exportVault("");
+        setVaultMsg("Exported passforge-export.json");
+      }
+    } catch (err) {
+      setError(errText(err));
+    } finally {
+      setVaultBusy(false);
+    }
+  };
+
+  const runImport = async (pathOrJson: string) => {
+    const report = await api.importVault(pathOrJson);
+    setVaultMsg(
+      `Imported ${report.entriesCreated} entries + ${report.foldersCreated} folders` +
+        (report.entriesSkipped || report.foldersSkipped
+          ? ` (${report.entriesSkipped + report.foldersSkipped} already present)`
+          : ""),
+    );
+    onVaultChanged?.();
+  };
+
+  const doImport = async () => {
+    setVaultMsg(null);
+    setError(null);
+    if (isTauri()) {
+      setVaultBusy(true);
+      try {
+        const picked = await open({ filters: [JSON_FILTER], multiple: false });
+        if (!picked || Array.isArray(picked)) return;
+        await runImport(picked);
+      } catch (err) {
+        setError(errText(err));
+      } finally {
+        setVaultBusy(false);
+      }
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const onImportFile = async (file: File | undefined) => {
+    if (!file) return;
+    setVaultBusy(true);
+    try {
+      await runImport(await file.text());
+    } catch (err) {
+      setError(errText(err));
+    } finally {
+      setVaultBusy(false);
+    }
+  };
 
   const save = async () => {
     const parsed: Settings = {
@@ -117,6 +194,32 @@ export function PreferencesModal({ settings, onClose, onSaved }: Props) {
             />
           </div>
         </div>
+        <p className="pt-2 text-[11px] uppercase tracking-[0.02em] text-pf-text-muted">
+          Vault data
+        </p>
+        <p className="text-[12px] text-pf-text-secondary">
+          Export saves folder and profile parameters as JSON — generated passwords are never stored,
+          so none are included. Treat the file as sensitive metadata.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => void doExport()} disabled={vaultBusy}>
+            Export vault…
+          </Button>
+          <Button variant="ghost" onClick={() => void doImport()} disabled={vaultBusy}>
+            Import vault…
+          </Button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            void onImportFile(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        {vaultMsg && <p className="text-[11px] text-pf-text-muted">{vaultMsg}</p>}
         {error && <p className="text-[11px] text-pf-text-error">{error}</p>}
       </div>
     </Modal>

@@ -19,6 +19,7 @@ pub enum Request {
     Search { query: Option<String> },
     GetEntry { entry_id: String },
     Generate { entry_id: String, master_password: String },
+    ApiInfo,
     Lock,
 }
 
@@ -103,6 +104,28 @@ pub fn dispatch(db: Option<&VaultDb>, payload: &str) -> Response {
             })()),
             None => Response::err("vault unavailable"),
         },
+        // Pairing: hands the extension the local API's port + bearer token.
+        // Both live in the vault dir (api-info.json is written by the running
+        // app; api-token is 0600) so this op needs OS file access, not a
+        // running daemon — when the app is closed the extension can at least
+        // fail with "app not running" instead of hanging.
+        Request::ApiInfo => (|| {
+            let db_path = crate::vault::resolved_db_path()?;
+            let dir = db_path
+                .parent()
+                .ok_or_else(|| PassForgeError::InvalidRequest("bad vault path".into()))?;
+            let port = crate::api::read_port(dir).ok_or_else(|| {
+                PassForgeError::InvalidRequest("app is not running".into())
+            })?;
+            let token = crate::api::read_token(dir).ok_or_else(|| {
+                PassForgeError::InvalidRequest("api token is missing".into())
+            })?;
+            Ok::<serde_json::Value, PassForgeError>(serde_json::json!({
+                "port": port,
+                "token": token,
+            }))
+        })()
+        .map_or_else(Response::err, Response::ok),
         Request::Lock => Response::ok(serde_json::Value::Null),
     }
 }

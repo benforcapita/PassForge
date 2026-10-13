@@ -47,6 +47,22 @@ Status of the threat model as of the vault-hardening + security pass.
 - [x] Wipe is conditional: only clears if the clipboard still equals the
   copied password — can't clobber later user copies.
 
+## Local API (backend for frontends)
+- [x] Binds `127.0.0.1` only, ephemeral port; other machines can't reach it.
+- [x] Every route requires `Authorization: Bearer` with a random 256-bit
+  token stored `<vault dir>/api-token` (0600) — other local processes
+  without vault-dir read access can't call it.
+- [x] `/api/generate` is one-shot: the master password arrives per-request
+  and is zeroized after use; the server stores nothing.
+- [x] Vault routes additionally require the app's unlocked session —
+  a locked app serves no data.
+- [x] CORS limited to browser-extension schemes
+  (`chrome-extension://`, `moz-extension://`, `safari-web-extension://`).
+- [ ] A compromised browser tab can't reach the API: no Origin means CORS
+  blocks pages, but any extension with `host_permissions` for 127.0.0.1
+  could call it *if it also reads the token* — requires vault-dir access,
+  i.e. already user-level code execution.
+
 ## Native messaging host
 - [x] Chrome `allowed_origins` restricts the manifest to the extension ID.
 - [x] `open_existing_at` never creates the vault or key; missing vault

@@ -1,31 +1,34 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { buildFingerprint, defaultPasswordOptions, generatePassword } from "lesspass";
 import { activeTabSite } from "./url";
 import * as host from "./host";
+import * as api from "./api";
 import "./styles.css";
 
-type Finger = { icon: string; color: string };
+// UI defaults only — the algorithm itself lives exclusively in the backend.
+const DEFAULT_OPTIONS = { lowercase: true, uppercase: true, digits: true, symbols: true, length: 16 };
 
 function Popup() {
   const [site, setSite] = useState("");
   const [login, setLogin] = useState("");
   const [master, setMaster] = useState("");
   const [counter, setCounter] = useState(1);
-  const [length, setLength] = useState(defaultPasswordOptions.length);
+  const [length, setLength] = useState(DEFAULT_OPTIONS.length);
   const [sets, setSets] = useState({ lowercase: true, uppercase: true, digits: true, symbols: true });
   const [password, setPassword] = useState("");
-  const [fingerprint, setFingerprint] = useState<Finger[]>([]);
+  const [fingerprint, setFingerprint] = useState<api.Finger[]>([]);
   const [copied, setCopied] = useState(false);
   const [vault, setVault] = useState<"checking" | "on" | "off">("checking");
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   // Prefill site from the active tab, then ask the host for a saved profile.
   useEffect(() => {
     void (async () => {
       const detected = await activeTabSite();
       if (detected) setSite(detected);
-      if (await host.ping()) {
+      // Backend pairing: the app must be reachable or nothing can generate.
+      if ((await host.ping()) && (await api.connect())) {
         setVault("on");
         if (!detected) return;
         try {
@@ -53,17 +56,21 @@ function Popup() {
     })();
   }, []);
 
-  // Live master-password fingerprint (the LessPass "did I type it right" aid).
+  // Live master-password fingerprint (the LessPass "did I type it right" aid)
+  // — computed by the backend too; the extension holds no algorithm.
   useEffect(() => {
     let stale = false;
-    if (!master) return setFingerprint([]);
-    void buildFingerprint(master).then((fp) => {
-      if (!stale) setFingerprint(fp as unknown as Finger[]);
-    });
+    if (!master || !api.connected()) return setFingerprint([]);
+    void api
+      .fingerprint(master)
+      .then((fp) => {
+        if (!stale) setFingerprint(fp);
+      })
+      .catch(() => setFingerprint([]));
     return () => {
       stale = true;
     };
-  }, [master]);
+  }, [master, vault]);
 
   const profile = useMemo(
     () => ({ site, login, counter, length, ...sets }),
@@ -71,13 +78,20 @@ function Popup() {
   );
 
   const generate = useCallback(async () => {
-    if (!site || !login || !master) return;
-    setPassword(await generatePassword(profile, master));
+    setError("");
+    if (!site || !login || !master || !api.connected()) return;
+    try {
+      setPassword(await api.generate(profile, master));
+    } catch (e) {
+      setPassword("");
+      setError(e instanceof Error ? e.message : "generation failed");
+    }
   }, [profile, master]);
 
   const copy = useCallback(async () => {
     if (!password) await generate();
-    const text = password || (await generatePassword(profile, master));
+    const text = password || (api.connected() ? await api.generate(profile, master).catch(() => "") : "");
+    if (!text) return;
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 1200);
@@ -88,7 +102,7 @@ function Popup() {
       <div className="header">
         <span className="title">PassForge</span>
         <span className={`badge ${vault === "on" ? "on" : ""}`}>
-          {vault === "checking" ? "vault …" : vault === "on" ? "vault connected" : "offline"}
+          {vault === "checking" ? "backend …" : vault === "on" ? "backend connected" : "app offline"}
         </span>
       </div>
 
@@ -157,7 +171,12 @@ function Popup() {
       </div>
 
       <div className="row">
-        <button className="action ghost" style={{ flex: 1 }} onClick={generate}>
+        <button
+          className="action ghost"
+          style={{ flex: 1 }}
+          onClick={generate}
+          disabled={vault !== "on"}
+        >
           Generate
         </button>
         <button className="action primary" style={{ flex: 1 }} onClick={copy}>
@@ -165,8 +184,11 @@ function Popup() {
         </button>
       </div>
 
+      {error && <div className="hint" style={{ color: "var(--danger, #e5484d)" }}>{error}</div>}
       <div className="hint">
-        Stateless: nothing is stored here. {profileId ? "Profile params loaded from vault." : ""}
+        {vault === "on"
+          ? `Severed: this extension holds no algorithm — ${profileId ? "profile params loaded, " : ""}generation happens in the PassForge app.`
+          : "Open the PassForge app to generate — the extension is a frontend only."}
       </div>
     </div>
   );

@@ -1,0 +1,279 @@
+//! Local HTTP API — the single backend every frontend calls.
+//!
+//! PassForge's architecture rule: frontends are fully severed from the
+//! password-generation algorithm. This server, embedded in the desktop app
+//! process, is the only place `lesspass-core` runs for external clients —
+//! the browser extension calls it over `http://127.0.0.1` and (in a later
+//! phase) the desktop UI itself becomes a thin frontend on the same API.
+//!
+//! Security model:
+//! - Loopback only (`127.0.0.1`, ephemeral port written to
+//!   `<vault dir>/api-info.json`).
+//! - Every request needs `Authorization: Bearer <api-token>` where the token
+//!   is a random hex secret in `<vault dir>/api-token` (0600). The browser
+//!   extension obtains `port` + `token` through the `api_info`
+//!   native-messaging op of `passforge-host` — pairing by OS trust, not by
+//!   anything typed into the extension.
+//! - `/api/generate` is one-shot: the master password arrives in the request
+//!   and is zeroized after use — the server never stores it.
+//! - Vault endpoints additionally require the app's session to be unlocked,
+//!   so a locked app serves nothing.
+//! - CORS is restricted to browser-extension schemes.
+
+use crate::commands::{load_settings, master_fingerprint, require_unlocked, synthesize_fingerprints};
+use crate::db::VaultDb;
+use crate::error::{PassForgeError, Result};
+use crate::session::SessionState;
+use axum::{
+    extract::{Query, State},
+    http::{HeaderMap, StatusCode},
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
+    routing::{get, post},
+    Json, Router,
+};
+use lesspass_core::{CryptoConfig, PasswordProfile};
+use serde::Deserialize;
+use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
+use tower_http::cors::CorsLayer;
+use zeroize::Zeroize;
+
+const TOKEN_FILE: &str = "api-token";
+const INFO_FILE: &str = "api-info.json";
+
+#[derive(Clone)]
+pub struct ApiState {
+    pub db: Arc<Mutex<VaultDb>>,
+    pub session: SessionState,
+    pub token: String,
+}
+
+/// Random 32-byte hex token, load-or-create at `<vault dir>/api-token` (0600).
+pub fn load_or_create_token(vault_dir: &std::path::Path) -> Result<String> {
+    let path = vault_dir.join(TOKEN_FILE);
+    if let Ok(raw) = std::fs::read_to_string(&path) {
+        let token = raw.trim().to_string();
+        if !token.is_empty() {
+            return Ok(token);
+        }
+    }
+    let mut bytes = [0u8; 32];
+    bytes[..16].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+    bytes[16..].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+    let token = hex::encode(bytes);
+    std::fs::write(&path, &token)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))?;
+    }
+    Ok(token)
+}
+
+/// Reads the api token the running server expects (used by `api_info`).
+pub fn read_token(vault_dir: &std::path::Path) -> Option<String> {
+    std::fs::read_to_string(vault_dir.join(TOKEN_FILE))
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+/// Reads the port of the currently-registered server (used by `api_info`).
+pub fn read_port(vault_dir: &std::path::Path) -> Option<u16> {
+    let raw = std::fs::read_to_string(vault_dir.join(INFO_FILE)).ok()?;
+    serde_json::from_str::<serde_json::Value>(&raw).ok()?["port"]
+        .as_u64()
+        .map(|p| p as u16)
+}
+
+pub fn router(state: ApiState) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(tower_http::cors::AllowOrigin::predicate(|origin, _| {
+            matches!(
+                origin.to_str().ok().and_then(|o| o.split("://").next()),
+                Some("chrome-extension" | "moz-extension" | "safari-web-extension")
+            )
+        }))
+        .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
+        .allow_headers([
+            axum::http::header::AUTHORIZATION,
+            axum::http::header::CONTENT_TYPE,
+        ]);
+
+    Router::new()
+        .route("/api/health", get(health))
+        .route("/api/generate", post(generate))
+        .route("/api/fingerprint", post(fingerprint))
+        .route("/api/entries", get(search_entries))
+        .route("/api/entries/{id}", get(get_entry))
+        .route("/api/settings", get(get_settings))
+        .route_layer(middleware::from_fn_with_state(state.clone(), require_token))
+        .layer(cors)
+        .with_state(state)
+}
+
+/// Binds 127.0.0.1 on an ephemeral port, records it in `<vault
+/// dir>/api-info.json`, and serves until the process exits. Spawn with
+/// `tauri::async_runtime::spawn(api::serve(...))`.
+pub async fn serve(state: ApiState, vault_dir: std::path::PathBuf) -> Result<SocketAddr> {
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
+    let addr = listener.local_addr()?;
+    std::fs::write(
+        vault_dir.join(INFO_FILE),
+        serde_json::to_string(&serde_json::json!({
+            "port": addr.port(),
+            "pid": std::process::id(),
+        }))?,
+    )?;
+    axum::serve(listener, router(state))
+        .await
+        .map_err(|e| PassForgeError::Io(e))?;
+    Ok(addr)
+}
+
+async fn require_token(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    request: axum::extract::Request,
+    next: Next,
+) -> Response {
+    let ok = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.strip_prefix("Bearer ") == Some(state.token.as_str()))
+        .unwrap_or(false);
+    if !ok {
+        return api_error(
+            StatusCode::UNAUTHORIZED,
+            &PassForgeError::InvalidRequest("missing or invalid api token".into()),
+        );
+    }
+    next.run(request).await
+}
+
+fn api_error(status: StatusCode, err: &PassForgeError) -> Response {
+    (status, Json(serde_json::json!({ "error": err.to_string() }))).into_response()
+}
+
+fn map_err(err: PassForgeError) -> Response {
+    let status = match err {
+        PassForgeError::Locked => StatusCode::FORBIDDEN,
+        PassForgeError::EntryNotFound(_) => StatusCode::NOT_FOUND,
+        PassForgeError::InvalidRequest(_) => StatusCode::BAD_REQUEST,
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    api_error(status, &err)
+}
+
+async fn health(State(state): State<ApiState>) -> impl IntoResponse {
+    Json(serde_json::json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "locked": state.session.is_locked(),
+    }))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GenerateRequest {
+    master_password: String,
+    profile: PasswordProfile,
+}
+
+async fn generate(
+    State(state): State<ApiState>,
+    Json(mut body): Json<GenerateRequest>,
+) -> Response {
+    let result = (|| -> Result<String> {
+        state.session.touch();
+        let settings = {
+            let db = state.db.lock().expect("db mutex poisoned");
+            load_settings(&db)
+        };
+        let crypto: CryptoConfig = body
+            .profile
+            .crypto
+            .clone()
+            .unwrap_or_else(|| settings.default_crypto.clone());
+        let entropy = lesspass_core::calc_entropy(&body.profile, &body.master_password, &crypto);
+        lesspass_core::render_password(&entropy, &body.profile.options)
+            .map_err(|err| PassForgeError::InvalidRequest(err.to_string()))
+    })();
+    body.master_password.zeroize();
+    match result {
+        Ok(password) => Json(serde_json::json!({ "password": password })).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FingerprintRequest {
+    master_password: String,
+}
+
+async fn fingerprint(
+    State(state): State<ApiState>,
+    Json(mut body): Json<FingerprintRequest>,
+) -> Response {
+    state.session.touch();
+    let result = master_fingerprint(&body.master_password);
+    body.master_password.zeroize();
+    match result {
+        Ok(fp) => Json(fp).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+#[derive(Deserialize)]
+struct EntriesQuery {
+    q: Option<String>,
+}
+
+async fn search_entries(
+    State(state): State<ApiState>,
+    Query(query): Query<EntriesQuery>,
+) -> Response {
+    let result = (|| -> Result<serde_json::Value> {
+        require_unlocked(&state.session)?;
+        let db = state.db.lock().expect("db mutex poisoned");
+        let mut rows = db.search_entries(&query.q.unwrap_or_default())?;
+        drop(db);
+        synthesize_fingerprints(&mut rows)?;
+        serde_json::to_value(rows).map_err(Into::into)
+    })();
+    match result {
+        Ok(rows) => Json(rows).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+async fn get_entry(
+    State(state): State<ApiState>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Response {
+    let result = (|| -> Result<serde_json::Value> {
+        require_unlocked(&state.session)?;
+        let db = state.db.lock().expect("db mutex poisoned");
+        let entry = db
+            .get_entry(&id)?
+            .ok_or_else(|| PassForgeError::EntryNotFound(id.clone()))?;
+        serde_json::to_value(entry).map_err(Into::into)
+    })();
+    match result {
+        Ok(entry) => Json(entry).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+async fn get_settings(State(state): State<ApiState>) -> Response {
+    let result = (|| -> Result<serde_json::Value> {
+        require_unlocked(&state.session)?;
+        let db = state.db.lock().expect("db mutex poisoned");
+        serde_json::to_value(load_settings(&db)).map_err(Into::into)
+    })();
+    match result {
+        Ok(settings) => Json(settings).into_response(),
+        Err(err) => map_err(err),
+    }
+}

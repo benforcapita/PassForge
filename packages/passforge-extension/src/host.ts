@@ -52,6 +52,12 @@ export async function getEntry(entryId: string): Promise<VaultEntry> {
   return (await send({ op: "get_entry", entry_id: entryId })) as VaultEntry;
 }
 
+export type ApiInfo = { port: number; token: string };
+
+export async function apiInfo(): Promise<ApiInfo> {
+  return (await send({ op: "api_info" })) as ApiInfo;
+}
+
 export async function ping(): Promise<boolean> {
   try {
     await send({ op: "ping" });

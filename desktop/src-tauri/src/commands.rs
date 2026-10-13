@@ -27,12 +27,12 @@ use tauri::State;
 /// The database is the SQLCipher vault file (see `vault.rs`). The settings
 /// mutex guards the global default crypto config and idle/clipboard timing.
 pub struct AppState {
-    pub db: Mutex<VaultDb>,
+    pub db: std::sync::Arc<Mutex<VaultDb>>,
 }
 
 /// Every vault command requires an unlocked session; using the app counts
 /// as activity for the idle timer.
-fn require_unlocked(session: &SessionState) -> Result<()> {
+pub fn require_unlocked(session: &SessionState) -> Result<()> {
     if session.is_locked() {
         return Err(PassForgeError::Locked);
     }

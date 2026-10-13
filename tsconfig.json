@@ -2,7 +2,6 @@
   "extends": "./tsconfig.base.json",
   "files": [],
   "references": [
-    { "path": "./packages/lesspass" },
     { "path": "./packages/passforge-extension" }
   ]
 }

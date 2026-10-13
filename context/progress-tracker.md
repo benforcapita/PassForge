@@ -2,38 +2,31 @@
 
 ## Current Phase
 
-Implementation phase. Tasks 1–5 are complete (core, desktop scaffold, SQLCipher storage, session/Keychain boundary, Tauri commands). Next: Task 6 — Desktop UI views.
+v1 feature-complete pending real-Mac verification polish. All nine implementation tasks are complete; upstream LessPass legacy (server, mobile, connected CLI, web packages) has been removed.
 
 ## Completed
 
 | Task | Description | Evidence |
 |------|-------------|----------|
 | Design spec | PassForge v1 architecture, storage, security, UI, and extension behavior defined. | `docs/superpowers/specs/2026-06-07-passforge-design.md` |
-| Implementation plan | Task-by-task TDD plan created for core, desktop, extension, and verification. | `docs/superpowers/plans/2026-06-07-passforge.md` |
-| Initial Rust workspace | Workspace manifest and `crates/lesspass-core` exist as untracked project work. | `Cargo.toml`, `crates/lesspass-core/` |
-| Agent context | Context folder and `AGENTS.md` created for future agents. | `context/`, `AGENTS.md` |
-| Graphify setup | Graphify 0.8.33 installed, Codex hook configured, git hooks installed, initial graph built. | `.codex/hooks.json`, `.git/hooks/post-commit`, `graphify-out/` |
-| Task 1 | Stabilize lesspass-core: CoreError, Result returns, fa-* serde, salt tiebreaking, compatibility tests. 15 tests passing. | `crates/lesspass-core/`, `Cargo.toml` |
-| Task 2 | Scaffold Tauri desktop app: Vite + React + Tailwind frontend, Tauri v2 Rust backend. cargo check and yarn build pass. | `desktop/`, `Cargo.toml`, `package.json`, `yarn.lock` |
-| Task 3 | Add SQLCipher-backed storage model and CRUD: folders, entries, tags, encrypted open, search, and no password column. 4 DB tests passing. | `desktop/src-tauri/src/db.rs`, `desktop/src-tauri/tests/db_tests.rs` |
-| Task 5 | Add Tauri commands: nine `#[tauri::command]` wrappers (session, vault, settings), pure helpers (`synthesize_fingerprints`, `derive_password`) for unit testing, AppState managed in `main.rs` with `cfg(mobile)` biometric gating preserved, frontend `types.ts` + `api.ts`. 4 command tests passing (10 total). | `desktop/src-tauri/src/commands.rs`, `desktop/src-tauri/src/main.rs`, `desktop/src-tauri/src/lib.rs`, `desktop/src-tauri/tests/commands_tests.rs`, `desktop/src/types.ts`, `desktop/src/api.ts` |
-| Task 4 | Add session and Keychain boundary: in-memory session lock/unlock with zeroize, macOS Keychain adapter trait, managed Tauri session state. 2 session tests passing. Biometric plugin registration is gated to mobile because `tauri-plugin-biometric` v2.3.2 compiles its Rust API only under `cfg(mobile)`. | `desktop/src-tauri/src/session.rs`, `desktop/src-tauri/src/keychain.rs`, `desktop/src-tauri/tests/session_tests.rs` |
-
-## In Progress
-
-| Task | Description | Status |
-|------|-------------|--------|
-
-None.
+| Task 1 | lesspass-core stabilized: CoreError, Result returns, serde, compatibility tests. | `crates/lesspass-core/` |
+| Task 2 | Tauri desktop scaffold: Vite + React 19 + Tailwind v4 frontend, Rust backend. | `desktop/` |
+| Task 3 | SQLCipher-backed storage: folders, entries, tags, encrypted open, search, no password column. | `desktop/src-tauri/src/db.rs` |
+| Task 4 | Session + platform secret store: in-memory session lock/unlock with zeroize, macOS Keychain adapter. | `desktop/src-tauri/src/session.rs`, `keychain.rs` |
+| Task 5 | Tauri commands + frontend API layer. | `desktop/src-tauri/src/commands.rs`, `desktop/src/api.ts` |
+| Task 6 | Desktop UI on the Obsidian Precision design system: lock screen + 3-pane workbench. | `desktop/src/views/`, `desktop/src/styles/tokens.css` |
+| Task 7 | Native-messaging backend (`passforge-host` binary + manifest/install script). | `desktop/src-tauri/src/bin/passforge-host.rs`, `desktop/src-tauri/native-messaging/` |
+| Task 8 | Chromium MV3 extension (`passforge-extension`): stateless generator + vault profile prefill. | `packages/passforge-extension/` |
+| Task 9 | Security checklist + IPC lock enforcement; backend idle lock; conditional clipboard wipe. | `docs/security-checklist.md` |
+| Hardening | Touch ID convenience gate on macOS (LAContext), macOS verification pass. | `desktop/src-tauri/src/biometric.rs`, `docs/macos-verification.md` |
+| Cleanup | Removed upstream LessPass `backend/`, `lesspass-api`, `lesspass-mobile`, connected CLI, web packages (`lesspass-web-*`, `lesspass-i18n`), upstream assets. | this file |
 
 ## Remaining
 
-| Task | Description |
+| Item | Description |
 |------|-------------|
-| Task 6 | Build desktop UI views. |
-| Task 7 | Add native messaging backend. |
-| Task 8 | Rebuild Chromium extension as read-only client. |
-| Task 9 | Add security checklist and final verification. |
+| Real-Mac Touch ID spot-check | LAContext prompt needs physical Touch ID hardware. |
+| `passforge-host` sidecar packaging | Register as Tauri `externalBin` to ship inside the `.app`. |
 
 ## Quick Commands
 
@@ -41,27 +34,21 @@ None.
 # Inspect repo state
 git status --short
 
-# Query/update code graph
-graphify query "How is PassForge structured?"
-graphify update . --force
-graphify hook status
-
-# Core verification
-cargo test -p lesspass-core
-
-# Rust workspace verification as implementation grows
+# Rust verification
 cargo test
-cargo check
 cargo check -p passforge-desktop
 
 # Desktop frontend verification
 yarn workspace passforge-desktop build
 
-# Existing JS workspace verification
+# JS workspace verification
 yarn test
 yarn build
 
 # Extension-specific verification
-yarn workspace lesspass-web-extension test
-yarn workspace lesspass-web-extension build
+yarn workspace passforge-extension test
+yarn workspace passforge-extension build
+
+# CLI verification
+cd cli && PYTHONPATH=. python3 -m unittest discover -s tests -t .
 ```

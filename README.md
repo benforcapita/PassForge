@@ -1,74 +1,46 @@
-# LessPass
+# PassForge
 
-LessPass is a stateless password manager.
+PassForge is a local-first, stateless password manager built on the LessPass algorithm. Passwords are regenerated deterministically from a site, a login, and your master password — never stored, never synced, no accounts, no server.
 
-Stop wasting your time synchronizing your encrypted vault. Remember one master password to access your passwords, anywhere, anytime. No sync needed. Try the demo at [https://www.lesspass.com](https://www.lesspass.com).
-
-## PassForge
-
-PassForge is a local-first, stateless password manager built on the LessPass algorithm. It adds a macOS desktop app, encrypted local metadata storage, Keychain-gated unlock, and a Chromium autofill extension — all while keeping the core LessPass promise: passwords are regenerated from deterministic inputs, never stored.
-
-### What PassForge adds on top of LessPass
+### Features
 
 - **macOS desktop app** — Tauri v2 shell, Rust backend, React 19 frontend built on the Obsidian Precision design system (see `docs/design-system/`).
 - **Encrypted local metadata** — SQLCipher-backed SQLite stores entries (site, login, counter, password options, salt fields) so you can organize and revisit sites without remembering every parameter.
-- **Keychain + Touch ID** — Master password and database encryption key live in the macOS Secure Enclave. The desktop holds the master password only in RAM and zeroizes it on lock, idle timeout, or quit.
-- **Entry organization** — Folders (hierarchical), groups (flat, many-to-many), and tags (freeform).
-- **Chromium MV3 extension** — Read-only autofill client. Searches entries by domain and requests password generation from the desktop through native messaging. The extension never stores entries, creates entries, or receives the master password.
-- **Algorithm modes** — Basic mode (v1) exposes iterations, hash algorithm, and key length. Expert mode (v2, future) will support pluggable custom pipelines.
+- **Keychain + Touch ID** — The database encryption key lives in the macOS Keychain; an optional Touch ID convenience gate can feed a remembered master password to `unlock`. The desktop holds the master password only in RAM and zeroizes it on lock, idle timeout, or quit.
+- **Entry organization** — Folders (hierarchical) and tags (freeform).
+- **Chromium MV3 extension** (`packages/passforge-extension`) — stateless generator on its own; when the `passforge-host` native-messaging host is installed it prefills profile parameters for the current tab. It never stores passwords or receives the master password.
+- **Offline CLI** (`cli/`) — `pip install lesspass`; `lesspass site login masterpassword` prints the generated password.
 - **Security-first design** — No cloud sync, no accounts, no network services. Generated passwords are never written to disk or logs. Clipboard auto-clears after a configurable delay.
 
 ### What PassForge is NOT
 
 - Not a cloud-sync password manager — no server, no accounts, no network traffic.
 - Not a password vault — passwords are never stored, only the parameters to regenerate them.
-- Not cross-platform desktop (v1) — macOS only. Windows support is planned for v2.
+- Not cross-platform desktop (v1) — macOS only.
 - Not a Safari or Firefox extension (v1) — Chromium only.
 - Not a mobile app.
 
+### Repository layout
 
-### Current status
+- `desktop/` — Tauri v2 + React desktop app (`passforge-desktop` crate in `desktop/src-tauri/`).
+- `crates/lesspass-core/` — Rust implementation of the password-generation algorithm.
+- `packages/lesspass/` — TypeScript implementation of the same algorithm, used by the extension.
+- `packages/passforge-extension/` — Chromium MV3 extension.
+- `cli/` — Python CLI.
+- `docs/` — design system, security checklist, macOS verification checklist.
 
-PassForge is in active development. The implementation plan and design spec live in `docs/superpowers/`. See [AGENTS.md](AGENTS.md) for agent instructions and `context/progress-tracker.md` for the current phase.
+### Verification
 
-## How to use LessPass
-
-### Web extensions
-
-Install the web extension on [Chrome](https://chrome.google.com/webstore/detail/lesspass/lcmbpoclaodbgkbjafnkbbinogcbnjih) or [Firefox](https://addons.mozilla.org/en-US/firefox/addon/lesspass/). When you need to generate a password, click on the password field on the web site you want to generate a password for. Hit <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> or <kbd>Command</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> on mac to open the web extension. Fill the login and master password and hit <kbd>Enter</kbd>. Your password is now copied in the clipboard. Hit <kbd>esc</kbd> key and paste the generated password on the web site.
-
-### Command Line Interface
-
-If you want to use LessPass in your terminal, you can use `pip` to install LessPass CLI:
-
-    python3 -m pip install --user lesspass
-    lesspass --help
-
-### Web site
-
-You can use the password generator functionnality on the web site directly. Even if for security reason, we recommend to use the web extensions.
-
-## Todo
-
-- [ ] :speech_balloon: Translation on the website #456
-
-## Questions
-
-If you have any questions, create an [issue](https://github.com/lesspass/lesspass/issues/new/).
-Protip: do a quick search first to see if someone else has asked the same question before!
-
-You can also reach me at contact@lesspass.com
-
-## Special Thank you
-
-Based on an original idea from [masterpassword app](https://masterpassword.app/) :heart:
+```bash
+cargo test                            # Rust (lesspass-core, passforge-desktop)
+yarn install && yarn build && yarn test   # JS workspaces
+cd cli && PYTHONPATH=. python3 -m unittest discover -s tests -t .
+```
 
 ## License
 
 This project is licensed under the terms of the GNU GPLv3.
 
-## Contributors
+## Credit
 
-This project exists thanks to all of the people who contribute to the project. [You can help too! There are many ways to help make LessPass better.](CONTRIBUTING.md)
-
-[![Contributors list](https://opencollective.com/lesspass/contributors.svg?width=890)](https://github.com/lesspass/lesspass/graphs/contributors)
+PassForge is a fork of [LessPass](https://github.com/lesspass/lesspass), itself based on an original idea from the [masterpassword app](https://masterpassword.app/). The deterministic algorithm (site + login + master password → password, every time, with nothing stored) is LessPass's; PassForge keeps that promise and drops the server, accounts, and sync.

@@ -1,7 +1,7 @@
 {
-  "name": "lesspass-monorepo",
-  "repository": "git@github.com:lesspass/lesspass.git",
-  "author": "Guillaume Vincent <guillaume@oslab.fr>",
+  "name": "passforge-monorepo",
+  "repository": "git@github.com:benforcapita/PassForge.git",
+  "author": "PassForge contributors",
   "license": "GPL-3.0",
   "private": true,
   "workspaces": {

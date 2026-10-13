@@ -10,13 +10,7 @@
     "target": "ES6", // Modern browsers support all ES6 features, so ES6 is a good choice.
     "jsx": "react-jsx", // React 17 introduces a new entry point to be used by compilers like TypeScript
     "paths": {
-      "lesspass": ["./packages/lesspass/src"],
-      "lesspass-api": ["./packages/lesspass-api/src"],
-      "lesspass-i18n": ["./packages/lesspass-i18n/src"],
-      "lesspass-mobile": ["./packages/lesspass-mobile/src"],
-      "lesspass-web-component": ["./packages/lesspass-web-component/src"],
-      "lesspass-web-extension": ["./packages/lesspass-web-extension/src"],
-      "lesspass-web-site": ["./packages/lesspass-web-site/src"]
+      "lesspass": ["./packages/lesspass/src"]
     }
   }
 }

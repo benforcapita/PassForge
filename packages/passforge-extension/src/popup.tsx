@@ -29,6 +29,7 @@ function Popup() {
   const [vault, setVault] = useState<"checking" | "on" | "off">("checking");
   const [profileId, setProfileId] = useState<string | null>(null);
   const [generation, setGeneration] = useState<GenerationSetting>({ mode: "serverless" });
+  const [draftMode, setDraftMode] = useState<"serverless" | "server">("serverless");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [serverUrl, setServerUrl] = useState("");
   const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
@@ -107,7 +108,7 @@ function Popup() {
       return result;
     } catch (error) {
       setPassword("");
-      setGenerationError(String(error));
+      setGenerationError(error instanceof Error ? error.message : String(error));
       return null;
     }
   }, [profile, master, generation]);
@@ -127,13 +128,13 @@ function Popup() {
       setSettingsError("");
     } catch (error) {
       setServerInfo(null);
-      setSettingsError(String(error));
+      setSettingsError(error instanceof Error ? error.message : String(error));
     }
   };
 
   const saveGeneration = async () => {
     try {
-      const setting: GenerationSetting = generation.mode === "server"
+      const setting: GenerationSetting = draftMode === "server"
         ? { mode: "server", url: normalizeServerUrl(serverUrl), algorithm }
         : { mode: "serverless" };
       await saveGenerationSetting(setting);
@@ -141,8 +142,19 @@ function Popup() {
       setSettingsError("");
       setSettingsOpen(false);
     } catch (error) {
-      setSettingsError(String(error));
+      setSettingsError(error instanceof Error ? error.message : String(error));
     }
+  };
+
+  const toggleSettings = () => {
+    if (!settingsOpen) {
+      setDraftMode(generation.mode);
+      setServerUrl(generation.mode === "server" ? generation.url : "");
+      setAlgorithm(generation.mode === "server" ? generation.algorithm : null);
+      setServerInfo(null);
+      setSettingsError("");
+    }
+    setSettingsOpen((open) => !open);
   };
 
   const remoteHost = (() => {
@@ -158,28 +170,31 @@ function Popup() {
   })();
   const selectedAlgorithm = serverInfo?.algorithms.find((item) => item.id === algorithm);
   const nonPortable = selectedAlgorithm?.portable === false;
+  const generationBadge = generation.mode === "server"
+    ? remoteHost || "server"
+    : "serverless";
 
   return (
     <div className="popup">
       <div className="header">
         <span className="title">PassForge</span>
         <span className={`badge ${generation.mode === "server" ? "on" : ""}`}>
-          {generation.mode === "server" ? remoteHost : "serverless"}
+          {generationBadge}
         </span>
-        <button className="gear" title="Settings" onClick={() => setSettingsOpen((open) => !open)}>⚙</button>
+        <button className="gear" title="Settings" onClick={toggleSettings}>⚙</button>
       </div>
 
       {settingsOpen && (
         <section className="settings">
           <strong>Password generation</strong>
           <div className="row">
-            <button className={`chip ${generation.mode === "serverless" ? "on" : ""}`}
-              onClick={() => setGeneration({ mode: "serverless" })}>Serverless</button>
-            <button className={`chip ${generation.mode === "server" ? "on" : ""}`}
-              onClick={() => setGeneration({ mode: "server", url: serverUrl, algorithm })}>Algorithm server</button>
+            <button className={`chip ${draftMode === "serverless" ? "on" : ""}`}
+              onClick={() => setDraftMode("serverless")}>Serverless</button>
+            <button className={`chip ${draftMode === "server" ? "on" : ""}`}
+              onClick={() => setDraftMode("server")}>Algorithm server</button>
           </div>
-          {generation.mode === "server" && <>
-            <div className="row">
+          {draftMode === "server" && <>
+            <div className="row connection-row">
               <div className="field"><label>Server URL</label>
                 <input value={serverUrl} onChange={(event) => { setServerUrl(event.target.value); setServerInfo(null); }}
                   placeholder="https://server.example" /></div>

@@ -36,6 +36,8 @@ label { font-size: 11px; color: var(--pf-text-secondary); display: block; margin
 }
 .field input:focus { border-color: var(--pf-border-focus); background: var(--pf-surface-input-focus); }
 .row { display: flex; gap: 8px; }
+.connection-row { align-items: flex-end; }
+.connection-row .action { height: 32px; white-space: nowrap; }
 .row .field { flex: 1; }
 
 .secret {

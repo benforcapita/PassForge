@@ -33,4 +33,4 @@ jobs:
         run: yarn workspace passforge-desktop build
 
       - name: Rust tests
-        run: cargo test -p passforge-desktop -p lesspass-core
+        run: cargo test -p passforge-desktop -p lesspass-core -p passforge-protocol -p passforge-server

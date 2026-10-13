@@ -77,6 +77,19 @@ export type Settings = {
   defaultCrypto: CryptoConfig;
   idleLockSeconds: number;
   clipboardClearSeconds: number;
+  generation: GenerationMode;
+};
+
+export type GenerationMode =
+  | { mode: "serverless" }
+  | { mode: "server"; url: string; algorithm: string | null };
+
+export type ServerInfo = {
+  protocol: string;
+  name: string;
+  version: string;
+  default_algorithm: string;
+  algorithms: { id: string; description: string; portable: boolean }[];
 };
 
 export type ImportReport = {

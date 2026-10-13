@@ -55,6 +55,7 @@ const DEFAULT_SETTINGS: Settings = {
   defaultCrypto: { iterations: 100_000, keylen: 32, digest: "sha256" },
   idleLockSeconds: 300,
   clipboardClearSeconds: 20,
+  generation: { mode: "serverless" },
 };
 
 type Draft = {
@@ -109,6 +110,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
   const [detail, setDetail] = useState<VaultEntry | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [password, setPassword] = useState<string | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [newFolderMode, setNewFolderMode] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [modal, setModal] = useState<"none" | "new" | "prefs" | "delete">("none");
@@ -149,9 +151,11 @@ export function Workbench({ onLock }: { onLock: () => void }) {
       setDetail(null);
       setDraft(null);
       setPassword(null);
+      setGenerationError(null);
       return;
     }
     setPassword(null);
+    setGenerationError(null);
     api
       .getEntry(selectedId)
       .then((entry) => {
@@ -180,9 +184,20 @@ export function Workbench({ onLock }: { onLock: () => void }) {
   const ensurePassword = useCallback(async (): Promise<string | null> => {
     if (password) return password;
     if (!detail) return null;
-    const generated = await api.generatePassword(detail.id);
-    setPassword(generated);
-    return generated;
+    setGenerationError(null);
+    try {
+      const generated = await api.generatePassword(detail.id);
+      setPassword(generated);
+      return generated;
+    } catch (err) {
+      setPassword(null);
+      setGenerationError(
+        err && typeof err === "object" && "message" in err
+          ? String(err.message)
+          : String(err),
+      );
+      return null;
+    }
   }, [password, detail]);
 
   const copyPassword = useCallback(async () => {
@@ -191,8 +206,12 @@ export function Workbench({ onLock }: { onLock: () => void }) {
       const value = await ensurePassword();
       if (value == null) return;
       await copy(value, () => setPassword(null));
-    } catch {
-      // generation or clipboard failure: nothing copied, nothing to surface
+    } catch (err) {
+      setGenerationError(
+        err && typeof err === "object" && "message" in err
+          ? String(err.message)
+          : String(err),
+      );
     }
   }, [detail, ensurePassword, copy]);
 
@@ -207,6 +226,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
     setDetail(updated);
     setDraft(draftFrom(updated));
     setPassword(null);
+    setGenerationError(null);
     await refreshEntries();
   }, [detail, draft, refreshEntries]);
 
@@ -217,6 +237,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
     setDetail(updated);
     setDraft(draftFrom(updated));
     setPassword(null);
+    setGenerationError(null);
     await refreshEntries();
   }, [detail, draft, refreshEntries]);
 
@@ -226,6 +247,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
     setModal("none");
     setSelectedId(null);
     setPassword(null);
+    setGenerationError(null);
     await refreshEntries();
   }, [detail, refreshEntries]);
 
@@ -273,6 +295,18 @@ export function Workbench({ onLock }: { onLock: () => void }) {
 
   const activeSetCount = draft ? CHAR_SETS.filter((s) => draft.options[s.key]).length : 0;
   const algo = draft?.crypto ?? settings.defaultCrypto;
+  const generationStatus =
+    settings.generation.mode === "serverless"
+      ? "serverless"
+      : `server · ${
+          (() => {
+            try {
+              return new URL(settings.generation.url).host;
+            } catch {
+              return settings.generation.url;
+            }
+          })()
+        } · ${settings.generation.algorithm ?? "default"}`;
 
   return (
     <div className="flex h-full flex-col bg-pf-canvas">
@@ -507,6 +541,11 @@ export function Workbench({ onLock }: { onLock: () => void }) {
                   onReveal={() => void ensurePassword()}
                   onCopy={() => void copyPassword()}
                 />
+                {generationError && (
+                  <p role="alert" className="mt-2 text-[11px] text-pf-text-error">
+                    {generationError}
+                  </p>
+                )}
               </section>
 
               <section className="rounded-md border border-pf-border-moderate bg-pf-raised p-4">
@@ -831,6 +870,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
         </span>
         <span>{entries.length} {entries.length === 1 ? "entry" : "entries"}</span>
         <span>clipboard wipe {settings.clipboardClearSeconds}s</span>
+        <span>{generationStatus}</span>
         <span className={idleWarning ? "ml-auto text-pf-warning" : "ml-auto"}>
           {idleWarning
             ? `idle lock in ${secondsUntilLock}s`

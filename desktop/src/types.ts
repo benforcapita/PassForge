@@ -78,3 +78,10 @@ export type Settings = {
   idleLockSeconds: number;
   clipboardClearSeconds: number;
 };
+
+export type ImportReport = {
+  foldersCreated: number;
+  foldersSkipped: number;
+  entriesCreated: number;
+  entriesSkipped: number;
+};

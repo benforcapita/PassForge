@@ -33,10 +33,13 @@ fn main() {
             commands::biometric_unlock,
             commands::remember_master_password,
             commands::forget_master_password,
+            commands::export_vault,
+            commands::import_vault,
         ]);
 
     let builder = builder
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             use tauri::{Emitter, Manager};
             let session = app.state::<session::SessionState>().inner().clone();

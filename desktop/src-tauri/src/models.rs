@@ -55,6 +55,28 @@ pub struct EntrySummary {
     pub last_used_at: Option<String>,
 }
 
+/// JSON document produced by `export_vault`. Contains folders and entry
+/// profiles only — PassForge never stores generated passwords, so there is
+/// nothing secret to encrypt; the file is still sensitive metadata and users
+/// should treat it as such.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultExport {
+    pub version: u32,
+    pub exported_at: String,
+    pub folders: Vec<Folder>,
+    pub entries: Vec<VaultEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportReport {
+    pub folders_created: usize,
+    pub folders_skipped: usize,
+    pub entries_created: usize,
+    pub entries_skipped: usize,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {

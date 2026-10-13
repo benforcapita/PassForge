@@ -855,6 +855,10 @@ export function Workbench({ onLock }: { onLock: () => void }) {
           settings={settings}
           onClose={() => setModal("none")}
           onSaved={setSettings}
+          onVaultChanged={() => {
+            void refreshEntries();
+            void refreshFolders();
+          }}
         />
       )}
       {modal === "delete" && detail && (

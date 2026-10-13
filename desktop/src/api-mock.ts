@@ -4,6 +4,7 @@ import type {
   EntrySummary,
   Finger,
   Folder,
+  ImportReport,
   Settings,
   VaultEntry,
 } from "./types";
@@ -237,5 +238,51 @@ export const mockApi: Api = {
   saveSettings: async (next: Settings) => {
     settings = { ...next };
     return settings;
+  },
+  // Browser dev has no filesystem: export downloads the JSON directly and
+  // import accepts the file's text content instead of a path.
+  exportVault: async () => {
+    const doc = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      folders,
+      entries,
+    };
+    const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "passforge-export.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  importVault: async (pathOrJson: string): Promise<ImportReport> => {
+    const doc = JSON.parse(pathOrJson) as {
+      version?: number;
+      folders?: Folder[];
+      entries?: VaultEntry[];
+    };
+    if (doc.version !== 1) throw new Error(`unsupported export version ${doc.version}`);
+    const report: ImportReport = {
+      foldersCreated: 0,
+      foldersSkipped: 0,
+      entriesCreated: 0,
+      entriesSkipped: 0,
+    };
+    for (const folder of doc.folders ?? []) {
+      if (folders.some((f) => f.id === folder.id)) report.foldersSkipped += 1;
+      else {
+        folders.push(folder);
+        report.foldersCreated += 1;
+      }
+    }
+    for (const entry of doc.entries ?? []) {
+      if (entries.some((e) => e.id === entry.id)) report.entriesSkipped += 1;
+      else {
+        entries.push(entry);
+        report.entriesCreated += 1;
+      }
+    }
+    return report;
   },
 };

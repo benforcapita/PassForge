@@ -1,5 +1,7 @@
 use crate::error::{PassForgeError, Result};
-use crate::models::{EntryInput, EntrySummary, Folder, FolderInput, VaultEntry};
+use crate::models::{
+    EntryInput, EntrySummary, Folder, FolderInput, ImportReport, VaultEntry, VaultExport,
+};
 use chrono::Utc;
 use lesspass_core::PasswordProfile;
 use rusqlite::{Connection, params};
@@ -150,6 +152,23 @@ impl VaultDb {
             return Ok(None);
         };
 
+        Ok(Some(self.entry_from_row(row)?))
+    }
+
+    pub fn list_all_entries(&self) -> Result<Vec<VaultEntry>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, site, login, counter, options_json, salt_fields_json, crypto_json, folder_id, created_at, updated_at, last_used_at
+             FROM entries ORDER BY site ASC, login ASC",
+        )?;
+        let mut rows = stmt.query([])?;
+        let mut entries = Vec::new();
+        while let Some(row) = rows.next()? {
+            entries.push(self.entry_from_row(row)?);
+        }
+        Ok(entries)
+    }
+
+    fn entry_from_row(&self, row: &rusqlite::Row<'_>) -> Result<VaultEntry> {
         let options_json: String = row.get(4)?;
         let salt_fields_json: String = row.get(5)?;
         let crypto_json: String = row.get(6)?;
@@ -163,7 +182,7 @@ impl VaultDb {
         };
         let entry_id: String = row.get(0)?;
 
-        Ok(Some(VaultEntry {
+        Ok(VaultEntry {
             id: entry_id.clone(),
             profile,
             folder_id: row.get(7)?,
@@ -172,7 +191,7 @@ impl VaultDb {
             created_at: row.get(8)?,
             updated_at: row.get(9)?,
             last_used_at: row.get(10)?,
-        }))
+        })
     }
 
     pub fn list_folders(&self) -> Result<Vec<Folder>> {
@@ -256,6 +275,83 @@ impl VaultDb {
 
         rows.collect::<std::result::Result<Vec<_>, _>>()
             .map_err(Into::into)
+    }
+
+    /// Merge an export document into the vault inside one transaction.
+    /// Folders and entries are matched by id and skipped when they already
+    /// exist, so re-importing the same file is a no-op.
+    pub fn import_export(&self, export: &VaultExport) -> Result<ImportReport> {
+        let tx = self.conn.unchecked_transaction()?;
+        let mut report = ImportReport {
+            folders_created: 0,
+            folders_skipped: 0,
+            entries_created: 0,
+            entries_skipped: 0,
+        };
+        for folder in &export.folders {
+            let affected = tx.execute(
+                "INSERT OR IGNORE INTO folders (id, parent_id, name) VALUES (?1, ?2, ?3)",
+                params![&folder.id, &folder.parent_id, &folder.name],
+            )?;
+            if affected == 0 {
+                report.folders_skipped += 1;
+            } else {
+                report.folders_created += 1;
+            }
+        }
+        for entry in &export.entries {
+            let affected = tx.execute(
+                "INSERT OR IGNORE INTO entries
+                 (id, site, login, counter, options_json, salt_fields_json, crypto_json, folder_id, created_at, updated_at, last_used_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                params![
+                    &entry.id,
+                    &entry.profile.site,
+                    &entry.profile.login,
+                    entry.profile.counter,
+                    serde_json::to_string(&entry.profile.options)?,
+                    serde_json::to_string(&entry.profile.salt_fields)?,
+                    serde_json::to_string(&entry.profile.crypto)?,
+                    &entry.folder_id,
+                    &entry.created_at,
+                    &entry.updated_at,
+                    &entry.last_used_at,
+                ],
+            )?;
+            if affected == 0 {
+                report.entries_skipped += 1;
+                continue;
+            }
+            report.entries_created += 1;
+            for tag in &entry.tags {
+                let tag_id = Uuid::new_v4().to_string();
+                tx.execute(
+                    "INSERT OR IGNORE INTO tags (id, name) VALUES (?1, ?2)",
+                    params![&tag_id, tag],
+                )?;
+                let existing_id: String = tx.query_row(
+                    "SELECT id FROM tags WHERE name = ?1",
+                    params![tag],
+                    |row| row.get(0),
+                )?;
+                tx.execute(
+                    "INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?1, ?2)",
+                    params![&entry.id, &existing_id],
+                )?;
+            }
+            for group_id in &entry.group_ids {
+                tx.execute(
+                    "INSERT OR IGNORE INTO groups (id, name) VALUES (?1, ?2)",
+                    params![group_id, group_id],
+                )?;
+                tx.execute(
+                    "INSERT OR IGNORE INTO entry_groups (entry_id, group_id) VALUES (?1, ?2)",
+                    params![&entry.id, group_id],
+                )?;
+            }
+        }
+        tx.commit()?;
+        Ok(report)
     }
 
     pub fn mark_used(&self, id: &str) -> Result<()> {

@@ -60,6 +60,7 @@ jobs:
       - name: Extension zip
         run: |
           VER="${TAG#v}"
+          yarn workspace passforge-extension build
           (cd packages/passforge-extension/dist && zip -qr "$GITHUB_WORKSPACE/passforge-extension-$VER.zip" .)
 
       - name: passforge-server (macOS universal)

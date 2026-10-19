@@ -14,12 +14,13 @@ fn main() {
             Err(e) => fail(&e.to_string()),
         },
     };
-    let db = vault::open_existing_at(&db_path).ok();
-    if db.is_none() {
-        // Degrade gracefully: ping/search still answer; data ops report
-        // "vault unavailable" rather than the host dying on first frame.
-        eprintln!("passforge-host: vault unavailable at {}", db_path.display());
-    }
+    let db = vault::open_existing_at(&db_path)
+        .map_err(|e| {
+            // Degrade gracefully: ping/search still answer; data ops report
+            // "vault unavailable" rather than the host dying on first frame.
+            eprintln!("passforge-host: vault unavailable at {}: {e}", db_path.display());
+        })
+        .ok();
 
     let stdin = std::io::stdin();
     let stdout = std::io::stdout();

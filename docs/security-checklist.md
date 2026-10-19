@@ -26,6 +26,10 @@ Status of the threat model as of the vault-hardening + security pass.
   master password.
 - [x] Key in macOS Keychain via `security-framework`; `FileSecretStore`
   (0600 file) elsewhere — explicitly not a security boundary on non-macOS.
+- [x] Only `errSecItemNotFound` means "no key". Any other Keychain failure
+  (denied/cancelled prompt — common when a rebuilt debug binary asks) is a
+  hard error, so `load_or_create_key` can never overwrite the real key and
+  orphan the vault.
 - [x] `mark_used` is the only write the native-messaging host can make.
 - [ ] No rekey/rotation path yet (master-password change is meaningless by
   design; DB-key rotation unimplemented).

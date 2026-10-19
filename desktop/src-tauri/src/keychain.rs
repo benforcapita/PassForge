@@ -23,6 +23,22 @@ pub trait SecretStore: Send + Sync {
 #[derive(Debug, Default)]
 pub struct MacKeychain;
 
+/// `errSecItemNotFound`: the only Keychain failure that means "no such
+/// secret". Everything else (access denied, user cancelled the prompt,
+/// interaction not allowed, ...) must surface as an error — treating it as
+/// "missing" would let `load_or_create_key` overwrite the real vault key.
+#[cfg(target_os = "macos")]
+const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
+
+#[cfg(target_os = "macos")]
+fn load_optional(account: &str) -> Result<Option<Vec<u8>>> {
+    match get_generic_password(SERVICE, account) {
+        Ok(value) => Ok(Some(value)),
+        Err(err) if err.code() == ERR_SEC_ITEM_NOT_FOUND => Ok(None),
+        Err(err) => Err(PassForgeError::Keychain(err.to_string())),
+    }
+}
+
 #[cfg(target_os = "macos")]
 impl SecretStore for MacKeychain {
     fn save_master_password(&self, value: &[u8]) -> Result<()> {
@@ -31,10 +47,7 @@ impl SecretStore for MacKeychain {
     }
 
     fn load_master_password(&self) -> Result<Option<Vec<u8>>> {
-        match get_generic_password(SERVICE, MASTER_ACCOUNT) {
-            Ok(value) => Ok(Some(value)),
-            Err(_) => Ok(None),
-        }
+        load_optional(MASTER_ACCOUNT)
     }
 
     fn delete_master_password(&self) -> Result<()> {
@@ -50,10 +63,7 @@ impl SecretStore for MacKeychain {
     }
 
     fn load_database_key(&self) -> Result<Option<Vec<u8>>> {
-        match get_generic_password(SERVICE, DB_KEY_ACCOUNT) {
-            Ok(value) => Ok(Some(value)),
-            Err(_) => Ok(None),
-        }
+        load_optional(DB_KEY_ACCOUNT)
     }
 }
 

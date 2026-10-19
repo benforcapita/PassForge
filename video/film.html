@@ -1,0 +1,592 @@
+<!doctype html>
+<!--
+  PassForge — 2-minute motion-graphics demo.
+  Deterministic: everything is a pure function of time via window.seek(t).
+  Preview: `node render.mjs --serve` then open http://localhost:4175/film.html
+  (?t=45 jumps to a time; ?play plays in real time).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>PassForge — severed by design</title>
+<style>
+  :root {
+    --canvas: #070a0f; --base: #0d1117; --raised: #161b22; --overlay: #21262d;
+    --accent: #06b6d4; --accent2: #38bdf8; --warn: #f59e0b; --err: #ef4444; --ok: #10b981;
+    --text: #f0f6fc; --text2: #8b949e; --muted: #484f58; --border: #30363d;
+    --sans: -apple-system, "SF Pro Display", "Inter", system-ui, sans-serif;
+    --mono: "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--canvas);
+           font-family: var(--sans); color: var(--text); }
+  .abs { position: absolute; left: 0; top: 0; }
+  .layer { position: absolute; inset: 0; }
+
+  /* background */
+  #grid { position: absolute; inset: -200px; opacity: .35;
+          background-image: linear-gradient(rgba(48,54,61,.35) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(48,54,61,.35) 1px, transparent 1px);
+          background-size: 64px 64px; mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%); }
+  .glow { position: absolute; width: 1100px; height: 1100px; border-radius: 50%; filter: blur(40px); }
+  #glowA { background: radial-gradient(circle, rgba(6,182,212,.20), transparent 60%); }
+  #glowB { background: radial-gradient(circle, rgba(56,189,248,.12), transparent 60%); }
+  #glowR { background: radial-gradient(circle, rgba(239,68,68,.22), transparent 60%); opacity: 0; }
+
+  /* type */
+  .kicker { font: 600 18px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+  .h1 { font-weight: 700; letter-spacing: -.03em; }
+  .accent { color: var(--accent); } .red { color: var(--err); } .warnc { color: var(--warn); }
+  code, .mono { font-family: var(--mono); }
+
+  /* title */
+  #title { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .mark { width: 120px; height: 120px; border-radius: 30px; position: relative;
+          background: linear-gradient(140deg, #0e7490, #06b6d4 55%, #38bdf8);
+          box-shadow: 0 0 80px rgba(6,182,212,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+  .mark i { position: absolute; width: 22px; height: 22px; border-radius: 50%; top: 49px; background: #070a0f; }
+  .mark i:nth-child(1) { left: 21px; } .mark i:nth-child(2) { left: 49px; } .mark i:nth-child(3) { left: 77px; }
+  .mark i b { position: absolute; inset: 5px; border-radius: 50%; }
+  #wordmark { font-size: 150px; margin-top: 40px; display: flex; }
+  #wordmark span { display: inline-block; }
+  .tag { font-size: 48px; font-weight: 500; color: var(--text2); margin-top: 18px; letter-spacing: -.01em; }
+
+  /* chips / cards */
+  .chip { position: absolute; padding: 18px 26px; border-radius: 14px; background: var(--raised);
+          border: 1px solid var(--border); font-size: 30px; white-space: nowrap; }
+  .chip small { display: block; font: 600 14px var(--mono); letter-spacing: .14em; text-transform: uppercase;
+                color: var(--text2); margin-bottom: 6px; }
+  .card { position: absolute; border-radius: 18px; background: var(--raised); border: 1px solid var(--border);
+          padding: 26px 30px; }
+  .card h3 { margin: 0 0 8px; font-size: 32px; letter-spacing: -.02em; display: flex; align-items: center; gap: 14px; }
+  .card p { margin: 0; font-size: 20px; color: var(--text2); }
+  .card.hot { border-color: rgba(6,182,212,.65); box-shadow: 0 0 0 1px rgba(6,182,212,.25), 0 0 70px rgba(6,182,212,.25); }
+  .card.dashed { border-style: dashed; background: rgba(22,27,34,.6); }
+  .pill { display: inline-block; padding: 6px 12px; border-radius: 999px; font: 600 15px var(--mono);
+          border: 1px solid; }
+  .vline { position: absolute; width: 3px; background: linear-gradient(var(--accent), rgba(6,182,212,.3));
+           transform-origin: top; border-radius: 2px; }
+  .vline.dash { background: repeating-linear-gradient(var(--muted) 0 10px, transparent 10px 18px); }
+  .pkt { position: absolute; width: 16px; height: 16px; border-radius: 50%; margin: -8px 0 0 -8px; }
+  .label { position: absolute; font: 500 22px var(--sans); color: var(--text2); white-space: nowrap; }
+
+  /* desktop window */
+  #desk { width: 1180px; height: 760px; transform-origin: 0 0; border-radius: 12px; overflow: hidden;
+          box-shadow: 0 40px 120px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.08); background: var(--base); }
+  #desk img, #popup img { position: absolute; left: 0; top: 0; }
+  #desk img { width: 1180px; height: 760px; }
+  .lights { position: absolute; left: 16px; top: 14px; display: flex; gap: 8px; z-index: 50; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; }
+
+  /* browser + popup */
+  #browser { width: 560px; height: 700px; transform-origin: 0 0; border-radius: 12px; overflow: hidden;
+             background: #0b0f14; box-shadow: 0 40px 120px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.08); }
+  .tb { height: 52px; background: #1b1f26; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+        border-bottom: 1px solid #2a2f37; }
+  .omni { flex: 1; height: 32px; border-radius: 16px; background: #0f1318; color: #c9d1d9; font-size: 14px;
+          display: flex; align-items: center; padding: 0 14px; gap: 8px; }
+  .exticon { width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(140deg,#0e7490,#06b6d4);
+             position: relative; }
+  .exticon i { position: absolute; top: 11px; width: 5px; height: 5px; border-radius: 50%; background: #070a0f; }
+  .page { position: absolute; left: 0; right: 0; top: 52px; bottom: 0; padding: 60px 50px; }
+  .page .ghost { height: 18px; border-radius: 9px; background: #161b22; margin-bottom: 16px; }
+  #popup { position: absolute; left: 204px; top: 60px; width: 340px; border-radius: 10px; overflow: hidden;
+           background: var(--canvas); transform-origin: 324px 0;
+           box-shadow: 0 24px 60px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.12); }
+  #popup img { width: 340px; }
+
+  /* algorithm-server diagram */
+  .box { position: absolute; border-radius: 16px; background: var(--raised); border: 1px solid var(--border);
+         padding: 20px 22px; }
+  .box h4 { margin: 0 0 6px; font-size: 24px; } .box p { margin: 0; font: 16px var(--mono); color: var(--text2); }
+  .never { position: absolute; font-size: 28px; display: flex; align-items: center; gap: 16px; }
+  .never b { color: var(--err); font-size: 26px; width: 30px; text-align: center; }
+
+  /* captions */
+  .cap { position: absolute; will-change: transform, opacity; }
+  .cap.lower { left: 50%; bottom: 46px; transform: translateX(-50%); text-align: center; padding: 18px 34px;
+               border-radius: 18px; background: rgba(7,10,15,.78); backdrop-filter: blur(14px);
+               border: 1px solid rgba(255,255,255,.08); white-space: nowrap; }
+  .cap .t { font-size: 40px; font-weight: 650; letter-spacing: -.02em; }
+  .cap .s { font-size: 22px; color: var(--text2); margin-top: 8px; }
+  .cap .kicker { margin-bottom: 12px; }
+  .cap.left { left: 130px; top: 320px; width: 760px; }
+  .cap.left .t { font-size: 66px; line-height: 1.05; }
+  .cap.left .s { font-size: 28px; line-height: 1.4; margin-top: 22px; }
+  .cap.right { left: 1110px; top: 120px; width: 740px; }
+  .cap.right .t { font-size: 48px; line-height: 1.1; }
+  .cap.center { left: 0; right: 0; bottom: 70px; text-align: center; }
+  .cap.center .t { display: inline-block; font-size: 92px; font-weight: 800; letter-spacing: -.04em;
+                   padding: 18px 46px; border-radius: 24px; background: rgba(7,10,15,.82);
+                   backdrop-filter: blur(16px); border: 1px solid rgba(239,68,68,.35);
+                   box-shadow: 0 0 90px rgba(239,68,68,.25); }
+
+  /* overlays */
+  .hl { position: absolute; border-radius: 10px; border: 3px solid var(--accent); pointer-events: none;
+        box-shadow: 0 0 0 6px rgba(6,182,212,.18), 0 0 40px rgba(6,182,212,.45); }
+  .hl.warn { border-color: var(--warn); box-shadow: 0 0 0 6px rgba(245,158,11,.18), 0 0 40px rgba(245,158,11,.45); }
+  .hl.err { border-color: var(--err); box-shadow: 0 0 0 6px rgba(239,68,68,.18), 0 0 46px rgba(239,68,68,.5); }
+  #cursor { position: absolute; width: 34px; height: 34px; margin: -3px 0 0 -6px; z-index: 50;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); }
+  .ripple { position: absolute; width: 90px; height: 90px; margin: -45px 0 0 -45px; border-radius: 50%;
+            border: 3px solid var(--accent); z-index: 49; }
+  #fadeblack { position: absolute; inset: 0; background: #000; z-index: 100; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="grid"></div>
+  <div class="glow" id="glowA"></div>
+  <div class="glow" id="glowB"></div>
+  <div class="glow" id="glowR"></div>
+
+  <!-- 1 · title -->
+  <section class="layer" id="title">
+    <div class="mark" id="titleMark"><i><b style="background:#009191"></b></i><i><b style="background:#ff6cb6"></b></i><i><b style="background:#6db5fe"></b></i></div>
+    <div id="wordmark" class="h1"></div>
+    <div class="tag" id="tag1">Passwords from math, not from a database.</div>
+    <div class="tag" id="tag2" style="color:var(--text)">And frontends that <span class="accent">can't do the math.</span></div>
+  </section>
+
+  <!-- 2 · formula -->
+  <section class="layer" id="formula">
+    <div id="fRow" style="position:absolute;left:0;right:0;top:250px;display:flex;justify-content:center;align-items:center;gap:36px">
+      <div class="chip" id="fSite" style="position:relative"><small>site</small>github.com</div>
+      <div class="label" id="fPlus1" style="position:relative;font-size:44px;color:var(--muted)">+</div>
+      <div class="chip" id="fLogin" style="position:relative"><small>login</small>dev@passforge.io</div>
+      <div class="label" id="fPlus2" style="position:relative;font-size:44px;color:var(--muted)">+</div>
+      <div class="chip" id="fMaster" style="position:relative"><small>master password</small><span class="mono">••••••••••••</span></div>
+    </div>
+    <div class="card hot" id="fCore" style="left:760px;top:470px;width:400px;text-align:center;padding:30px">
+      <h3 style="justify-content:center;font-family:var(--mono);font-size:30px">lesspass-core</h3>
+      <p>PBKDF2 · 100 000 iterations</p>
+    </div>
+    <div class="chip" id="fOut" style="left:660px;top:720px;width:600px;text-align:center;border-color:rgba(6,182,212,.5)">
+      <small>password</small><span class="mono accent" id="fOutText" style="font-size:38px"></span></div>
+  </section>
+
+  <!-- 3 · architecture -->
+  <section class="layer" id="arch">
+    <div class="vline" id="aL1" style="left:709px;top:322px;height:128px"></div>
+    <div class="vline" id="aL2" style="left:1209px;top:322px;height:128px"></div>
+    <div class="vline dash" id="aL3" style="left:959px;top:622px;height:118px"></div>
+    <div class="card" id="aDesk" style="left:520px;top:170px;width:380px;height:152px">
+      <h3><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.6"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>Desktop window</h3>
+      <p>React · Tauri webview</p>
+      <span class="pill" id="aNo1" style="position:absolute;right:20px;bottom:22px;color:var(--warn);border-color:rgba(245,158,11,.5)">no algorithm</span>
+    </div>
+    <div class="card" id="aExt" style="left:1020px;top:170px;width:380px;height:152px">
+      <h3><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M4.3 16.5l4.7-2.7M19.7 16.5L15 13.8"/></svg>Chrome extension</h3>
+      <p>Manifest V3 popup</p>
+      <span class="pill" id="aNo2" style="position:absolute;right:20px;bottom:22px;color:var(--warn);border-color:rgba(245,158,11,.5)">no algorithm</span>
+    </div>
+    <div class="card hot" id="aBack" style="left:420px;top:450px;width:1080px;height:172px">
+      <h3><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.6"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/></svg>Local backend <span style="color:var(--text2);font-weight:500">— inside PassForge.app</span></h3>
+      <p class="mono" style="font-size:19px">127.0.0.1 · bearer token · lesspass-core · SQLCipher vault · Keychain</p>
+    </div>
+    <div class="card dashed" id="aSrv" style="left:620px;top:740px;width:680px;height:130px">
+      <h3 style="font-size:28px">Algorithm server <span style="color:var(--text2);font-weight:500">— optional</span></h3>
+      <p>stateless · zero-knowledge · self-hosted</p>
+    </div>
+    <div class="label" id="aHere" style="left:1530px;top:518px;color:var(--accent);font-weight:650;font-size:26px">← the algorithm lives here</div>
+    <div class="label" id="aBlind" style="left:985px;top:666px;font-family:var(--mono);font-size:19px">one blinded hash ↓</div>
+    <div class="pkt" id="p1"></div><div class="pkt" id="p2"></div><div class="pkt" id="p3"></div><div class="pkt" id="p4"></div>
+  </section>
+
+  <!-- 4–5, 7 · desktop window -->
+  <div class="abs" id="desk">
+    <div class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+  </div>
+
+  <!-- 6 · browser + extension popup -->
+  <div class="abs" id="browser">
+    <div class="tb">
+      <div style="display:flex;gap:7px"><i style="width:11px;height:11px;border-radius:50%;background:#ff5f57"></i><i style="width:11px;height:11px;border-radius:50%;background:#febc2e"></i><i style="width:11px;height:11px;border-radius:50%;background:#28c840"></i></div>
+      <div class="omni"><span style="color:#6e7681">🔒</span>github.com/login</div>
+      <div class="exticon" id="extIcon"><i style="left:5px"></i><i style="left:10.5px"></i><i style="left:16px"></i></div>
+    </div>
+    <div class="page">
+      <div style="width:64px;height:64px;border-radius:50%;background:#161b22;margin:0 auto 34px"></div>
+      <div class="ghost" style="width:60%;margin:0 auto 28px"></div>
+      <div class="ghost" style="height:44px"></div><div class="ghost" style="height:44px"></div>
+      <div class="ghost" style="height:44px;background:#1f6f43;opacity:.5"></div>
+    </div>
+    <div id="popup"></div>
+  </div>
+
+  <!-- 7 · algorithm-server diagram -->
+  <section class="layer" id="algo">
+    <div class="box" id="gBack" style="left:1110px;top:360px;width:260px"><h4>Local backend</h4><p>blinds the request</p></div>
+    <div class="box" id="gSrv" style="left:1556px;top:360px;width:304px;border-style:dashed;border-color:rgba(6,182,212,.6)"><h4>passforge-server</h4><p style="font-size:15px">127.0.0.1:8790 · argon2id</p></div>
+    <div class="label" id="gReq" style="left:1392px;top:372px;font-family:var(--mono);font-size:16px;color:var(--accent)">32 B blinded →</div>
+    <div class="label" id="gRes" style="left:1440px;top:438px;font-family:var(--mono);font-size:16px">← 32 B</div>
+    <div class="pkt" id="gP1" style="background:var(--accent)"></div><div class="pkt" id="gP2" style="background:var(--ok)"></div>
+    <div class="label" id="gNeverH" style="left:1110px;top:530px;font-size:24px;letter-spacing:.14em;font-family:var(--mono);text-transform:uppercase;color:var(--text2)">the server never sees</div>
+    <div class="never" id="n1" style="left:1110px;top:585px"><b>✕</b>your site</div>
+    <div class="never" id="n2" style="left:1110px;top:635px"><b>✕</b>your login</div>
+    <div class="never" id="n3" style="left:1110px;top:685px"><b>✕</b>your master password</div>
+    <div class="never" id="n4" style="left:1110px;top:735px"><b>✕</b>the password it helps make</div>
+    <div class="label" id="gKey" style="left:1110px;top:810px;font-size:24px;width:740px;white-space:normal;line-height:1.4">
+      Its output is useless without a key that <span class="accent">never leaves your Mac.</span></div>
+  </section>
+
+  <!-- 8 · outro -->
+  <section class="layer" id="outro" style="display:flex;flex-direction:column;align-items:center;justify-content:center">
+    <div class="mark" id="oMark" style="width:96px;height:96px;border-radius:24px"><i style="top:38px;left:16px;width:18px;height:18px"><b style="background:#009191;inset:4px"></b></i><i style="top:38px;left:39px;width:18px;height:18px"><b style="background:#ff6cb6;inset:4px"></b></i><i style="top:38px;left:62px;width:18px;height:18px"><b style="background:#6db5fe;inset:4px"></b></i></div>
+    <div class="h1" id="oWord" style="font-size:120px;margin-top:30px">PassForge</div>
+    <div id="oTag" style="font-size:46px;color:var(--text2);margin-top:6px">Severed by design.</div>
+    <div id="oPills" style="display:flex;gap:14px;margin-top:46px">
+      <span class="pill" style="color:var(--text2);border-color:var(--border);font-size:20px;padding:10px 18px">Rust</span>
+      <span class="pill" style="color:var(--text2);border-color:var(--border);font-size:20px;padding:10px 18px">Tauri 2</span>
+      <span class="pill" style="color:var(--text2);border-color:var(--border);font-size:20px;padding:10px 18px">React 19</span>
+      <span class="pill" style="color:var(--text2);border-color:var(--border);font-size:20px;padding:10px 18px">Chrome MV3</span>
+      <span class="pill" style="color:var(--accent);border-color:rgba(6,182,212,.5);font-size:20px;padding:10px 18px">self-hosted server</span>
+    </div>
+    <div id="oUrl" class="mono" style="font-size:30px;margin-top:40px;color:var(--text)">github.com/benforcapita/PassForge</div>
+  </section>
+
+  <div class="layer" id="hls"></div>
+  <div class="layer" id="caps"></div>
+  <div class="layer" id="ripples"></div>
+  <svg id="cursor" viewBox="0 0 24 24"><path d="M4 2.5l15 11.2-6.6 1 3.9 7.4-2.6 1.3-3.9-7.5L4 20.6z" fill="#fff" stroke="#070a0f" stroke-width="1.3" stroke-linejoin="round"/></svg>
+  <div id="fadeblack"></div>
+</div>
+
+<script>
+/* ============================================================ engine */
+const DURATION = 120;
+const $ = (id) => document.getElementById(id);
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const pr = (t, a, b) => cl((t - a) / (b - a));
+const E = {
+  out: (x) => 1 - (1 - x) ** 3,
+  io: (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2),
+  back: (x) => 1 + 2.4 * (x - 1) ** 3 + 1.4 * (x - 1) ** 2,
+};
+const lerp = (a, b, k) => a + (b - a) * k;
+/** fade in over [a,b], hold, fade out over [c,d] */
+const win = (t, a, b, c = 1e9, d = 1e9) => Math.min(E.out(pr(t, a, b)), 1 - E.io(pr(t, c, d)));
+const set = (el, o = 1, x = 0, y = 0, s = 1) => {
+  el.style.opacity = o;
+  el.style.visibility = o <= 0.001 ? "hidden" : "visible";
+  el.style.transform = `translate(${x}px,${y}px) scale(${s})`;
+};
+/** keyframes [{t0,t1,v}] — first is the initial value; eases component-wise */
+function track(kfs, t) {
+  let v = kfs[0].v;
+  for (let i = 1; i < kfs.length; i++) {
+    const k = kfs[i];
+    if (t >= k.t1) { v = k.v; continue; }
+    if (t > k.t0) {
+      const e = E.io(pr(t, k.t0, k.t1));
+      const o = {};
+      for (const key in k.v) o[key] = lerp(v[key], k.v[key], e);
+      v = o;
+    }
+    break;
+  }
+  return v;
+}
+
+/* ============================================================ data */
+let SHOTS = window.SHOTS;
+const DESK = { s0: 1.18, w: 1180, h: 760 };
+DESK.base = { s: DESK.s0, tx: (1920 - 1180 * DESK.s0) / 2, ty: 62 };
+const focus = (fx, fy, z, ax = 960, ay = 500) => {
+  const s = DESK.s0 * z;
+  return { s, tx: ax - fx * s, ty: ay - fy * s };
+};
+const ALGO = { s: 0.82, tx: 70, ty: 228 };
+const BR = { s: 1.42, tx: 1920 - 560 * 1.42 - 120, ty: 43 };
+
+const deskShots = [
+  [37, "d1-connected"], [45.62, "d2-revealed"], [55.52, "d3-servers-connected"],
+  [59.12, "d4-servers-disconnected"], [61.92, "d5-gate"], [65.12, "d6-copy-refused"],
+  [93.8, "d8-server-active"], [104.12, "d9-server-mode"],
+];
+const extShots = [
+  [76.4, "e1-disconnected"], [80.02, "e2-servers-disconnected"], [82.42, "e3-servers-connected"],
+  [85.62, "e4-ready"], [88.32, "e5-generated"],
+];
+const deskCam = [
+  { t0: 0, t1: 0, v: DESK.base },
+  { t0: 40.2, t1: 41.8, v: focus(1052, 20, 2.3, 1180, 420) },
+  { t0: 43.2, t1: 44.9, v: focus(860, 214, 1.9, 960, 470) },
+  { t0: 50.4, t1: 52, v: DESK.base },
+  { t0: 55.8, t1: 57.2, v: focus(600, 386, 1.2, 960, 500) },
+  { t0: 62, t1: 63.2, v: DESK.base },
+  { t0: 65.5, t1: 67, v: focus(860, 270, 2.05, 960, 470) },
+  { t0: 71.6, t1: 72.8, v: DESK.base },
+  { t0: 93.7, t1: 93.75, v: ALGO },
+  { t0: 104.5, t1: 106.2, v: focus(560, 748, 2.4, 900, 560) },
+];
+// cursor: stage-local coordinates; `show` windows control visibility
+const cursorKf = [
+  { t0: 0, t1: 0, v: { stage: 0, x: 900, y: 520 } },
+  { t0: 39.4, t1: 40.4, v: { stage: 0, x: 1052, y: 20 } },
+  { t0: 43.4, t1: 44.9, v: { stage: 0, x: 1097, y: 213 } },
+  { t0: 47.5, t1: 48.6, v: { stage: 0, x: 980, y: 330 } },
+  { t0: 53.0, t1: 54.7, v: { stage: 0, x: 1052, y: 20 } },
+  { t0: 55.8, t1: 56.8, v: { stage: 0, x: 640, y: 330 } },
+  { t0: 57.6, t1: 58.6, v: { stage: 0, x: 729, y: 258 } },
+  { t0: 60.2, t1: 61.4, v: { stage: 0, x: 768, y: 598 } },
+  { t0: 63.2, t1: 64.6, v: { stage: 0, x: 1119, y: 213 } },
+  { t0: 74.9, t1: 75.0, v: { stage: 1, x: 300, y: 430 } },
+  { t0: 75.2, t1: 76.1, v: { stage: 1, x: 534, y: 26 } },
+  { t0: 78.6, t1: 79.6, v: { stage: 1, x: 323, y: 119 } },
+  { t0: 81.0, t1: 82.0, v: { stage: 1, x: 484, y: 207 } },
+  { t0: 84.3, t1: 85.2, v: { stage: 1, x: 254, y: 119 } },
+  { t0: 86.8, t1: 87.8, v: { stage: 1, x: 294, y: 553 } },
+  { t0: 101.0, t1: 101.1, v: { stage: 0, x: 900, y: 450 } },
+  { t0: 102.0, t1: 103.5, v: { stage: 0, x: 768, y: 652 } },
+];
+const cursorShow = [[38.6, 72.4], [74.9, 92.3], [101.0, 104.4]];
+const CLICKS = [45.5, 55.4, 59.0, 61.8, 65.0, 76.4, 79.9, 82.3, 85.5, 88.2, 104.0];
+window.CLICKS = CLICKS;
+const highlights = [
+  { t0: 40.9, t1: 43.1, stage: 0, b: [972, 4, 160, 32], cls: "" },
+  { t0: 46.0, t1: 50.4, stage: 0, b: [584, 190, 560, 52], cls: "" },
+  { t0: 66.4, t1: 71.6, stage: 0, b: [576, 238, 568, 70], cls: "err" },
+  { t0: 77.0, t1: 79.3, stage: 1, b: [214, 140, 320, 72], cls: "warn" },
+  { t0: 83.0, t1: 84.2, stage: 1, b: [216, 175, 320, 82], cls: "" },
+  { t0: 88.6, t1: 92.0, stage: 1, b: [216, 484, 320, 50], cls: "" },
+  { t0: 106.4, t1: 109.0, stage: 0, b: [508, 739, 244, 20], cls: "" },
+];
+const captions = [
+  // formula
+  { t0: 14.3, t1: 19.3, pos: "lower", t: 'Same inputs → same password. <span class="accent">Nothing stored, nothing synced.</span>', s: "The only question: where does the math run?" },
+  // arch
+  { t0: 30.6, t1: 36.2, pos: "lower", t: 'Frontends are clients. <span class="accent">No backend connection → no password.</span>' },
+  // desktop
+  { t0: 38.6, t1: 43.0, pos: "lower", k: "Desktop app", t: "Connected to its local backend." },
+  { t0: 43.6, t1: 50.6, pos: "lower", k: "Reveal", t: '<code class="accent">POST /api/entries/{id}/generate</code>', s: "The window holds no algorithm — it asks the backend." },
+  { t0: 55.8, t1: 58.8, pos: "lower", k: "Servers", t: "1 · the backend this window depends on." },
+  { t0: 59.2, t1: 61.6, pos: "lower", t: "Disconnect." },
+  { t0: 62.2, t1: 65.0, pos: "lower", t: "Now try to copy the password…" },
+  { t0: 65.6, t1: 72.6, pos: "center", t: 'No backend. <span class="red">No password.</span>' },
+  // extension
+  { t0: 75.4, t1: 79.6, pos: "left", k: "Chrome extension", t: "Opens <span class=\"warnc\">disconnected.</span>", s: "There is no algorithm inside it. Generate stays disabled until it reaches the backend." },
+  { t0: 80.0, t1: 84.2, pos: "left", k: "Chrome extension", t: "Connect in the <span class=\"accent\">Servers</span> tab.", s: "Paired through the native host — it reads the backend's port and token from the vault directory." },
+  { t0: 84.6, t1: 92.4, pos: "left", k: "Chrome extension", t: "The backend<br/>does the math.", s: "Key fingerprint and password are API calls to <code>127.0.0.1</code>." },
+  // algorithm server
+  { t0: 95.0, t1: 104.2, pos: "right", k: "Algorithm server · optional", t: "Self-host a zero-knowledge algorithm server." },
+  { t0: 104.6, t1: 109.2, pos: "lower", t: "Switch servers anytime — <span class=\"accent\">every password changes.</span>", s: "cargo run -p passforge-server  ·  Docker  ·  systemd + TLS — all in the README" },
+];
+
+/* ============================================================ build DOM */
+const deskImgs = [], extImgs = [], capEls = [], hlEls = [], ripEls = [];
+function build() {
+  for (const [, n] of deskShots) {
+    const img = new Image(); img.src = `shots/${SHOTS.desktop.shots[n].file}`; $("desk").appendChild(img); deskImgs.push(img);
+  }
+  // keep chronological stacking: later shots above earlier
+  deskImgs.forEach((img, i) => (img.style.zIndex = i + 1));
+  for (const [, n] of extShots) {
+    const img = new Image(); img.src = `shots/${SHOTS.extension.shots[n].file}`; $("popup").appendChild(img); extImgs.push(img);
+  }
+  extImgs.forEach((img, i) => (img.style.zIndex = i + 1));
+  const word = "PassForge";
+  for (const ch of word) { const s = document.createElement("span"); s.textContent = ch; $("wordmark").appendChild(s); }
+  for (const c of captions) {
+    const el = document.createElement("div");
+    el.className = `cap ${c.pos}`;
+    el.innerHTML = `${c.k ? `<div class="kicker">${c.k}</div>` : ""}<div class="t">${c.t}</div>${c.s ? `<div class="s">${c.s}</div>` : ""}`;
+    $("caps").appendChild(el); capEls.push(el);
+  }
+  for (const h of highlights) { const el = document.createElement("div"); el.className = `hl ${h.cls}`; $("hls").appendChild(el); hlEls.push(el); }
+  for (const _ of CLICKS) { const el = document.createElement("div"); el.className = "ripple"; $("ripples").appendChild(el); ripEls.push(el); }
+  return Promise.all([...deskImgs, ...extImgs].map((i) => i.decode()));
+}
+
+/* ============================================================ stages */
+function shotFade(imgs, list, t) {
+  let cur = -1;
+  list.forEach(([ts], i) => { if (t >= ts) cur = i; });
+  imgs.forEach((img, i) => {
+    const o = i === cur ? pr(t, list[i][0], list[i][0] + 0.16) : i === cur - 1 ? 1 : 0;
+    img.style.opacity = o; img.style.visibility = o ? "visible" : "hidden";
+  });
+  return cur;
+}
+function deskState(t) {
+  const cam = track(deskCam, t);
+  let dx = 0, dy = 0, o = 0;
+  if (t < 80) {
+    o = win(t, 37, 38.4, 72.9, 74);
+    dy = (1 - E.out(pr(t, 37, 38.6))) * 140;
+    dx = -E.io(pr(t, 72.9, 74)) * 260;
+  } else {
+    o = win(t, 93.8, 95, 109.2, 110);
+    dx = (1 - E.out(pr(t, 93.8, 95.2))) * -200;
+  }
+  return { s: cam.s, tx: cam.tx + dx, ty: cam.ty + dy, o };
+}
+function browserState(t) {
+  const o = win(t, 74, 75.2, 92.6, 93.6);
+  const dx = (1 - E.out(pr(t, 74, 75.4))) * 220 + E.io(pr(t, 92.6, 93.6)) * 220;
+  return { s: BR.s, tx: BR.tx + dx, ty: BR.ty, o };
+}
+const toScreen = (st, x, y) => [st.tx + x * st.s, st.ty + y * st.s];
+
+/* ============================================================ seek */
+function seek(t) {
+  // background
+  set($("glowA"), 1, 300 + Math.sin(t / 9) * 120, -260 + Math.cos(t / 11) * 80);
+  set($("glowB"), 1, 900 + Math.cos(t / 13) * 140, 300 + Math.sin(t / 7) * 60);
+  const red = win(t, 65.4, 66.2, 71.4, 72.8);
+  set($("glowR"), red, 400, 0, 1.2);
+  $("grid").style.transform = `translate(${(t * 6) % 64}px, ${(t * 3) % 64}px)`;
+  $("fadeblack").style.opacity = Math.max(1 - pr(t, 0, 0.6), pr(t, 119, 120));
+
+  // 1 · title
+  const tOut = 1 - E.io(pr(t, 7, 7.9));
+  set($("title"), tOut);
+  set($("titleMark"), E.out(pr(t, 0.3, 1.1)), 0, (1 - E.back(pr(t, 0.3, 1.2))) * 40, lerp(0.6, 1, E.back(pr(t, 0.3, 1.2))));
+  [...$("wordmark").children].forEach((s, i) => {
+    const k = pr(t, 0.7 + i * 0.06, 1.3 + i * 0.06);
+    set(s, E.out(k), 0, (1 - E.out(k)) * 60);
+  });
+  set($("tag1"), win(t, 2.2, 2.9), 0, (1 - E.out(pr(t, 2.2, 2.9))) * 20);
+  set($("tag2"), win(t, 4.2, 4.9), 0, (1 - E.out(pr(t, 4.2, 4.9))) * 20);
+
+  // 2 · formula
+  const fo = win(t, 8, 8.4, 19.2, 19.9);
+  set($("formula"), fo);
+  const merge = E.io(pr(t, 11.4, 12.4));
+  [["fSite", 8.4], ["fLogin", 8.9], ["fMaster", 9.4]].forEach(([id, a]) => {
+    const el = $(id), toX = 960 - (el.offsetLeft + el.offsetWidth / 2);
+    const k = E.out(pr(t, a, a + 0.6));
+    set($(id), k * (1 - merge), toX * merge, (1 - k) * 30 + merge * 250, 1 - merge * 0.5);
+  });
+  set($("fPlus1"), E.out(pr(t, 9.0, 9.4)) * (1 - merge)); set($("fPlus2"), E.out(pr(t, 9.5, 9.9)) * (1 - merge));
+  const pulse = 1 + 0.06 * Math.sin(pr(t, 12.2, 12.9) * Math.PI);
+  set($("fCore"), E.out(pr(t, 10.4, 11.0)), 0, (1 - E.out(pr(t, 10.4, 11))) * 30, pulse);
+  set($("fOut"), E.out(pr(t, 12.7, 13.2)), 0, (1 - E.out(pr(t, 12.7, 13.2))) * 20);
+  const pw = "b5sJn&W&ENQeY6Cb";
+  $("fOutText").textContent = pw.slice(0, Math.round(pr(t, 12.9, 14.0) * pw.length)) || "\u00a0";
+
+  // 3 · architecture
+  const ao = win(t, 20, 20.3, 36.2, 36.9);
+  set($("arch"), ao);
+  set($("aDesk"), E.out(pr(t, 20.4, 21.1)), 0, (1 - E.out(pr(t, 20.4, 21.1))) * -40);
+  set($("aExt"), E.out(pr(t, 20.7, 21.4)), 0, (1 - E.out(pr(t, 20.7, 21.4))) * -40);
+  ["aL1", "aL2"].forEach((id) => { const k = E.io(pr(t, 21.6, 22.6)); $(id).style.opacity = k ? 1 : 0; $(id).style.transform = `scaleY(${k})`; });
+  set($("aBack"), E.out(pr(t, 22.6, 23.4)), 0, (1 - E.out(pr(t, 22.6, 23.4))) * 40, lerp(0.96, 1, E.out(pr(t, 22.6, 23.4))));
+  set($("aHere"), win(t, 24.4, 25.0), (1 - E.out(pr(t, 24.4, 25))) * 30);
+  { const k = E.io(pr(t, 25.8, 26.6)); $("aL3").style.opacity = k ? 1 : 0; $("aL3").style.transform = `scaleY(${k})`; }
+  set($("aSrv"), E.out(pr(t, 26.2, 26.9)), 0, (1 - E.out(pr(t, 26.2, 26.9))) * 40);
+  set($("aBlind"), win(t, 27.4, 28));
+  const noK = E.back(pr(t, 29.2, 29.7));
+  set($("aNo1"), cl(noK), 0, 0, lerp(0.4, 1, noK)); set($("aNo2"), cl(noK), 0, 0, lerp(0.4, 1, noK));
+  [["p1", 710, 0], ["p2", 1210, 0.5], ["p3", 710, 1.0], ["p4", 1210, 1.5]].forEach(([id, x, off]) => {
+    const el = $(id);
+    if (t < 28 || t > 36) return set(el, 0);
+    const ph = ((t - 28 + off) % 2) / 2; // 0..1: down then up
+    const down = ph < 0.5;
+    const k = E.io(down ? ph * 2 : (ph - 0.5) * 2);
+    const y = down ? lerp(326, 446, k) : lerp(446, 326, k);
+    el.style.background = down ? "var(--accent)" : "var(--ok)";
+    el.style.boxShadow = `0 0 18px ${down ? "rgba(6,182,212,.9)" : "rgba(16,185,129,.9)"}`;
+    set(el, 1, x, y);
+  });
+
+  // desktop window
+  const ds = deskState(t);
+  const desk = $("desk");
+  desk.style.opacity = ds.o; desk.style.visibility = ds.o > 0.001 ? "visible" : "hidden";
+  desk.style.transform = `translate(${ds.tx}px,${ds.ty}px) scale(${ds.s})`;
+  shotFade(deskImgs, deskShots, t);
+
+  // browser + popup
+  const bs = browserState(t);
+  const br = $("browser");
+  br.style.opacity = bs.o; br.style.visibility = bs.o > 0.001 ? "visible" : "hidden";
+  br.style.transform = `translate(${bs.tx}px,${bs.ty}px) scale(${bs.s})`;
+  const cur = shotFade(extImgs, extShots, t);
+  const heights = extShots.map(([, n]) => SHOTS.extension.shots[n].height);
+  let h = heights[0];
+  if (cur > 0) h = lerp(heights[cur - 1], heights[cur], E.io(pr(t, extShots[cur][0], extShots[cur][0] + 0.3)));
+  $("popup").style.height = `${h}px`;
+  const pk = E.back(pr(t, 76.45, 76.9));
+  set($("popup"), cl(pk * 3), 0, 0, lerp(0.85, 1, pk));
+
+  // 7 · algorithm diagram
+  set($("algo"), win(t, 95, 95.6, 104.1, 104.7));
+  set($("gBack"), E.out(pr(t, 95.4, 96)), 0, (1 - E.out(pr(t, 95.4, 96))) * 30);
+  set($("gSrv"), E.out(pr(t, 95.8, 96.4)), 0, (1 - E.out(pr(t, 95.8, 96.4))) * 30);
+  set($("gReq"), win(t, 96.6, 97)); set($("gRes"), win(t, 97, 97.4));
+  [["gP1", 0, true], ["gP2", 1, false]].forEach(([id, off, fwd]) => {
+    if (t < 96.8 || t > 104.2) return set($(id), 0);
+    const k = E.io(((t - 96.8 + off) % 2) / 2);
+    set($(id), 1, fwd ? lerp(1384, 1544, k) : lerp(1544, 1384, k), fwd ? 410 : 428);
+  });
+  set($("gNeverH"), win(t, 98.8, 99.3));
+  ["n1", "n2", "n3", "n4"].forEach((id, i) => { const k = E.out(pr(t, 99.4 + i * 0.5, 99.9 + i * 0.5)); set($(id), k, (1 - k) * -24); });
+  set($("gKey"), win(t, 101.8, 102.4));
+
+  // 8 · outro
+  set($("outro"), win(t, 110, 110.5));
+  set($("oMark"), E.out(pr(t, 110.3, 111)), 0, 0, lerp(0.7, 1, E.back(pr(t, 110.3, 111.1))));
+  set($("oWord"), E.out(pr(t, 110.6, 111.3)), 0, (1 - E.out(pr(t, 110.6, 111.3))) * 30);
+  set($("oTag"), E.out(pr(t, 111.4, 112)), 0, (1 - E.out(pr(t, 111.4, 112))) * 20);
+  set($("oPills"), E.out(pr(t, 112.4, 113)), 0, (1 - E.out(pr(t, 112.4, 113))) * 20);
+  set($("oUrl"), E.out(pr(t, 113.4, 114)));
+
+  // captions
+  captions.forEach((c, i) => {
+    const el = capEls[i];
+    const o = win(t, c.t0, c.t0 + 0.4, c.t1 - 0.35, c.t1);
+    const k = E.out(pr(t, c.t0, c.t0 + 0.5));
+    el.style.opacity = o; el.style.visibility = o > 0.001 ? "visible" : "hidden";
+    if (c.pos === "lower") el.style.transform = `translate(-50%, ${(1 - k) * 24}px)`;
+    else if (c.pos === "center") el.style.transform = `scale(${lerp(0.85, 1, E.back(pr(t, c.t0, c.t0 + 0.5)))})`;
+    else el.style.transform = `translateY(${(1 - k) * 30}px)`;
+  });
+
+  // highlights, cursor, ripples
+  const stages = [ds, bs];
+  highlights.forEach((hl, i) => {
+    const st = stages[hl.stage];
+    const [x, y] = toScreen(st, hl.b[0], hl.b[1]);
+    const el = hlEls[i];
+    el.style.left = `${x}px`; el.style.top = `${y}px`;
+    el.style.width = `${hl.b[2] * st.s}px`; el.style.height = `${hl.b[3] * st.s}px`;
+    const o = win(t, hl.t0, hl.t0 + 0.3, hl.t1 - 0.3, hl.t1) * st.o;
+    el.style.opacity = o * (0.75 + 0.25 * Math.sin(t * 6)); el.style.visibility = o > 0.001 ? "visible" : "hidden";
+  });
+  const cv = track(cursorKf, t);
+  const stage = Math.round(cv.stage);
+  const [cx, cy] = toScreen(stages[stage], cv.x, cv.y);
+  const show = Math.max(...cursorShow.map(([a, b]) => win(t, a, a + 0.25, b - 0.25, b)));
+  const press = Math.max(0, ...CLICKS.map((c) => 1 - Math.abs(t - c) / 0.12)) ;
+  const cur$ = $("cursor");
+  cur$.style.opacity = show; cur$.style.visibility = show > 0.001 ? "visible" : "hidden";
+  cur$.style.transform = `translate(${cx}px,${cy}px) scale(${1 - 0.18 * cl(press)})`;
+  CLICKS.forEach((c, i) => {
+    const k = pr(t, c, c + 0.55);
+    const el = ripEls[i];
+    if (k <= 0 || k >= 1) return set(el, 0);
+    const p = track(cursorKf, c);
+    const [rx, ry] = toScreen(stages[Math.round(p.stage)], p.x, p.y);
+    set(el, 1 - k, rx, ry, lerp(0.2, 1.4, E.out(k)));
+  });
+}
+
+/* ============================================================ boot */
+window.ready = (async () => {
+  if (!SHOTS) SHOTS = await (await fetch("shots/shots.json")).json();
+  await build();
+  await document.fonts.ready;
+  window.seek = seek;
+  const q = new URLSearchParams(location.search);
+  seek(Number(q.get("t") ?? 0.8));
+  if (q.has("play")) {
+    const start = performance.now() - Number(q.get("t") ?? 0) * 1000;
+    const loop = () => { const t = (performance.now() - start) / 1000; seek(t % DURATION); requestAnimationFrame(loop); };
+    loop();
+  }
+})();
+</script>
+</body>
+</html>

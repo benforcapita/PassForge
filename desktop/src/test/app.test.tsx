@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   EntrySummary,
@@ -334,6 +334,16 @@ describe("Servers panel — backend severance", () => {
     render(<Workbench onLock={vi.fn()} />);
     expect(await screen.findByRole("button", { name: "Backend connected" })).toBeInTheDocument();
     expect(api.backendInfo).toHaveBeenCalled();
+  });
+
+  it("disconnecting clears a previously revealed password", async () => {
+    render(<Workbench onLock={vi.fn()} />);
+    fireEvent.click(await screen.findByText("github.com"));
+    await screen.findByRole("button", { name: "Backend connected" });
+    fireEvent.click(screen.getByRole("button", { name: "Reveal password" }));
+    expect(await screen.findByText("S3cret-Value!")).toBeInTheDocument();
+    act(() => backend.disconnect());
+    await waitFor(() => expect(screen.queryByText("S3cret-Value!")).not.toBeInTheDocument());
   });
 
   it("disconnecting the backend makes generation impossible", async () => {

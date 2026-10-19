@@ -149,6 +149,11 @@ export function Workbench({ onLock }: { onLock: () => void }) {
     if (backend.backendState().status === "disconnected") void backend.connect();
   }, [refreshFolders]);
 
+  // Losing the backend also drops any password it produced earlier.
+  useEffect(() => {
+    if (be.status !== "connected") setPassword(null);
+  }, [be.status]);
+
   useEffect(() => {
     const id = window.setTimeout(() => void refreshEntries(), 150);
     return () => window.clearTimeout(id);

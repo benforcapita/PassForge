@@ -1,0 +1,14 @@
+{
+  "name": "passforge-video",
+  "private": true,
+  "type": "module",
+  "description": "Motion-graphics demo video: captures real UI states, renders a scripted timeline to MP4.",
+  "scripts": {
+    "capture": "node capture.mjs",
+    "render": "node render.mjs",
+    "build": "node capture.mjs && node render.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "25.12.0"
+  }
+}

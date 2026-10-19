@@ -605,6 +605,20 @@ Notable tests:
 
 CI: `.github/workflows/desktop-test.yml`, `packages-test.yml`, `cli-test.yml`.
 
+### Demo video
+
+`video/` renders a 2-minute motion-graphics demo (`video/out/passforge-demo.mp4`, 1080p30 with a synthesized soundtrack) from the **real UI**:
+
+```bash
+cd video && npm install
+node capture.mjs          # headless Chrome captures desktop (mock backend) + extension states → shots/
+node render.mjs           # renders film.html frame by frame → out/passforge-demo.mp4 (needs ffmpeg)
+node render.mjs --stills 47,68,90   # quick PNG checks
+node render.mjs --serve   # live preview at http://localhost:4175/film.html?play
+```
+
+The timeline is a pure function of time (`window.seek(t)` in `film.html`), so renders are deterministic. Re-run `capture.mjs` after UI changes.
+
 ---
 
 ## 12. Troubleshooting

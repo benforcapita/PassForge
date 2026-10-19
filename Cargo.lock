@@ -2496,6 +2496,7 @@ dependencies = [
  "tower",
  "tower-http",
  "ureq",
+ "url",
  "uuid",
  "zeroize",
 ]

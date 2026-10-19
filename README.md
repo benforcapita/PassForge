@@ -386,7 +386,7 @@ PASSFORGE_BIND=127.0.0.1:8790 ./target/release/passforge-server
 curl http://127.0.0.1:8790/v1/info
 ```
 
-Then in the desktop app: **Servers → Add server → `http://127.0.0.1:8790` → Use**. Plain `http://` is accepted for loopback only; the UI warns for anything else.
+Then in the desktop app: **Servers → Add server → `http://127.0.0.1:8790` → Use**. Plain `http://` is accepted for loopback only (`127.0.0.1`, `::1`, `localhost`); the backend rejects anything else and the UI warns before saving.
 
 ### Option B — a Linux VM / VPS with systemd + a TLS reverse proxy
 

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import * as api from "./api";
+import { INSECURE_SERVER_URL, serverUrlError } from "./url";
 
 type Props = {
   backend: api.Backend;
@@ -101,11 +102,9 @@ export function ServersTab({ backend, onConnect, onDisconnect }: Props) {
     if (!settings) return;
     const url = newUrl.trim().replace(/\/+$/, "");
     if (!url) return;
-    try {
-      const parsed = new URL(url);
-      if (!["http:", "https:"].includes(parsed.protocol) || !parsed.hostname) throw new Error();
-    } catch {
-      setError("Enter a valid http:// or https:// server URL.");
+    const urlError = serverUrlError(url);
+    if (urlError) {
+      setError(urlError);
       return;
     }
     setBusy(true);
@@ -291,6 +290,11 @@ export function ServersTab({ backend, onConnect, onDisconnect }: Props) {
                 Add
               </button>
             </div>
+            {newUrl.trim() && serverUrlError(newUrl) === INSECURE_SERVER_URL && (
+              <div role="note" className="warning">
+                {INSECURE_SERVER_URL}
+              </div>
+            )}
             <div className="hint">
               The backend sends an algorithm server one blinded hash per password — never your
               site, login, master password or the result. Switching changes every generated

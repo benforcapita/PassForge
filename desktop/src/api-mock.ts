@@ -1,4 +1,5 @@
 import type { Api } from "./api";
+import { serverUrlError } from "./serverUrl";
 import type {
   EntryInput,
   EntrySummary,
@@ -244,15 +245,8 @@ export const mockApi: Api = {
     return settings;
   },
   serverInfo: async (url: string): Promise<ServerInfo> => {
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      throw new Error("Enter a valid http:// or https:// server URL.");
-    }
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new Error("Enter a valid http:// or https:// server URL.");
-    }
+    const urlError = serverUrlError(url);
+    if (urlError) throw new Error(urlError);
     return {
       protocol: "passforge-remote-v1",
       name: "PassForge mock algorithm server",

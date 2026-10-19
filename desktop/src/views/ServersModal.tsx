@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { Select } from "../components/ui/Select";
 import { TextInput } from "../components/ui/TextInput";
+import { INSECURE_SERVER_URL, serverUrlError } from "../serverUrl";
 import type { ServerInfo, Settings } from "../types";
 
 type Props = {
@@ -89,11 +90,9 @@ export function ServersModal({ settings, onClose, onSaved }: Props) {
   const addServer = async () => {
     const url = newUrl.trim().replace(/\/+$/, "");
     if (!url) return;
-    try {
-      const parsed = new URL(url);
-      if (!["http:", "https:"].includes(parsed.protocol) || !parsed.hostname) throw new Error();
-    } catch {
-      setError("Enter a valid http:// or https:// server URL.");
+    const urlError = serverUrlError(url);
+    if (urlError) {
+      setError(urlError);
       return;
     }
     setError(null);
@@ -303,6 +302,11 @@ export function ServersModal({ settings, onClose, onSaved }: Props) {
               Add server
             </Button>
           </div>
+          {newUrl.trim() && serverUrlError(newUrl) === INSECURE_SERVER_URL && (
+            <p role="note" className="text-[11px] text-pf-warning">
+              {INSECURE_SERVER_URL}
+            </p>
+          )}
           <p className="text-[11px] leading-relaxed text-pf-text-muted">
             The backend sends an algorithm server one blinded hash per password — never your site,
             login, master password or the result. Switching server or algorithm changes every

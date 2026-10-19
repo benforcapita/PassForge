@@ -383,6 +383,22 @@ describe("Servers panel — backend severance", () => {
     expect(await screen.findByTestId("backend-gate")).toHaveTextContent("Backend unreachable");
   });
 
+  it("warns about and rejects non-loopback http:// algorithm servers", async () => {
+    await openServers();
+    fireEvent.change(screen.getByLabelText("Algorithm server URL"), {
+      target: { value: "http://192.168.1.5:8790" },
+    });
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Remote algorithm servers must use https://",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Remote algorithm servers must use https://",
+    );
+    expect(api.serverInfo).not.toHaveBeenCalled();
+    expect(api.saveSettings).not.toHaveBeenCalled();
+  });
+
   it("adds an algorithm server, probes it and switches the backend to it", async () => {
     await openServers();
     fireEvent.change(screen.getByLabelText("Algorithm server URL"), {
@@ -492,6 +508,20 @@ describe("PreferencesModal generation mode", () => {
         knownServers: [],
       }),
     );
+  });
+
+  it("blocks saving server mode with a non-loopback http:// URL", async () => {
+    await openPreferences();
+    fireEvent.click(screen.getByText("Algorithm server"));
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "http://algorithm.example" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Settings" }));
+
+    await waitFor(() =>
+      expect(screen.getAllByText(/Remote algorithm servers must use https:\/\//)).toHaveLength(2),
+    );
+    expect(api.saveSettings).not.toHaveBeenCalled();
   });
 
   it("blocks saving server mode without a valid URL", async () => {

@@ -2,20 +2,62 @@ use std::time::Duration;
 
 use crate::error::{PassForgeError, Result};
 use passforge_protocol::{DeriveRequest, DeriveResponse, ErrorResponse, InfoResponse, PROTOCOL};
+use ureq::{Agent, AgentBuilder};
+use url::{Host, Url};
 
+/// Validate and normalize an algorithm-server base URL. Plain `http://` is
+/// only allowed for loopback hosts; everything else must be `https://`.
 pub fn normalize_server_url(url: &str) -> Result<String> {
     let normalized = url.trim().trim_end_matches('/');
-    if !normalized.starts_with("http://") && !normalized.starts_with("https://") {
-        return Err(PassForgeError::InvalidRequest(
-            "algorithm server URL must start with http:// or https://".into(),
-        ));
+    let parsed = Url::parse(normalized).map_err(|_| invalid_server_url())?;
+    match parsed.scheme() {
+        "https" if parsed.host().is_some() => {}
+        "http" if is_loopback(&parsed) => {}
+        "http" if parsed.host().is_some() => {
+            return Err(PassForgeError::InvalidRequest(
+                "algorithm servers must use https:// (plain http:// is allowed for loopback only)"
+                    .into(),
+            ));
+        }
+        _ => return Err(invalid_server_url()),
     }
     Ok(normalized.to_owned())
 }
 
+fn invalid_server_url() -> PassForgeError {
+    PassForgeError::InvalidRequest(
+        "algorithm server URL must be a valid http:// or https:// URL".into(),
+    )
+}
+
+fn is_loopback(url: &Url) -> bool {
+    match url.host() {
+        Some(Host::Domain(domain)) => domain.eq_ignore_ascii_case("localhost"),
+        Some(Host::Ipv4(ip)) => ip.is_loopback(),
+        Some(Host::Ipv6(ip)) => ip.is_loopback(),
+        None => false,
+    }
+}
+
+/// Non-loopback servers are https-only (including redirects); loopback
+/// servers may not redirect at all so they can't bounce to a cleartext host.
+fn agent_for(url: &str) -> Agent {
+    let loopback = Url::parse(url)
+        .map(|parsed| is_loopback(&parsed))
+        .unwrap_or(false);
+    let builder = AgentBuilder::new().https_only(!loopback);
+    if loopback {
+        builder.redirects(0)
+    } else {
+        builder
+    }
+    .build()
+}
+
 pub fn fetch_info(url: &str) -> Result<InfoResponse> {
     let url = normalize_server_url(url)?;
-    let response = ureq::get(&format!("{url}/v1/info"))
+    let response = agent_for(&url)
+        .get(&format!("{url}/v1/info"))
         .timeout(Duration::from_secs(10))
         .call()
         .map_err(|error| map_request_error(error, None))?;
@@ -37,7 +79,8 @@ pub fn derive(url: &str, algorithm: Option<&str>, input_hex: &str) -> Result<Der
         algorithm: algorithm.map(str::to_owned),
         input: input_hex.to_owned(),
     };
-    let response = ureq::post(&format!("{url}/v1/derive"))
+    let response = agent_for(&url)
+        .post(&format!("{url}/v1/derive"))
         .timeout(Duration::from_secs(30))
         .send_json(&request)
         .map_err(|error| map_request_error(error, Some(input_hex)))?;
@@ -91,10 +134,26 @@ mod tests {
             ("https://example.com/", "https://example.com"),
             ("  http://localhost:8787///  ", "http://localhost:8787"),
             ("https://example.com/api///", "https://example.com/api"),
+            ("http://127.0.0.1:8790", "http://127.0.0.1:8790"),
+            ("http://127.1.2.3", "http://127.1.2.3"),
+            ("http://[::1]:8790/", "http://[::1]:8790"),
+            ("HTTP://LOCALHOST:8790", "HTTP://LOCALHOST:8790"),
+            ("https://192.168.1.5:8790", "https://192.168.1.5:8790"),
         ] {
             assert_eq!(normalize_server_url(input).unwrap(), expected);
         }
-        for input in ["", "example.com", "ftp://example.com"] {
+        for input in [
+            "",
+            "example.com",
+            "ftp://example.com",
+            "https://",
+            "http://example.com",
+            "http://192.168.1.5:8790",
+            "http://[fe80::1]",
+            "http://localhost.example.com",
+            "http://localhost@example.com",
+            "http://127.0.0.1.example.com",
+        ] {
             assert!(matches!(
                 normalize_server_url(input),
                 Err(PassForgeError::InvalidRequest(_))

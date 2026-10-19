@@ -113,3 +113,4 @@ button.ghost {
 .fingerprint { display: flex; gap: 4px; align-items: center; font-size: 11px; color: var(--pf-text-muted); }
 .fingerprint .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .hint { font-size: 11px; color: var(--pf-text-muted); }
+.warning { font-size: 11px; color: var(--pf-status-warning); }

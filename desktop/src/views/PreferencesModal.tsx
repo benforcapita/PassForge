@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { Select } from "../components/ui/Select";
 import { TextInput } from "../components/ui/TextInput";
+import { INSECURE_SERVER_URL, serverUrlError } from "../serverUrl";
 import type { GenerationMode, ServerInfo, Settings } from "../types";
 
 type Props = {
@@ -134,16 +135,9 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
         ? { mode: "serverless" }
         : { mode: "server", url: serverUrl.trim(), algorithm };
     if (generation.mode === "server") {
-      try {
-        const parsedUrl = new URL(generation.url);
-        if (
-          (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") ||
-          !parsedUrl.hostname
-        ) {
-          throw new Error();
-        }
-      } catch {
-        setError("Enter a valid http:// or https:// server URL.");
+      const urlError = serverUrlError(generation.url);
+      if (urlError) {
+        setError(urlError);
         return;
       }
     }
@@ -177,17 +171,7 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
     }
   };
 
-  const remoteHttpWarning = (() => {
-    try {
-      const parsedUrl = new URL(serverUrl.trim());
-      return (
-        parsedUrl.protocol === "http:" &&
-        !["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsedUrl.hostname)
-      );
-    } catch {
-      return false;
-    }
-  })();
+  const remoteHttpWarning = serverUrlError(serverUrl) === INSECURE_SERVER_URL;
   const selectedAlgorithm = serverInfo?.algorithms.find((item) => item.id === algorithm);
 
   return (
@@ -326,7 +310,7 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
               </p>
               {remoteHttpWarning && (
                 <p role="note" className="text-[11px] text-pf-warning">
-                  Use HTTPS for remote servers.
+                  {INSECURE_SERVER_URL}
                 </p>
               )}
               {selectedAlgorithm?.portable === false && (

@@ -24,6 +24,45 @@ fn default_digest() -> String {
     "sha256".into()
 }
 
+/// Accepted PBKDF2 iteration counts.
+pub const ITERATIONS_RANGE: std::ops::RangeInclusive<u32> = 1_000..=10_000_000;
+/// Accepted derived-key lengths in bytes.
+pub const KEYLEN_RANGE: std::ops::RangeInclusive<usize> = 16..=64;
+/// Accepted rendered password lengths.
+pub const PASSWORD_LENGTH_RANGE: std::ops::RangeInclusive<usize> = 4..=128;
+/// Accepted digest names (compared case-insensitively).
+pub const DIGESTS: [&str; 6] = ["sha1", "sha-1", "sha256", "sha-256", "sha512", "sha-512"];
+
+impl CryptoConfig {
+    /// Reject parameters that would weaken or break derivation (e.g. a zero
+    /// key length makes the output independent of the master password).
+    pub fn validate(&self) -> Result<(), CoreError> {
+        if !ITERATIONS_RANGE.contains(&self.iterations) {
+            return Err(CoreError::InvalidCryptoConfig(format!(
+                "iterations must be between {} and {}, got {}",
+                ITERATIONS_RANGE.start(),
+                ITERATIONS_RANGE.end(),
+                self.iterations
+            )));
+        }
+        if !KEYLEN_RANGE.contains(&self.keylen) {
+            return Err(CoreError::InvalidCryptoConfig(format!(
+                "keylen must be between {} and {}, got {}",
+                KEYLEN_RANGE.start(),
+                KEYLEN_RANGE.end(),
+                self.keylen
+            )));
+        }
+        if !DIGESTS.contains(&self.digest.to_ascii_lowercase().as_str()) {
+            return Err(CoreError::InvalidCryptoConfig(format!(
+                "unsupported digest {:?}",
+                self.digest
+            )));
+        }
+        Ok(())
+    }
+}
+
 impl Default for CryptoConfig {
     fn default() -> Self {
         Self {
@@ -42,6 +81,40 @@ pub struct PasswordOptions {
     pub digits: bool,
     pub symbols: bool,
     pub length: usize,
+}
+
+impl PasswordOptions {
+    fn rule_count(&self) -> usize {
+        [self.lowercase, self.uppercase, self.digits, self.symbols]
+            .iter()
+            .filter(|enabled| **enabled)
+            .count()
+    }
+
+    /// Reject option sets that cannot be rendered safely.
+    pub fn validate(&self) -> Result<(), CoreError> {
+        let rules = self.rule_count();
+        if rules == 0 {
+            return Err(CoreError::InvalidPasswordOptions(
+                "at least one character set must be enabled".into(),
+            ));
+        }
+        if !PASSWORD_LENGTH_RANGE.contains(&self.length) {
+            return Err(CoreError::InvalidPasswordOptions(format!(
+                "length must be between {} and {}, got {}",
+                PASSWORD_LENGTH_RANGE.start(),
+                PASSWORD_LENGTH_RANGE.end(),
+                self.length
+            )));
+        }
+        if self.length < rules {
+            return Err(CoreError::InvalidPasswordLength {
+                length: self.length,
+                required_rules: rules,
+            });
+        }
+        Ok(())
+    }
 }
 
 impl Default for PasswordOptions {
@@ -90,6 +163,15 @@ pub struct SaltField {
 }
 
 impl PasswordProfile {
+    /// Validate the character options and any per-entry crypto override.
+    pub fn validate(&self) -> Result<(), CoreError> {
+        self.options.validate()?;
+        if let Some(crypto) = &self.crypto {
+            crypto.validate()?;
+        }
+        Ok(())
+    }
+
     /// Build the salt string: site + login + counter(hex) + sorted salt fields.
     pub fn build_salt(&self) -> String {
         let base = format!("{}{}{:x}", self.site, self.login, self.counter);
@@ -129,6 +211,8 @@ pub enum CoreError {
     InvalidFingerprintHash {
         actual_len: usize,
     },
+    InvalidCryptoConfig(String),
+    InvalidPasswordOptions(String),
 }
 
 impl fmt::Display for CoreError {
@@ -148,6 +232,10 @@ impl fmt::Display for CoreError {
                     f,
                     "fingerprint hash must contain at least 18 hex characters, got {actual_len}"
                 )
+            }
+            CoreError::InvalidCryptoConfig(reason) => write!(f, "invalid crypto config: {reason}"),
+            CoreError::InvalidPasswordOptions(reason) => {
+                write!(f, "invalid password options: {reason}")
             }
         }
     }

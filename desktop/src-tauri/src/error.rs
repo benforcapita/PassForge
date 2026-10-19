@@ -21,6 +21,12 @@ pub enum PassForgeError {
     Remote(String),
 }
 
+impl From<lesspass_core::CoreError> for PassForgeError {
+    fn from(err: lesspass_core::CoreError) -> Self {
+        PassForgeError::InvalidRequest(err.to_string())
+    }
+}
+
 pub type Result<T> = std::result::Result<T, PassForgeError>;
 
 #[derive(Debug, Serialize)]

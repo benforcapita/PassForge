@@ -373,3 +373,44 @@ fn token_file_is_created_once_with_0600() {
     }
     assert_eq!(api::read_token(dir.path()).as_deref(), Some(first.as_str()));
 }
+
+#[tokio::test]
+async fn generate_rejects_invalid_profile_parameters() {
+    for patch in [
+        serde_json::json!({ "crypto": { "iterations": 100000, "keylen": 0, "digest": "sha256" } }),
+        serde_json::json!({ "length": 1000000 }),
+        serde_json::json!({ "lowercase": false, "uppercase": false, "digits": false, "symbols": false }),
+    ] {
+        let mut p = profile();
+        for (k, v) in patch.as_object().unwrap() {
+            p[k] = v.clone();
+        }
+        let resp = api::router(state())
+            .oneshot(req(
+                "POST",
+                "/api/generate",
+                Some(serde_json::json!({ "masterPassword": "correct horse", "profile": p })),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST, "{patch}");
+    }
+}
+
+#[tokio::test]
+async fn put_settings_rejects_invalid_default_crypto() {
+    let st = state();
+    st.session.unlock(b"master".to_vec()).unwrap();
+    let mut settings = serde_json::to_value(Settings::default()).unwrap();
+    settings["defaultCrypto"]["keylen"] = serde_json::json!(0);
+    let resp = api::router(st.clone())
+        .oneshot(req("PUT", "/api/settings", Some(settings)))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let db = st.db.lock().unwrap();
+    assert_eq!(
+        passforge_desktop::commands::load_settings(&db).default_crypto.keylen,
+        32
+    );
+}

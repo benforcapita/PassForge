@@ -364,3 +364,61 @@ fn import_is_idempotent_and_skips_existing_rows() {
     assert_eq!(report.entries_skipped, 1);
     assert_eq!(db.list_all_entries().unwrap().len(), 1);
 }
+
+#[test]
+fn create_and_update_reject_invalid_crypto_or_options() {
+    let db = VaultDb::memory().unwrap();
+    db.migrate().unwrap();
+    let folder = db
+        .create_folder(FolderInput { parent_id: None, name: "Logins".into() })
+        .unwrap();
+
+    let mut bad = sample_entry(folder.id.clone());
+    bad.crypto = Some(lesspass_core::CryptoConfig { iterations: 100_000, keylen: 0, digest: "sha256".into() });
+    assert!(db.create_entry(bad.clone()).is_err());
+
+    let entry = db.create_entry(sample_entry(folder.id.clone())).unwrap();
+    assert!(db.update_entry(&entry.id, bad).is_err());
+    let mut long = sample_entry(folder.id);
+    long.options.length = 1_000_000;
+    assert!(db.update_entry(&entry.id, long).is_err());
+    assert_eq!(db.get_entry(&entry.id).unwrap().unwrap().profile.crypto, None);
+}
+
+#[test]
+fn import_rejects_whole_file_when_any_entry_is_invalid() {
+    use passforge_desktop::models::VaultExport;
+
+    let source = VaultDb::memory().unwrap();
+    source.migrate().unwrap();
+    let folder = source
+        .create_folder(FolderInput { parent_id: None, name: "Logins".into() })
+        .unwrap();
+    source.create_entry(sample_entry(folder.id.clone())).unwrap();
+    source.create_entry(sample_entry(folder.id.clone())).unwrap();
+    let mut entries = source.list_all_entries().unwrap();
+    entries[1].profile.crypto = Some(lesspass_core::CryptoConfig {
+        iterations: 1,
+        keylen: 0,
+        digest: "sha256".into(),
+    });
+    let doc = VaultExport {
+        version: 1,
+        exported_at: "2026-01-01T00:00:00Z".into(),
+        folders: source.list_folders().unwrap(),
+        entries,
+    };
+
+    let target = VaultDb::memory().unwrap();
+    target.migrate().unwrap();
+    let err = target.import_export(&doc).unwrap_err().to_string();
+    assert!(err.contains("keylen") || err.contains("iterations"), "{err}");
+    assert!(target.list_all_entries().unwrap().is_empty());
+    assert!(target.list_folders().unwrap().is_empty());
+
+    let mut doc = doc;
+    doc.entries[1].profile.crypto = None;
+    doc.entries[0].profile.options.length = 1_000_000;
+    assert!(target.import_export(&doc).is_err());
+    assert!(target.list_all_entries().unwrap().is_empty());
+}

@@ -152,12 +152,13 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
       generation,
       knownServers: settings.knownServers ?? [],
     };
-    if (!Number.isFinite(parsed.defaultCrypto.iterations) || parsed.defaultCrypto.iterations <= 0) {
-      setError("Iterations must be a positive integer.");
+    const { iterations: iter, keylen: kl } = parsed.defaultCrypto;
+    if (!Number.isInteger(iter) || iter < 1_000 || iter > 10_000_000) {
+      setError("Iterations must be an integer between 1,000 and 10,000,000.");
       return;
     }
-    if (!Number.isFinite(parsed.defaultCrypto.keylen) || parsed.defaultCrypto.keylen <= 0) {
-      setError("Key length must be a positive integer.");
+    if (!Number.isInteger(kl) || kl < 16 || kl > 64) {
+      setError("Key length must be an integer between 16 and 64.");
       return;
     }
     setBusy(true);

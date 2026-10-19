@@ -30,6 +30,16 @@ pub struct EntryInput {
     pub tags: Vec<String>,
 }
 
+impl EntryInput {
+    pub fn validate(&self) -> Result<(), lesspass_core::CoreError> {
+        self.options.validate()?;
+        if let Some(crypto) = &self.crypto {
+            crypto.validate()?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultEntry {

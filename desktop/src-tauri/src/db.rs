@@ -104,6 +104,7 @@ impl VaultDb {
     }
 
     pub fn create_entry(&self, input: EntryInput) -> Result<VaultEntry> {
+        input.validate()?;
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
         let profile = PasswordProfile {
@@ -210,6 +211,7 @@ impl VaultDb {
     }
 
     pub fn update_entry(&self, id: &str, input: EntryInput) -> Result<VaultEntry> {
+        input.validate()?;
         let now = Utc::now().to_rfc3339();
         let affected = self.conn.execute(
             "UPDATE entries SET site = ?1, login = ?2, counter = ?3, options_json = ?4,
@@ -279,8 +281,14 @@ impl VaultDb {
 
     /// Merge an export document into the vault inside one transaction.
     /// Folders and entries are matched by id and skipped when they already
-    /// exist, so re-importing the same file is a no-op.
+    /// exist, so re-importing the same file is a no-op. The whole import is
+    /// rejected if any entry carries invalid crypto or password options.
     pub fn import_export(&self, export: &VaultExport) -> Result<ImportReport> {
+        for entry in &export.entries {
+            entry.profile.validate().map_err(|err| {
+                PassForgeError::InvalidRequest(format!("entry {}: {err}", entry.id))
+            })?;
+        }
         let tx = self.conn.unchecked_transaction()?;
         let mut report = ImportReport {
             folders_created: 0,

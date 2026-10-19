@@ -117,12 +117,14 @@ pub fn derive_profile_password_with<F>(
 where
     F: FnOnce(&str, Option<&str>, &str) -> Result<DeriveResponse>,
 {
+    profile.options.validate()?;
     match &settings.generation {
         GenerationMode::Serverless => {
             let crypto: CryptoConfig = profile
                 .crypto
                 .clone()
                 .unwrap_or_else(|| settings.default_crypto.clone());
+            crypto.validate()?;
             let entropy = calc_entropy(profile, master_password, &crypto);
             render_password(&entropy, &profile.options)
                 .map_err(|err| PassForgeError::InvalidRequest(err.to_string()))
@@ -387,6 +389,7 @@ pub fn persist_settings(
     mut settings: Settings,
 ) -> Result<Settings> {
     require_unlocked(session)?;
+    settings.default_crypto.validate()?;
     if let GenerationMode::Server { url, .. } = &mut settings.generation {
         *url = remote::normalize_server_url(url)?;
     }

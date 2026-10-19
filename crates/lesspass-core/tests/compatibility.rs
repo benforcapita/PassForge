@@ -97,3 +97,35 @@ fn creates_known_fingerprint() {
         ])
     );
 }
+
+#[test]
+fn crypto_config_validation_rejects_out_of_range_parameters() {
+    assert!(CryptoConfig::default().validate().is_ok());
+    let bad = |iterations, keylen, digest: &str| CryptoConfig {
+        iterations,
+        keylen,
+        digest: digest.into(),
+    };
+    assert!(bad(100_000, 0, "sha256").validate().is_err());
+    assert!(bad(100_000, 1, "sha256").validate().is_err());
+    assert!(bad(100_000, 1 << 30, "sha256").validate().is_err());
+    assert!(bad(1, 32, "sha256").validate().is_err());
+    assert!(bad(u32::MAX, 32, "sha256").validate().is_err());
+    assert!(bad(100_000, 32, "md5").validate().is_err());
+    assert!(bad(100_000, 64, "SHA-512").validate().is_ok());
+}
+
+#[test]
+fn password_options_validation_rejects_unrenderable_options() {
+    assert!(PasswordOptions::default().validate().is_ok());
+    assert!(full_options(1_000_000).validate().is_err());
+    assert!(full_options(3).validate().is_err());
+    let none = PasswordOptions {
+        lowercase: false,
+        uppercase: false,
+        digits: false,
+        symbols: false,
+        length: 16,
+    };
+    assert!(none.validate().is_err());
+}

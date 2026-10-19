@@ -1,3 +1,4 @@
+pub mod api;
 pub mod biometric;
 pub mod commands;
 pub mod db;

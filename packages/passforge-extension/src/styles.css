@@ -21,10 +21,6 @@ body {
   border: 1px solid var(--pf-border-moderate); color: var(--pf-text-muted);
 }
 .badge.on { color: var(--pf-accent-primary); border-color: var(--pf-accent-primary); }
-.gear { background: transparent; color: var(--pf-text-secondary); border: 0; cursor: pointer; font-size: 17px; }
-.settings { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--pf-border-moderate); border-radius: var(--pf-radius-md); }
-.settings select { height: 32px; width: 100%; background: var(--pf-surface-input); color: var(--pf-text-primary); border: 1px solid var(--pf-border-subtle); border-radius: var(--pf-radius-md); }
-.warning { color: var(--pf-status-warning); font-size: 11px; }
 .error { color: var(--pf-status-error); font-size: 11px; overflow-wrap: anywhere; }
 
 label { font-size: 11px; color: var(--pf-text-secondary); display: block; margin-bottom: 3px; }
@@ -36,8 +32,6 @@ label { font-size: 11px; color: var(--pf-text-secondary); display: block; margin
 }
 .field input:focus { border-color: var(--pf-border-focus); background: var(--pf-surface-input-focus); }
 .row { display: flex; gap: 8px; }
-.connection-row { align-items: flex-end; }
-.connection-row .action { height: 32px; white-space: nowrap; }
 .row .field { flex: 1; }
 
 .secret {

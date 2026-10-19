@@ -19,7 +19,7 @@ use passforge_protocol::{DeriveResponse, blind, finish_password};
 use zeroize::{Zeroize, Zeroizing};
 use lesspass_core::{
     build_fingerprint_hash, calc_entropy, create_fingerprint, render_password, CryptoConfig,
-    Fingerprint,
+    Fingerprint, PasswordProfile,
 };
 use std::sync::Mutex;
 use tauri::State;
@@ -29,12 +29,12 @@ use tauri::State;
 /// The database is the SQLCipher vault file (see `vault.rs`). The settings
 /// mutex guards the global default crypto config and idle/clipboard timing.
 pub struct AppState {
-    pub db: Mutex<VaultDb>,
+    pub db: std::sync::Arc<Mutex<VaultDb>>,
 }
 
 /// Every vault command requires an unlocked session; using the app counts
 /// as activity for the idle timer.
-fn require_unlocked(session: &SessionState) -> Result<()> {
+pub fn require_unlocked(session: &SessionState) -> Result<()> {
     if session.is_locked() {
         return Err(PassForgeError::Locked);
     }
@@ -93,24 +93,47 @@ pub fn derive_password_with<F>(
 where
     F: FnOnce(&str, Option<&str>, &str) -> Result<DeriveResponse>,
 {
+    derive_profile_password_with(&entry.profile, master_password, settings, remote)
+}
+
+/// Derive a password for an ad-hoc profile (one that need not exist in the
+/// vault), honoring the configured generation mode. This is what the local
+/// API's `/api/generate` uses so external frontends follow the same
+/// serverless / algorithm-server setting as the desktop UI.
+pub fn derive_profile_password(
+    profile: &PasswordProfile,
+    master_password: &str,
+    settings: &Settings,
+) -> Result<String> {
+    derive_profile_password_with(profile, master_password, settings, remote::derive)
+}
+
+pub fn derive_profile_password_with<F>(
+    profile: &PasswordProfile,
+    master_password: &str,
+    settings: &Settings,
+    remote: F,
+) -> Result<String>
+where
+    F: FnOnce(&str, Option<&str>, &str) -> Result<DeriveResponse>,
+{
     match &settings.generation {
         GenerationMode::Serverless => {
-            let crypto: CryptoConfig = entry
-                .profile
+            let crypto: CryptoConfig = profile
                 .crypto
                 .clone()
                 .unwrap_or_else(|| settings.default_crypto.clone());
-            let entropy = calc_entropy(&entry.profile, master_password, &crypto);
-            render_password(&entropy, &entry.profile.options)
+            let entropy = calc_entropy(profile, master_password, &crypto);
+            render_password(&entropy, &profile.options)
                 .map_err(|err| PassForgeError::InvalidRequest(err.to_string()))
         }
         GenerationMode::Server { url, algorithm } => {
             let url = remote::normalize_server_url(url)?;
-            let blinded = blind(&entry.profile, master_password, &settings.default_crypto);
+            let blinded = blind(profile, master_password, &settings.default_crypto);
             let response = remote(&url, algorithm.as_deref(), &blinded.input_hex())?;
             let output = hex::decode(&response.output)
                 .map_err(|_| PassForgeError::Remote("server returned invalid output hex".into()))?;
-            finish_password(&blinded, &output, &entry.profile.options)
+            finish_password(&blinded, &output, &profile.options)
                 .map_err(|err| PassForgeError::Remote(format!("invalid server output: {err}")))
         }
     }

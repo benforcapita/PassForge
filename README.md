@@ -2,6 +2,14 @@
 
 **A stateless password manager where the frontends can't generate a single password on their own.**
 
+<p align="center">
+  <a href="https://github.com/benforcapita/PassForge/releases/download/demo-video/passforge-demo.mp4">
+    <img src="docs/media/passforge-demo.gif" width="800" alt="PassForge demo: disconnecting the backend makes the desktop app refuse to produce a password; the Chrome extension connects through the Servers tab and generates." />
+  </a>
+  <br />
+  <sub>▶ <a href="https://github.com/benforcapita/PassForge/releases/download/demo-video/passforge-demo.mp4"><b>Watch the full 2-minute demo</b></a> (MP4, 1080p, with sound) · <a href="https://github.com/benforcapita/PassForge/releases/tag/demo-video">release page</a></sub>
+</p>
+
 PassForge regenerates every password deterministically from a *site*, a *login* and your *master password* — nothing is stored, nothing is synced, there are no accounts. It is a fork of [LessPass](https://github.com/lesspass/lesspass) that keeps the algorithm and drops the cloud.
 
 What makes PassForge different is an architecture rule that this repository enforces end to end:
@@ -618,6 +626,14 @@ node render.mjs --serve   # live preview at http://localhost:4175/film.html?play
 ```
 
 The timeline is a pure function of time (`window.seek(t)` in `film.html`), so renders are deterministic. Re-run `capture.mjs` after UI changes.
+
+Publishing: the README preview (`docs/media/passforge-demo.gif`, the disconnect + extension segments) and the full MP4 (GitHub release `demo-video`) are regenerated with:
+
+```bash
+cd video/out
+ffmpeg -y -i passforge-demo.mp4 -filter_complex "[0:v]trim=54.5:71.2,setpts=PTS-STARTPTS[a];[0:v]trim=79.6:90.8,setpts=PTS-STARTPTS[b];[a][b]concat=n=2:v=1,fps=10,scale=800:-1:flags=lanczos,split[x][y];[x]palettegen=max_colors=96:stats_mode=diff[p];[y][p]paletteuse=dither=none:diff_mode=rectangle" ../../docs/media/passforge-demo.gif
+gh release upload demo-video passforge-demo.mp4 --clobber
+```
 
 ---
 

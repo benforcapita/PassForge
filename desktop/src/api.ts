@@ -1,5 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type {
+  BackendInfo,
   EntryInput,
   EntrySummary,
   Finger,
@@ -48,7 +49,10 @@ export type Api = {
   deleteEntry: (entryId: string) => Promise<void>;
   previewFingerprint: (masterPassword: string) => Promise<Finger[]>;
   searchEntries: (query: string) => Promise<EntrySummary[]>;
+  /** IPC fallback kept for tests/tooling; the UI generates via `backend.ts`. */
   generatePassword: (entryId: string) => Promise<string>;
+  /** Port + token of the embedded local API (what `backend.ts` connects to). */
+  backendInfo: () => Promise<BackendInfo>;
   getSettings: () => Promise<Settings>;
   saveSettings: (settings: Settings) => Promise<Settings>;
   serverInfo: (url: string) => Promise<ServerInfo>;
@@ -80,6 +84,7 @@ const tauriApi: Api = {
     invoke<Finger[]>("preview_fingerprint", { masterPassword }),
   searchEntries: (query: string) => invoke<EntrySummary[]>("search_entries", { query }),
   generatePassword: (entryId: string) => invoke<string>("generate_password", { entryId }),
+  backendInfo: () => invoke<BackendInfo>("backend_info"),
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
   serverInfo: (url: string) => invoke<ServerInfo>("server_info", { url }),

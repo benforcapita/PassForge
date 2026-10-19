@@ -8,12 +8,14 @@ import {
   RotateCcw,
   Save,
   Search,
+  Server,
   SlidersHorizontal,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
+import * as backend from "../backend";
 import { Button } from "../components/ui/Button";
 import { CharChip } from "../components/ui/CharChip";
 import { FingerprintGlyphs } from "../components/ui/FingerprintGlyphs";
@@ -41,6 +43,7 @@ import type {
 import { DeleteEntryModal } from "./DeleteEntryModal";
 import { NewProfileModal } from "./NewProfileModal";
 import { PreferencesModal } from "./PreferencesModal";
+import { ServersModal } from "./ServersModal";
 
 const CHAR_SETS: { key: keyof Pick<PasswordOptions, "uppercase" | "lowercase" | "digits" | "symbols">; label: string }[] = [
   { key: "uppercase", label: "A-Z" },
@@ -56,6 +59,7 @@ const DEFAULT_SETTINGS: Settings = {
   idleLockSeconds: 300,
   clipboardClearSeconds: 20,
   generation: { mode: "serverless" },
+  knownServers: [],
 };
 
 type Draft = {
@@ -113,9 +117,10 @@ export function Workbench({ onLock }: { onLock: () => void }) {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [newFolderMode, setNewFolderMode] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [modal, setModal] = useState<"none" | "new" | "prefs" | "delete">("none");
+  const [modal, setModal] = useState<"none" | "new" | "prefs" | "servers" | "delete">("none");
   const [newTag, setNewTag] = useState("");
   const filterRef = useRef<HTMLInputElement>(null);
+  const be = backend.useBackend();
 
   const { copied, toast, copy, dismiss } = useClipboard(settings.clipboardClearSeconds);
   const handleLock = useCallback(() => {
@@ -139,6 +144,9 @@ export function Workbench({ onLock }: { onLock: () => void }) {
   useEffect(() => {
     void api.getSettings().then(setSettings).catch(() => {});
     void refreshFolders();
+    // Pair with the local backend on open. The user can Disconnect from the
+    // Servers panel; from then on Reveal/Copy have no way to a password.
+    if (backend.backendState().status === "disconnected") void backend.connect();
   }, [refreshFolders]);
 
   useEffect(() => {
@@ -186,7 +194,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
     if (!detail) return null;
     setGenerationError(null);
     try {
-      const generated = await api.generatePassword(detail.id);
+      const generated = await backend.generate(detail.id);
       setPassword(generated);
       return generated;
     } catch (err) {
@@ -259,6 +267,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
       { key: "k", handler: () => filterRef.current?.focus() },
       { key: "n", handler: () => setModal("new") },
       { key: ",", handler: () => setModal("prefs") },
+      { key: "s", shift: true, handler: () => setModal("servers") },
       { key: "l", handler: () => handleLock() },
       {
         key: "c",
@@ -334,6 +343,31 @@ export function Workbench({ onLock }: { onLock: () => void }) {
             </span>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setModal("servers")}
+          title="Servers"
+          aria-label={`Backend ${be.status}`}
+          className={`flex h-6 items-center gap-1.5 rounded-sm border px-2 font-mono text-[11px] ${
+            be.status === "connected"
+              ? "border-pf-accent/40 bg-pf-accent-muted text-pf-accent"
+              : be.status === "connecting"
+                ? "border-pf-border-subtle text-pf-text-muted"
+                : "border-pf-warning/40 bg-pf-warning-bg text-pf-warning"
+          }`}
+        >
+          <span
+            aria-hidden
+            className={`h-1.5 w-1.5 rounded-full ${
+              be.status === "connected"
+                ? "bg-pf-accent"
+                : be.status === "connecting"
+                  ? "bg-pf-text-muted animate-pulse"
+                  : "bg-pf-warning"
+            }`}
+          />
+          backend {be.status}
+        </button>
         <Button
           variant="icon"
           aria-label="Lock vault"
@@ -421,6 +455,17 @@ export function Workbench({ onLock }: { onLock: () => void }) {
                 New Profile
               </span>
               <Kbd>⌘N</Kbd>
+            </button>
+            <button
+              type="button"
+              onClick={() => setModal("servers")}
+              className="flex h-7 items-center justify-between rounded-sm px-2 text-[12px] text-pf-text-secondary hover:text-pf-text-primary"
+            >
+              <span className="flex items-center gap-1.5">
+                <Server size={14} strokeWidth={1.5} />
+                Servers
+              </span>
+              <Kbd>⌘⇧S</Kbd>
             </button>
             <button
               type="button"
@@ -541,6 +586,25 @@ export function Workbench({ onLock }: { onLock: () => void }) {
                   onReveal={() => void ensurePassword()}
                   onCopy={() => void copyPassword()}
                 />
+                {be.status !== "connected" && (
+                  <p
+                    role="note"
+                    data-testid="backend-gate"
+                    className="mt-2 flex items-center justify-between gap-2 rounded-sm bg-pf-warning-bg px-2 py-1.5 text-[11px] text-pf-warning"
+                  >
+                    <span className="flex items-center gap-1">
+                      <TriangleAlert size={11} strokeWidth={1.5} />
+                      Backend {be.status} — this frontend cannot generate passwords.
+                    </span>
+                    <button
+                      type="button"
+                      className="font-medium underline-offset-2 hover:underline"
+                      onClick={() => setModal("servers")}
+                    >
+                      Open Servers
+                    </button>
+                  </p>
+                )}
                 {generationError && (
                   <p role="alert" className="mt-2 text-[11px] text-pf-text-error">
                     {generationError}
@@ -871,6 +935,7 @@ export function Workbench({ onLock }: { onLock: () => void }) {
         <span>{entries.length} {entries.length === 1 ? "entry" : "entries"}</span>
         <span>clipboard wipe {settings.clipboardClearSeconds}s</span>
         <span>{generationStatus}</span>
+        <span>{be.address ? `backend ${be.address}` : `backend ${be.status}`}</span>
         <span className={idleWarning ? "ml-auto text-pf-warning" : "ml-auto"}>
           {idleWarning
             ? `idle lock in ${secondsUntilLock}s`
@@ -898,6 +963,16 @@ export function Workbench({ onLock }: { onLock: () => void }) {
           onVaultChanged={() => {
             void refreshEntries();
             void refreshFolders();
+          }}
+        />
+      )}
+      {modal === "servers" && (
+        <ServersModal
+          settings={settings}
+          onClose={() => setModal("none")}
+          onSaved={(next) => {
+            setSettings(next);
+            setPassword(null);
           }}
         />
       )}

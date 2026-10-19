@@ -85,6 +85,11 @@ pub struct Settings {
     pub clipboard_clear_seconds: u64,
     #[serde(default)]
     pub generation: GenerationMode,
+    /// Algorithm servers the user has added (normalized URLs). The active
+    /// one, if any, is `generation`; this list is what the Servers panel
+    /// offers to switch between.
+    #[serde(default)]
+    pub known_servers: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -106,6 +111,7 @@ impl Default for Settings {
             idle_lock_seconds: 60,
             clipboard_clear_seconds: 30,
             generation: GenerationMode::Serverless,
+            known_servers: Vec::new(),
         }
     }
 }

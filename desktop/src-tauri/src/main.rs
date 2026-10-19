@@ -25,6 +25,7 @@ fn main() {
             commands::preview_fingerprint,
             commands::search_entries,
             commands::generate_password,
+            commands::backend_info,
             commands::server_info,
             commands::get_settings,
             commands::save_settings,

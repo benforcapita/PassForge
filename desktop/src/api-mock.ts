@@ -116,6 +116,7 @@ let settings: Settings = {
   idleLockSeconds: 300,
   clipboardClearSeconds: 20,
   generation: { mode: "serverless" },
+  knownServers: [],
 };
 
 function summarize(entry: MockEntry): EntrySummary {
@@ -230,6 +231,7 @@ export const mockApi: Api = {
       )
       .map(summarize);
   },
+  backendInfo: async () => ({ port: 0, token: "mock" }),
   generatePassword: async (entryId) => {
     const entry = entries.find((e) => e.id === entryId);
     if (!entry) throw new Error(`entry not found: ${entryId}`);

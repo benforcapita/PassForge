@@ -78,6 +78,13 @@ export type Settings = {
   idleLockSeconds: number;
   clipboardClearSeconds: number;
   generation: GenerationMode;
+  /** Algorithm servers the user has added; `generation` points at the active one. */
+  knownServers: string[];
+};
+
+export type BackendInfo = {
+  port: number;
+  token: string;
 };
 
 export type GenerationMode =

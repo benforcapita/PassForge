@@ -3,8 +3,9 @@
 //! PassForge's architecture rule: frontends are fully severed from the
 //! password-generation algorithm. This server, embedded in the desktop app
 //! process, is the only place `lesspass-core` runs for external clients —
-//! the browser extension calls it over `http://127.0.0.1` and (in a later
-//! phase) the desktop UI itself becomes a thin frontend on the same API.
+//! the browser extension calls it over `http://127.0.0.1`, and the desktop
+//! UI's own generation goes through `/api/entries/{id}/generate` too, so a
+//! frontend that is not connected to the backend cannot produce a password.
 //!
 //! Security model:
 //! - Loopback only (`127.0.0.1`, ephemeral port written to
@@ -21,11 +22,12 @@
 //! - CORS is restricted to browser-extension schemes.
 
 use crate::commands::{
-    derive_profile_password, load_settings, master_fingerprint, require_unlocked,
-    synthesize_fingerprints,
+    derive_profile_password, generate_entry_password, load_settings, master_fingerprint,
+    persist_settings, require_unlocked, synthesize_fingerprints,
 };
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
+use crate::models::Settings;
 use crate::session::SessionState;
 use axum::{
     extract::{Query, State},
@@ -90,15 +92,32 @@ pub fn read_port(vault_dir: &std::path::Path) -> Option<u16> {
         .map(|p| p as u16)
 }
 
+/// Origins allowed to call the API from a browser context: browser
+/// extensions, and the desktop app's own webview (which is a client of this
+/// backend like any other frontend). The Vite dev server origin is only
+/// accepted in debug builds.
+pub fn origin_allowed(origin: &str) -> bool {
+    let scheme = origin.split("://").next().unwrap_or("");
+    if matches!(scheme, "chrome-extension" | "moz-extension" | "safari-web-extension") {
+        return true;
+    }
+    if matches!(origin, "tauri://localhost" | "http://tauri.localhost" | "https://tauri.localhost")
+    {
+        return true;
+    }
+    cfg!(debug_assertions) && origin == "http://localhost:1420"
+}
+
 pub fn router(state: ApiState) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(tower_http::cors::AllowOrigin::predicate(|origin, _| {
-            matches!(
-                origin.to_str().ok().and_then(|o| o.split("://").next()),
-                Some("chrome-extension" | "moz-extension" | "safari-web-extension")
-            )
+            origin.to_str().map(origin_allowed).unwrap_or(false)
         }))
-        .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
+        .allow_methods([
+            axum::http::Method::GET,
+            axum::http::Method::POST,
+            axum::http::Method::PUT,
+        ])
         .allow_headers([
             axum::http::header::AUTHORIZATION,
             axum::http::header::CONTENT_TYPE,
@@ -110,7 +129,9 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/fingerprint", post(fingerprint))
         .route("/api/entries", get(search_entries))
         .route("/api/entries/{id}", get(get_entry))
-        .route("/api/settings", get(get_settings))
+        .route("/api/entries/{id}/generate", post(generate_entry))
+        .route("/api/settings", get(get_settings).put(put_settings))
+        .route("/api/server-info", post(server_info))
         .route_layer(middleware::from_fn_with_state(state.clone(), require_token))
         .layer(cors)
         .with_state(state)
@@ -277,6 +298,56 @@ async fn get_settings(State(state): State<ApiState>) -> Response {
     })();
     match result {
         Ok(settings) => Json(settings).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+/// Generate for a vault entry with the unlocked session's master password —
+/// the route the desktop UI uses, so it has no generation path of its own.
+async fn generate_entry(
+    State(state): State<ApiState>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Response {
+    state.session.touch();
+    match generate_entry_password(&state.db, &state.session, &id).await {
+        Ok(password) => Json(serde_json::json!({ "password": password })).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+async fn put_settings(State(state): State<ApiState>, Json(settings): Json<Settings>) -> Response {
+    let result = (|| -> Result<serde_json::Value> {
+        let db = state.db.lock().expect("db mutex poisoned");
+        serde_json::to_value(persist_settings(&db, &state.session, settings)?).map_err(Into::into)
+    })();
+    match result {
+        Ok(settings) => Json(settings).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+#[derive(Deserialize)]
+struct ServerInfoRequest {
+    url: String,
+}
+
+/// Probe an algorithm server on behalf of a frontend (extensions can't
+/// reach arbitrary hosts; the backend is the only thing that talks to
+/// algorithm servers anyway).
+async fn server_info(
+    State(state): State<ApiState>,
+    Json(body): Json<ServerInfoRequest>,
+) -> Response {
+    let result = async {
+        require_unlocked(&state.session)?;
+        let url = crate::remote::normalize_server_url(&body.url)?;
+        tokio::task::spawn_blocking(move || crate::remote::fetch_info(&url))
+            .await
+            .map_err(|_| PassForgeError::Remote("server info task failed".into()))?
+    }
+    .await;
+    match result {
+        Ok(info) => Json(info).into_response(),
         Err(err) => map_err(err),
     }
 }

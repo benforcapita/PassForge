@@ -21,7 +21,7 @@ use lesspass_core::{
     build_fingerprint_hash, calc_entropy, create_fingerprint, render_password, CryptoConfig,
     Fingerprint, PasswordProfile,
 };
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::State;
 
 /// Process-wide application state managed by Tauri.
@@ -292,24 +292,27 @@ pub fn search_entries(query: String, state: State<AppState>, session: State<Sess
     Ok(entries)
 }
 
-#[tauri::command]
-pub async fn generate_password(
-    entry_id: String,
-    state: State<'_, AppState>,
-    session: State<'_, SessionState>,
+/// Generate the password for a vault entry using the unlocked session's
+/// master password, then mark the entry used. Shared by the IPC command and
+/// the local API (`POST /api/entries/{id}/generate`). Derivation runs off
+/// the async executor because server mode blocks on HTTP.
+pub async fn generate_entry_password(
+    db: &Arc<Mutex<VaultDb>>,
+    session: &SessionState,
+    entry_id: &str,
 ) -> Result<String> {
-    require_unlocked(&session)?;
+    require_unlocked(session)?;
     let (entry, settings, master_bytes) = {
-        let db = state.db.lock().expect("db mutex poisoned");
+        let db = db.lock().expect("db mutex poisoned");
         let entry = db
-            .get_entry(&entry_id)?
-            .ok_or_else(|| PassForgeError::EntryNotFound(entry_id.clone()))?;
+            .get_entry(entry_id)?
+            .ok_or_else(|| PassForgeError::EntryNotFound(entry_id.to_string()))?;
         let settings = load_settings(&db);
         let master_bytes = session.master_password_bytes()?;
         (entry, settings, master_bytes)
     };
     let master_bytes = Zeroizing::new(master_bytes);
-    let password = tauri::async_runtime::spawn_blocking(move || {
+    let password = tokio::task::spawn_blocking(move || {
         let mut master_bytes = master_bytes;
         let master_password = match String::from_utf8(std::mem::take(&mut *master_bytes)) {
             Ok(password) => Zeroizing::new(password),
@@ -325,12 +328,33 @@ pub async fn generate_password(
     })
     .await
     .map_err(|_| PassForgeError::InvalidRequest("password generation task failed".into()))??;
-    state
-        .db
-        .lock()
-        .expect("db mutex poisoned")
-        .mark_used(&entry_id)?;
+    db.lock().expect("db mutex poisoned").mark_used(entry_id)?;
     Ok(password)
+}
+
+#[tauri::command]
+pub async fn generate_password(
+    entry_id: String,
+    state: State<'_, AppState>,
+    session: State<'_, SessionState>,
+) -> Result<String> {
+    generate_entry_password(&state.db, &session, &entry_id).await
+}
+
+/// Port + bearer token of the embedded local API, so the desktop UI can be
+/// a client of the same backend the extension uses. Same process, same
+/// trust domain — the token never leaves the app.
+#[tauri::command]
+pub fn backend_info() -> Result<serde_json::Value> {
+    let db_path = crate::vault::resolved_db_path()?;
+    let dir = db_path
+        .parent()
+        .ok_or_else(|| PassForgeError::InvalidRequest("bad vault path".into()))?;
+    let port = crate::api::read_port(dir)
+        .ok_or_else(|| PassForgeError::InvalidRequest("local API is not running".into()))?;
+    let token = crate::api::read_token(dir)
+        .ok_or_else(|| PassForgeError::InvalidRequest("api token is missing".into()))?;
+    Ok(serde_json::json!({ "port": port, "token": token }))
 }
 
 #[tauri::command]
@@ -356,20 +380,37 @@ pub fn get_settings(state: State<AppState>, session: State<SessionState>) -> Res
     Ok(load_settings(&db))
 }
 
-#[tauri::command]
-pub fn save_settings(
+/// Validate, normalize and persist settings (shared by IPC and the API).
+pub fn persist_settings(
+    db: &VaultDb,
+    session: &SessionState,
     mut settings: Settings,
-    state: State<AppState>,
-    session: State<SessionState>,
 ) -> Result<Settings> {
-    require_unlocked(&session)?;
+    require_unlocked(session)?;
     if let GenerationMode::Server { url, .. } = &mut settings.generation {
         *url = remote::normalize_server_url(url)?;
     }
+    let mut known = Vec::new();
+    for url in &settings.known_servers {
+        let url = remote::normalize_server_url(url)?;
+        if !known.contains(&url) {
+            known.push(url);
+        }
+    }
+    settings.known_servers = known;
     session.set_idle_timeout(settings.idle_lock_seconds);
-    let db = state.db.lock().expect("db mutex poisoned");
     db.set_kv("settings", &serde_json::to_string(&settings)?)?;
     Ok(settings)
+}
+
+#[tauri::command]
+pub fn save_settings(
+    settings: Settings,
+    state: State<AppState>,
+    session: State<SessionState>,
+) -> Result<Settings> {
+    let db = state.db.lock().expect("db mutex poisoned");
+    persist_settings(&db, &session, settings)
 }
 
 // ---------------------------------------------------------------------------

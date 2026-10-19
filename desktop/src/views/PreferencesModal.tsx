@@ -156,6 +156,7 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
       idleLockSeconds: Number(idleLockSeconds),
       clipboardClearSeconds: Number(clipboardClearSeconds),
       generation,
+      knownServers: settings.knownServers ?? [],
     };
     if (!Number.isFinite(parsed.defaultCrypto.iterations) || parsed.defaultCrypto.iterations <= 0) {
       setError("Iterations must be a positive integer.");

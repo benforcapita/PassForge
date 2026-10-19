@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   EntrySummary,
@@ -53,6 +53,7 @@ vi.mock("../api", () => {
     idleLockSeconds: 300,
     clipboardClearSeconds: 20,
     generation: { mode: "serverless" },
+    knownServers: [],
   };
   return {
     api: {
@@ -72,6 +73,7 @@ vi.mock("../api", () => {
       previewFingerprint: vi.fn(async () => []),
       searchEntries: vi.fn(async () => [summary]),
       generatePassword: vi.fn(async () => "S3cret-Value!"),
+      backendInfo: vi.fn(async () => ({ port: 0, token: "mock" })),
       getSettings: vi.fn(async () => settings),
       saveSettings: vi.fn(async (s: Settings) => s),
       serverInfo: vi.fn(async (_url: string) => serverInfo),
@@ -93,6 +95,7 @@ vi.mock("../api", () => {
 });
 
 import { api } from "../api";
+import * as backend from "../backend";
 import { LockScreen } from "../views/LockScreen";
 import { Workbench } from "../views/Workbench";
 import { CharChip } from "../components/ui/CharChip";
@@ -102,6 +105,7 @@ const settingsFixture: Settings = {
   idleLockSeconds: 300,
   clipboardClearSeconds: 20,
   generation: { mode: "serverless" },
+  knownServers: [],
 };
 const entryFixture: VaultEntry = {
   id: "e1",
@@ -160,6 +164,8 @@ beforeEach(() => {
   vi.mocked(api.previewFingerprint).mockResolvedValue([]);
   vi.mocked(api.searchEntries).mockResolvedValue([summaryFixture]);
   vi.mocked(api.generatePassword).mockResolvedValue("S3cret-Value!");
+  vi.mocked(api.backendInfo).mockResolvedValue({ port: 0, token: "mock" });
+  backend.disconnect();
   vi.mocked(api.getSettings).mockResolvedValue(settingsFixture);
   vi.mocked(api.saveSettings).mockImplementation(async (settings) => settings);
   vi.mocked(api.serverInfo).mockResolvedValue(serverInfoFixture);
@@ -314,6 +320,98 @@ describe("Workbench", () => {
   });
 });
 
+describe("Servers panel — backend severance", () => {
+  const openServers = async () => {
+    render(<Workbench onLock={vi.fn()} />);
+    fireEvent.click(await screen.findByText("github.com"));
+    await waitFor(() => expect(api.getEntry).toHaveBeenCalledWith("e1"));
+    await screen.findByRole("button", { name: "Backend connected" });
+    fireEvent.click(screen.getByRole("button", { name: "Backend connected" }));
+    await screen.findByText("PassForge local backend");
+  };
+
+  it("auto-connects to the local backend on open", async () => {
+    render(<Workbench onLock={vi.fn()} />);
+    expect(await screen.findByRole("button", { name: "Backend connected" })).toBeInTheDocument();
+    expect(api.backendInfo).toHaveBeenCalled();
+  });
+
+  it("disconnecting the backend makes generation impossible", async () => {
+    await openServers();
+    fireEvent.click(screen.getByRole("button", { name: /Disconnect/ }));
+    expect(await screen.findByRole("status")).toHaveTextContent("disconnected");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(await screen.findByTestId("backend-gate")).toHaveTextContent(
+      "Backend disconnected — this frontend cannot generate passwords.",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Copy password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Not connected to the PassForge backend",
+    );
+    expect(api.generatePassword).not.toHaveBeenCalled();
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  it("reconnecting restores generation", async () => {
+    await openServers();
+    fireEvent.click(screen.getByRole("button", { name: /Disconnect/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Connect" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("connected");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByTestId("backend-gate")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy password" }));
+    await waitFor(() => expect(api.generatePassword).toHaveBeenCalledWith("e1"));
+  });
+
+  it("surfaces an unreachable backend instead of pretending to be connected", async () => {
+    vi.mocked(api.backendInfo).mockRejectedValue(new Error("local API is not running"));
+    render(<Workbench onLock={vi.fn()} />);
+    expect(await screen.findByRole("button", { name: "Backend unreachable" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByText("github.com"));
+    expect(await screen.findByTestId("backend-gate")).toHaveTextContent("Backend unreachable");
+  });
+
+  it("adds an algorithm server, probes it and switches the backend to it", async () => {
+    await openServers();
+    fireEvent.change(screen.getByLabelText("Algorithm server URL"), {
+      target: { value: "http://127.0.0.1:8790/" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+    await waitFor(() => expect(api.serverInfo).toHaveBeenCalledWith("http://127.0.0.1:8790"));
+    await waitFor(() =>
+      expect(api.saveSettings).toHaveBeenLastCalledWith(
+        expect.objectContaining({ knownServers: ["http://127.0.0.1:8790"] }),
+      ),
+    );
+    const row = await screen.findByTestId("algorithm-server-row");
+    expect(row).toHaveTextContent("PassForge test server · 1.0.0");
+
+    fireEvent.change(within(row).getByLabelText("Algorithm"), {
+      target: { value: "pbkdf2-sha512-v1" },
+    });
+    fireEvent.click(within(row).getByRole("button", { name: /Use/ }));
+    await waitFor(() =>
+      expect(api.saveSettings).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          generation: { mode: "server", url: "http://127.0.0.1:8790", algorithm: "pbkdf2-sha512-v1" },
+        }),
+      ),
+    );
+    expect(await within(row).findByRole("button", { name: /Disconnect/ })).toBeInTheDocument();
+    expect(screen.getByText("server · 127.0.0.1:8790 · pbkdf2-sha512-v1")).toBeInTheDocument();
+
+    // Disconnecting from the algorithm server falls back to the built-in algorithm.
+    fireEvent.click(within(row).getByRole("button", { name: /Disconnect/ }));
+    await waitFor(() =>
+      expect(api.saveSettings).toHaveBeenLastCalledWith(
+        expect.objectContaining({ generation: { mode: "serverless" } }),
+      ),
+    );
+  });
+});
+
 describe("PreferencesModal generation mode", () => {
   const openPreferences = async () => {
     render(<Workbench onLock={vi.fn()} />);
@@ -366,6 +464,7 @@ describe("PreferencesModal generation mode", () => {
           url: "http://localhost:8787",
           algorithm: "pbkdf2-sha512-v1",
         },
+        knownServers: [],
       }),
     );
   });
@@ -380,6 +479,7 @@ describe("PreferencesModal generation mode", () => {
         idleLockSeconds: 300,
         clipboardClearSeconds: 20,
         generation: { mode: "serverless" },
+        knownServers: [],
       }),
     );
   });

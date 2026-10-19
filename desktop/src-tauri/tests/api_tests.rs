@@ -8,7 +8,7 @@ use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use lesspass_core::{PasswordOptions, PasswordProfile};
 use passforge_desktop::api::{self, ApiState};
-use passforge_desktop::commands::derive_profile_password;
+use passforge_desktop::commands::{derive_profile_password, generate_entry_password};
 use passforge_desktop::db::VaultDb;
 use passforge_desktop::models::{EntryInput, FolderInput, GenerationMode, Settings};
 use passforge_desktop::session::SessionState;
@@ -266,6 +266,93 @@ async fn vault_routes_require_unlocked_session() {
     // Health exposes the lock state for frontends.
     let resp = app.oneshot(req("GET", "/api/health", None)).await.unwrap();
     assert_eq!(json(resp).await["locked"], false);
+}
+
+/// The desktop UI generates through this route, so it must (a) be gated on
+/// the unlocked session and (b) produce exactly what the IPC path produces.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn entry_generate_requires_unlock_and_matches_ipc_derivation() {
+    let st = state();
+    let entry_id = {
+        let db = st.db.lock().unwrap();
+        let folder = db
+            .create_folder(FolderInput { parent_id: None, name: "work".into() })
+            .unwrap();
+        db.create_entry(EntryInput {
+            site: "github.com".into(),
+            login: "dev@passforge.io".into(),
+            counter: 3,
+            options: PasswordOptions::default(),
+            salt_fields: vec![],
+            crypto: None,
+            folder_id: folder.id,
+            group_ids: vec![],
+            tags: vec![],
+        })
+        .unwrap()
+        .id
+    };
+    let app = api::router(st.clone());
+    let path = format!("/api/entries/{entry_id}/generate");
+
+    let resp = app.clone().oneshot(req("POST", &path, None)).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN, "locked app must not generate");
+
+    st.session.unlock(b"correct horse".to_vec()).unwrap();
+    let resp = app.clone().oneshot(req("POST", &path, None)).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let got = json(resp).await["password"].as_str().unwrap().to_string();
+
+    let want = generate_entry_password(&st.db, &st.session, &entry_id).await.unwrap();
+    assert_eq!(got, want);
+
+    let resp = app.oneshot(req("POST", "/api/entries/nope/generate", None)).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn put_settings_normalizes_known_servers_and_requires_unlock() {
+    let st = state();
+    let app = api::router(st.clone());
+    let body = serde_json::json!({
+        "defaultCrypto": {"iterations": 100000, "keylen": 32, "digest": "sha256"},
+        "idleLockSeconds": 60,
+        "clipboardClearSeconds": 30,
+        "generation": {"mode": "server", "url": "http://127.0.0.1:8790/", "algorithm": null},
+        "knownServers": ["http://127.0.0.1:8790/", "http://127.0.0.1:8790", "https://algo.example/"],
+    });
+
+    let resp = app.clone().oneshot(req("PUT", "/api/settings", Some(body.clone()))).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+
+    st.session.unlock(b"master".to_vec()).unwrap();
+    let resp = app.clone().oneshot(req("PUT", "/api/settings", Some(body))).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let saved = json(resp).await;
+    assert_eq!(saved["generation"]["url"], "http://127.0.0.1:8790");
+    assert_eq!(
+        saved["knownServers"],
+        serde_json::json!(["http://127.0.0.1:8790", "https://algo.example"])
+    );
+
+    let resp = app.oneshot(req("GET", "/api/settings", None)).await.unwrap();
+    assert_eq!(json(resp).await["knownServers"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn origin_policy_admits_extensions_and_the_desktop_webview_only() {
+    for ok in [
+        "chrome-extension://abcdefghijklmnop",
+        "moz-extension://1234",
+        "safari-web-extension://x",
+        "tauri://localhost",
+        "http://tauri.localhost",
+    ] {
+        assert!(api::origin_allowed(ok), "{ok}");
+    }
+    for bad in ["https://evil.example", "http://127.0.0.1:5000", "null", ""] {
+        assert!(!api::origin_allowed(bad), "{bad}");
+    }
 }
 
 #[test]

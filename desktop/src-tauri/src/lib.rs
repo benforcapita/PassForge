@@ -4,6 +4,7 @@ pub mod db;
 pub mod error;
 pub mod keychain;
 pub mod models;
+pub mod remote;
 pub mod session;
 pub mod native_messaging;
 pub mod vault;

@@ -8,8 +8,8 @@ PassForge is a local-first, stateless password manager built on the LessPass alg
 - **Encrypted local metadata** — SQLCipher-backed SQLite stores entries (site, login, counter, password options, salt fields) so you can organize and revisit sites without remembering every parameter.
 - **Keychain + Touch ID** — The database encryption key lives in the macOS Keychain; an optional Touch ID convenience gate can feed a remembered master password to `unlock`. The desktop holds the master password only in RAM and zeroizes it on lock, idle timeout, or quit.
 - **Entry organization** — Folders (hierarchical) and tags (freeform).
-- **Chromium MV3 extension** (`packages/passforge-extension`) — stateless generator on its own; when the `passforge-host` native-messaging host is installed it prefills profile parameters for the current tab. It never stores passwords or receives the master password.
-- **Offline CLI** (`cli/`) — `pip install lesspass`; `lesspass site login masterpassword` prints the generated password.
+- **Chromium MV3 extension** (`packages/passforge-extension`) — stateless generator on its own; when the `passforge-host` native-messaging host is installed it prefills profile parameters for the current tab. It never stores passwords or receives the master password. Supports the same optional algorithm servers.
+- **Offline CLI** (`cli/`) — `pip install lesspass`; `lesspass site login masterpassword` prints the generated password. Supports the same optional algorithm servers.
 - **Optional algorithm servers** — `crates/passforge-server` reference server (Argon2id, PBKDF2-SHA512, optional server pepper) speaking the stateless `passforge-remote-v1` API; serverless mode keeps the built-in LessPass algorithm.
 - **Security-first design** — No cloud sync, no accounts, no network traffic unless you pick an algorithm server. Generated passwords are never written to disk or logs. Clipboard auto-clears after a configurable delay.
 

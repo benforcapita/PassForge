@@ -9,12 +9,14 @@
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
 use crate::models::{
-    EntryInput, EntrySummary, Folder, FolderInput, ImportReport, Settings, VaultEntry,
-    VaultExport,
+    EntryInput, EntrySummary, Folder, FolderInput, GenerationMode, ImportReport, Settings,
+    VaultEntry, VaultExport,
 };
 use crate::keychain::SecretStore;
+use crate::remote;
 use crate::session::SessionState;
-use zeroize::Zeroize;
+use passforge_protocol::{DeriveResponse, blind, finish_password};
+use zeroize::{Zeroize, Zeroizing};
 use lesspass_core::{
     build_fingerprint_hash, calc_entropy, create_fingerprint, render_password, CryptoConfig,
     Fingerprint,
@@ -79,14 +81,39 @@ pub fn derive_password(
     master_password: &str,
     settings: &Settings,
 ) -> Result<String> {
-    let crypto: CryptoConfig = entry
-        .profile
-        .crypto
-        .clone()
-        .unwrap_or_else(|| settings.default_crypto.clone());
-    let entropy = calc_entropy(&entry.profile, master_password, &crypto);
-    render_password(&entropy, &entry.profile.options)
-        .map_err(|err| PassForgeError::InvalidRequest(err.to_string()))
+    derive_password_with(entry, master_password, settings, remote::derive)
+}
+
+pub fn derive_password_with<F>(
+    entry: &VaultEntry,
+    master_password: &str,
+    settings: &Settings,
+    remote: F,
+) -> Result<String>
+where
+    F: FnOnce(&str, Option<&str>, &str) -> Result<DeriveResponse>,
+{
+    match &settings.generation {
+        GenerationMode::Serverless => {
+            let crypto: CryptoConfig = entry
+                .profile
+                .crypto
+                .clone()
+                .unwrap_or_else(|| settings.default_crypto.clone());
+            let entropy = calc_entropy(&entry.profile, master_password, &crypto);
+            render_password(&entropy, &entry.profile.options)
+                .map_err(|err| PassForgeError::InvalidRequest(err.to_string()))
+        }
+        GenerationMode::Server { url, algorithm } => {
+            let url = remote::normalize_server_url(url)?;
+            let blinded = blind(&entry.profile, master_password, &settings.default_crypto);
+            let response = remote(&url, algorithm.as_deref(), &blinded.input_hex())?;
+            let output = hex::decode(&response.output)
+                .map_err(|_| PassForgeError::Remote("server returned invalid output hex".into()))?;
+            finish_password(&blinded, &output, &entry.profile.options)
+                .map_err(|err| PassForgeError::Remote(format!("invalid server output: {err}")))
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -243,27 +270,56 @@ pub fn search_entries(query: String, state: State<AppState>, session: State<Sess
 }
 
 #[tauri::command]
-pub fn generate_password(
+pub async fn generate_password(
     entry_id: String,
-    state: State<AppState>,
-    session: State<SessionState>,
+    state: State<'_, AppState>,
+    session: State<'_, SessionState>,
 ) -> Result<String> {
-    let mut master_bytes = session.master_password_bytes()?;
-    let mut master_password = String::from_utf8(std::mem::take(&mut master_bytes))
-        .map_err(|err| {
-            master_bytes.zeroize();
-            PassForgeError::InvalidRequest(format!("master password is not valid UTF-8: {err}"))
-        })?;
-    let db = state.db.lock().expect("db mutex poisoned");
-    let settings = load_settings(&db);
-    let entry = db
-        .get_entry(&entry_id)?
-        .ok_or_else(|| PassForgeError::EntryNotFound(entry_id.clone()))?;
-    let password = derive_password(&entry, &master_password, &settings);
-    master_password.zeroize();
-    let password = password?;
-    db.mark_used(&entry_id)?;
+    require_unlocked(&session)?;
+    let (entry, settings, master_bytes) = {
+        let db = state.db.lock().expect("db mutex poisoned");
+        let entry = db
+            .get_entry(&entry_id)?
+            .ok_or_else(|| PassForgeError::EntryNotFound(entry_id.clone()))?;
+        let settings = load_settings(&db);
+        let master_bytes = session.master_password_bytes()?;
+        (entry, settings, master_bytes)
+    };
+    let master_bytes = Zeroizing::new(master_bytes);
+    let password = tauri::async_runtime::spawn_blocking(move || {
+        let mut master_bytes = master_bytes;
+        let master_password = match String::from_utf8(std::mem::take(&mut *master_bytes)) {
+            Ok(password) => Zeroizing::new(password),
+            Err(error) => {
+                let mut bytes = error.into_bytes();
+                bytes.zeroize();
+                return Err(PassForgeError::InvalidRequest(
+                    "master password is not valid UTF-8".into(),
+                ));
+            }
+        };
+        derive_password(&entry, &master_password, &settings)
+    })
+    .await
+    .map_err(|_| PassForgeError::InvalidRequest("password generation task failed".into()))??;
+    state
+        .db
+        .lock()
+        .expect("db mutex poisoned")
+        .mark_used(&entry_id)?;
     Ok(password)
+}
+
+#[tauri::command]
+pub async fn server_info(
+    url: String,
+    session: State<'_, SessionState>,
+) -> Result<passforge_protocol::InfoResponse> {
+    require_unlocked(&session)?;
+    let url = remote::normalize_server_url(&url)?;
+    tauri::async_runtime::spawn_blocking(move || remote::fetch_info(&url))
+        .await
+        .map_err(|_| PassForgeError::Remote("server info task failed".into()))?
 }
 
 // ---------------------------------------------------------------------------
@@ -279,11 +335,14 @@ pub fn get_settings(state: State<AppState>, session: State<SessionState>) -> Res
 
 #[tauri::command]
 pub fn save_settings(
-    settings: Settings,
+    mut settings: Settings,
     state: State<AppState>,
     session: State<SessionState>,
 ) -> Result<Settings> {
     require_unlocked(&session)?;
+    if let GenerationMode::Server { url, .. } = &mut settings.generation {
+        *url = remote::normalize_server_url(url)?;
+    }
     session.set_idle_timeout(settings.idle_lock_seconds);
     let db = state.db.lock().expect("db mutex poisoned");
     db.set_kv("settings", &serde_json::to_string(&settings)?)?;

@@ -5,6 +5,7 @@ import type {
   Finger,
   Folder,
   ImportReport,
+  ServerInfo,
   Settings,
   VaultEntry,
 } from "./types";
@@ -114,6 +115,7 @@ let settings: Settings = {
   defaultCrypto: { iterations: 100_000, keylen: 32, digest: "sha256" },
   idleLockSeconds: 300,
   clipboardClearSeconds: 20,
+  generation: { mode: "serverless" },
 };
 
 function summarize(entry: MockEntry): EntrySummary {
@@ -132,15 +134,15 @@ const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#
 
 function mockPassword(entry: MockEntry): string {
   const seed = hashString(
-    `${masterPassword}:${entry.profile.site}:${entry.profile.login}:${entry.profile.counter}`,
+    `${settings.generation.mode}:${settings.generation.mode === "server" ? settings.generation.url : ""}:${settings.generation.mode === "server" ? settings.generation.algorithm ?? "default" : ""}:${masterPassword}:${entry.profile.site}:${entry.profile.login}:${entry.profile.counter}`,
   );
-  let out = "";
+  let out = settings.generation.mode === "server" ? "SRV-" : "";
   let h = seed;
-  for (let i = 0; i < entry.profile.options.length; i += 1) {
+  for (let i = out.length; i < entry.profile.options.length; i += 1) {
     h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
     out += CHARS[h % CHARS.length];
   }
-  return out;
+  return out.slice(0, entry.profile.options.length);
 }
 
 export const mockApi: Api = {
@@ -238,6 +240,40 @@ export const mockApi: Api = {
   saveSettings: async (next: Settings) => {
     settings = { ...next };
     return settings;
+  },
+  serverInfo: async (url: string): Promise<ServerInfo> => {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new Error("Enter a valid http:// or https:// server URL.");
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("Enter a valid http:// or https:// server URL.");
+    }
+    return {
+      protocol: "passforge-remote-v1",
+      name: "PassForge mock algorithm server",
+      version: "1.0.0",
+      default_algorithm: "argon2id-v1",
+      algorithms: [
+        {
+          id: "argon2id-v1",
+          description: "Argon2id · 64 MiB memory-hard derivation",
+          portable: true,
+        },
+        {
+          id: "pbkdf2-sha512-v1",
+          description: "PBKDF2-HMAC-SHA512 · 210,000 iterations",
+          portable: true,
+        },
+        {
+          id: "hmac-pepper-v1",
+          description: "HMAC-SHA256 with this server's private pepper",
+          portable: false,
+        },
+      ],
+    };
   },
   // Browser dev has no filesystem: export downloads the JSON directly and
   // import accepts the file's text content instead of a path.

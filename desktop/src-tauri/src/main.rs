@@ -26,6 +26,7 @@ fn main() {
             commands::preview_fingerprint,
             commands::search_entries,
             commands::generate_password,
+            commands::server_info,
             commands::get_settings,
             commands::save_settings,
             commands::biometric_supported,

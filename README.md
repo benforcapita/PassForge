@@ -1,49 +1,650 @@
 # PassForge
 
-PassForge is a local-first, stateless password manager built on the LessPass algorithm. Passwords are regenerated deterministically from a site, a login, and your master password — never stored, never synced, no accounts. Optionally, an interchangeable zero-knowledge algorithm server can take part in derivation — it never sees your site, login, master password, settings, or the resulting password (see `docs/remote-protocol.md`).
+**A stateless password manager where the frontends can't generate a single password on their own.**
 
-### Features
+PassForge regenerates every password deterministically from a *site*, a *login* and your *master password* — nothing is stored, nothing is synced, there are no accounts. It is a fork of [LessPass](https://github.com/lesspass/lesspass) that keeps the algorithm and drops the cloud.
 
-- **macOS desktop app** — Tauri v2 shell, Rust backend, React 19 frontend built on the Obsidian Precision design system (see `docs/design-system/`).
-- **Encrypted local metadata** — SQLCipher-backed SQLite stores entries (site, login, counter, password options, salt fields) so you can organize and revisit sites without remembering every parameter.
-- **Keychain + Touch ID** — The database encryption key lives in the macOS Keychain; an optional Touch ID convenience gate can feed a remembered master password to `unlock`. The desktop holds the master password only in RAM and zeroizes it on lock, idle timeout, or quit.
-- **Entry organization** — Folders (hierarchical) and tags (freeform).
-- **One local backend** — the desktop app embeds a loopback HTTP API (`http://127.0.0.1`, bearer token in the vault dir) that owns all generation and vault access. Frontends are severed from the algorithm by design: they call the API and contain no derivation code.
-- **Chromium MV3 extension** (`packages/passforge-extension`) — a thin frontend: generation and fingerprints are API calls to the running app, paired via the `passforge-host` native messenger (`api_info` op) which also prefills profile parameters for the current tab. It follows whatever generation mode (serverless or algorithm server) the desktop app has configured.
-- **Offline CLI** (`cli/`) — `pip install lesspass`; `lesspass site login masterpassword` prints the generated password. Supports the same optional algorithm servers.
-- **Optional algorithm servers** — `crates/passforge-server` reference server (Argon2id, PBKDF2-SHA512, optional server pepper) speaking the stateless `passforge-remote-v1` API; serverless mode keeps the built-in LessPass algorithm.
-- **Security-first design** — No cloud sync, no accounts, no network traffic unless you pick an algorithm server. Generated passwords are never written to disk or logs. Clipboard auto-clears after a configurable delay.
+What makes PassForge different is an architecture rule that this repository enforces end to end:
 
-### What PassForge is NOT
+> **Frontends are severed from the algorithm.** The desktop window and the browser extension contain no password-derivation code. They are clients of a **local backend** (a loopback HTTP API embedded in the desktop app). No backend connection → no password. The backend, in turn, can derive on its own (*serverless*) or through an optional, interchangeable, zero-knowledge **algorithm server** that you host yourself.
 
-- Not a cloud-sync password manager — no accounts, no sync; algorithm servers are optional, stateless and zero-knowledge.
-- Not a password vault — passwords are never stored, only the parameters to regenerate them.
-- Not cross-platform desktop (v1) — macOS only.
-- Not a Safari or Firefox extension (v1) — Chromium only.
-- Not a mobile app.
+Both frontends ship with a **Servers** panel that lets you see, connect to and disconnect from each of those two layers — and watch generation stop working the moment the backend is gone.
 
-### Repository layout
+---
 
-- `desktop/` — Tauri v2 + React desktop app (`passforge-desktop` crate in `desktop/src-tauri/`).
-- `crates/lesspass-core/` — Rust implementation of the password-generation algorithm.
-- `crates/passforge-protocol/` — Client-side primitives and types for the remote algorithm protocol.
-- `crates/passforge-server/` — Reference stateless remote algorithm server.
-- `packages/passforge-extension/` — Chromium MV3 extension (frontend only; calls the local API).
-- `cli/` — Python CLI.
-- `docs/` — design system, security checklist, macOS verification checklist, remote protocol specification.
+## Table of contents
 
-### Verification
+1. [How it works](#1-how-it-works)
+2. [Repository layout](#2-repository-layout)
+3. [Quick start (macOS)](#3-quick-start-macos)
+4. [The desktop app and its embedded backend](#4-the-desktop-app-and-its-embedded-backend)
+5. [The Chrome extension](#5-the-chrome-extension)
+6. [The Servers panel — demonstrating the severance](#6-the-servers-panel--demonstrating-the-severance)
+7. [Deploying your own algorithm server](#7-deploying-your-own-algorithm-server)
+8. [The CLI](#8-the-cli)
+9. [Local backend API reference](#9-local-backend-api-reference)
+10. [Security model](#10-security-model)
+11. [Development](#11-development)
+12. [Troubleshooting](#12-troubleshooting)
+13. [License and credit](#13-license-and-credit)
 
-```bash
-cargo test                            # Rust (lesspass-core, passforge-desktop)
-yarn install && yarn build && yarn test   # JS workspaces
-cd cli && PYTHONPATH=. python3 -m unittest discover -s tests -t .
+---
+
+## 1. How it works
+
+### The algorithm (unchanged from LessPass)
+
+```
+entropy  = PBKDF2-HMAC-SHA256( master_password, site ‖ login ‖ counter, 100 000 iterations )
+password = render( entropy, { lowercase, uppercase, digits, symbols, length } )
 ```
 
-## License
+Same inputs, same password — forever, on any device. Change the counter to rotate a password. The master password is never stored anywhere; a visual **fingerprint** (three coloured glyphs) tells you that you typed it correctly.
 
-This project is licensed under the terms of the GNU GPLv3.
+### Three layers
 
-## Credit
+```
+┌──────────────────────────┐     ┌──────────────────────────┐
+│  Desktop window (React)  │     │  Chrome extension (MV3)  │      FRONTENDS
+│  no algorithm inside     │     │  no algorithm inside     │      (thin clients)
+└────────────┬─────────────┘     └────────────┬─────────────┘
+             │ http://127.0.0.1:<port>        │ pairs via native host,
+             │ Bearer <api-token>             │ then same HTTP API
+             ▼                                ▼
+┌──────────────────────────────────────────────────────────────┐
+│  LOCAL BACKEND  — embedded in PassForge.app's process        │
+│  axum on loopback · bearer token · unlock-gated vault routes │  BACKEND
+│  lesspass-core (Rust) · SQLCipher vault · macOS Keychain     │
+└───────────────────────────┬──────────────────────────────────┘
+                            │ optional: one blinded 32-byte hash per password
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│  ALGORITHM SERVER  — passforge-server (self-hosted, optional)│  ALGORITHM SERVER
+│  stateless · zero-knowledge · Argon2id / PBKDF2 / pepper     │  (interchangeable)
+└──────────────────────────────────────────────────────────────┘
+```
 
-PassForge is a fork of [LessPass](https://github.com/lesspass/lesspass), itself based on an original idea from the [masterpassword app](https://masterpassword.app/). The deterministic algorithm (site + login + master password → password, every time, with nothing stored) is LessPass's; PassForge keeps that promise and drops the server, accounts, and sync.
+| Layer | What it knows | What it can do alone |
+|---|---|---|
+| **Frontend** | site, login, master password (typed), UI state | Nothing. Reveal/Copy/Generate are HTTP calls. |
+| **Local backend** | everything above + the vault (entry parameters) + settings | Derive passwords (serverless) or delegate to an algorithm server. |
+| **Algorithm server** | one blinded hash per request — never site, login, master password, settings or the resulting password | Return bytes the backend mixes with a key that never leaves your machine. |
+
+### Two kinds of "server"
+
+People reasonably ask "which server?" — there are two, and the Servers panel has one section for each:
+
+1. **Backend** (section 1) — the local API inside `PassForge.app`. **Required.** This is what makes the frontends thin.
+2. **Algorithm server** (section 2) — `passforge-server`, or any implementation of [`passforge-remote-v1`](docs/remote-protocol.md). **Optional.** With none selected the backend uses the built-in LessPass algorithm ("serverless").
+
+---
+
+## 2. Repository layout
+
+```
+desktop/                     Tauri v2 + React 19 desktop app
+  src/                       UI (Workbench, Servers panel, Preferences, lock screen)
+  src/backend.ts             the UI's connection to the local backend (HTTP)
+  src-tauri/                 Rust crate `passforge-desktop`
+    src/api.rs               the local backend: axum router, token, CORS
+    src/commands.rs          IPC commands + shared derivation helpers
+    src/bin/passforge-host.rs  Chrome native-messaging host (sidecar)
+    src/native_messaging.rs  host wire protocol (ping / search / get_entry / api_info)
+    src/remote.rs            client for algorithm servers (ureq)
+    src/keychain.rs          vault key in macOS Keychain
+    native-messaging/        host manifest template + install script
+crates/lesspass-core/        the password algorithm (the only place it exists)
+crates/passforge-protocol/   client primitives for passforge-remote-v1 (blind / finish)
+crates/passforge-server/     reference algorithm server (axum)
+packages/passforge-extension/  Chromium MV3 extension (React) — no algorithm code
+cli/                         Python CLI (`pip install lesspass`), optional --server
+docs/
+  remote-protocol.md         the algorithm-server protocol, byte for byte
+  security-checklist.md      what is and isn't covered
+  macos-verification.md      things to verify on real hardware
+  design-system/             "Obsidian Precision" UI tokens
+scripts/build-mac.sh         one-shot: build .app + sidecar, install host manifest
+```
+
+---
+
+## 3. Quick start (macOS)
+
+### Prerequisites
+
+| Tool | Why | Install |
+|---|---|---|
+| Rust (stable) + Cargo | backend, server, host | `brew install rustup && rustup-init` or <https://rustup.rs> |
+| `cargo-tauri` 2.x | builds the `.app` | `cargo install tauri-cli --version '^2'` |
+| Node 22 + Yarn 4 | React frontends | `brew install node@22 && corepack enable` (Node ≥ 25 dropped corepack: `npm i -g corepack`) |
+| Xcode command line tools | linking, bundling | `xcode-select --install` |
+| Python 3.8+ (optional) | CLI | preinstalled / `brew install python` |
+
+### Build everything and launch
+
+```bash
+git clone git@github.com:benforcapita/PassForge.git
+cd PassForge
+yarn install
+./scripts/build-mac.sh           # builds PassForge.app with the native host bundled, then opens it
+```
+
+Or step by step:
+
+```bash
+yarn build                                   # desktop + extension bundles
+cd desktop && cargo tauri build && cd ..     # → target/release/bundle/macos/PassForge.app
+open target/release/bundle/macos/PassForge.app
+```
+
+On first launch the app:
+
+1. creates a SQLCipher vault at `~/Library/Application Support/PassForge/passforge.db`, with a random 32-byte key stored in the **macOS Keychain** (`com.passforge.desktop` / `database-key`);
+2. starts the **local backend** on `127.0.0.1:<ephemeral port>` and writes `api-info.json` (port) and `api-token` (0600) next to the vault;
+3. shows the lock screen — enter any master password you choose. There is no "sign-up": the master password is an *input to the algorithm*, not a credential that is checked against anything.
+
+> **Keychain prompts.** The first time a given binary opens the vault, macOS asks whether it may read `database-key`. Click **Always Allow**. Every rebuilt binary is a new identity to Keychain, so you'll see the prompt again after each `cargo tauri build`. Denying the prompt is safe: since commit `b5248924` a denied read is a hard error, never a silent key rewrite.
+
+### Verify the backend is alive
+
+```bash
+DIR="$HOME/Library/Application Support/PassForge"
+PORT=$(python3 -c "import json;print(json.load(open('$DIR/api-info.json'))['port'])")
+TOKEN=$(cat "$DIR/api-token")
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:$PORT/api/health
+# {"locked":false,"version":"12.0.0"}
+```
+
+---
+
+## 4. The desktop app and its embedded backend
+
+### The window
+
+- **Sidebar** — folders, *New Profile* (⌘N), **Servers** (⌘⇧S), *Preferences* (⌘,).
+- **Entry list** — site / login / counter / fingerprint; ⌘K to filter.
+- **Detail pane** — the **Secret** well (Reveal, Copy ⌘C with timed clipboard wipe), **Parameters** (counter, length, character sets, salt fields, per-entry crypto override), folders and tags.
+- **Header chip** — `● backend connected` / `○ backend disconnected`. Click it to open Servers.
+- **Status bar** — crypto config, entry count, clipboard wipe, generation mode (`serverless` or `server · host · algorithm`), backend address, idle-lock countdown.
+
+### What's actually happening when you click Reveal
+
+```
+Workbench ──backend.generate(entryId)──▶ POST http://127.0.0.1:<port>/api/entries/{id}/generate
+                                          Authorization: Bearer <token>
+                                          (backend: require unlocked session,
+                                           load entry + settings,
+                                           derive with session master password,
+                                           mark entry used)
+          ◀────────── { "password": "…" } ────────────
+```
+
+The React code never sees the algorithm. `desktop/src/backend.ts` obtains the port and token through one IPC call (`backend_info`) and from then on speaks plain HTTP, exactly like the extension. If you **Disconnect** in the Servers panel, `backend.ts` drops the credentials and `generate()` throws *"Not connected to the PassForge backend"* — there is no fallback.
+
+### The vault
+
+The vault stores **parameters, never passwords**: site, login, counter, character-set options, length, salt fields, optional per-entry crypto override, folder, tags, timestamps. Losing the vault file loses nothing you can't retype; losing your master password loses everything. Export/Import (Preferences → Vault data) produce plain JSON of those parameters.
+
+### Locking
+
+The master password lives only in RAM inside the backend's `SessionState` and is zeroized on **Lock** (⌘L), on the configurable **idle timeout**, and on quit. While locked, the backend serves no vault data (`403` on vault routes) and the frontends show the lock screen. Optional **Touch ID** can feed a Keychain-remembered master password to `unlock` — a convenience gate, not a security boundary.
+
+---
+
+## 5. The Chrome extension
+
+`packages/passforge-extension` is a Manifest V3 popup. It contains **no derivation code**: generation and the key fingerprint are `fetch` calls to the local backend. If the backend isn't connected, **Generate** and **Copy** are disabled and the popup says so.
+
+### How the extension finds the backend
+
+The backend's port is ephemeral and its token is a secret file, so the extension doesn't ask you to type anything. It talks to the **native-messaging host** `passforge-host` (bundled inside `PassForge.app`), which reads `api-info.json` and `api-token` from the vault directory and hands back `{ port, token }`. Pairing is therefore based on OS file permissions: whoever can run the host as your user can pair.
+
+```
+popup ──chrome.runtime.sendNativeMessage("com.passforge.desktop", {op:"api_info"})──▶ passforge-host
+      ◀──────────────────────── { port, token } ──────────────────────────────────────
+popup ──GET http://127.0.0.1:<port>/api/health  (Bearer token)──▶ backend   → "backend connected"
+```
+
+The host also answers `ping`, `search` and `get_entry`, which is how the popup prefills login / counter / options for the site in the active tab.
+
+### Install (sideload) — step by step
+
+**1. Build the extension**
+
+```bash
+yarn workspace passforge-extension build      # → packages/passforge-extension/dist
+```
+
+**2. Load it in Chrome**
+
+1. Open `chrome://extensions`.
+2. Enable **Developer mode** (top right).
+3. **Load unpacked** → choose `packages/passforge-extension/dist` (absolute path; in the file dialog press ⌘⇧G and paste it).
+4. Note the **ID** on the PassForge card (32 lowercase letters).
+
+Chrome derives the ID of an unpacked extension from the absolute path of its folder, so it is stable as long as you don't move the repo. You can precompute it:
+
+```bash
+python3 - "$(cd packages/passforge-extension/dist && pwd -P)" <<'EOF'
+import hashlib, sys
+h = hashlib.sha256(sys.argv[1].encode()).hexdigest()[:32]
+print("".join(chr(ord("a") + int(c, 16)) for c in h))
+EOF
+```
+
+**3. Register the native-messaging host for that ID**
+
+```bash
+./desktop/src-tauri/native-messaging/install-host.sh \
+  "$PWD/target/release/bundle/macos/PassForge.app/Contents/MacOS/passforge-host" \
+  <EXTENSION_ID> chrome          # chrome | chromium | edge | brave
+```
+
+This writes `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.passforge.desktop.json`:
+
+```json
+{
+  "name": "com.passforge.desktop",
+  "path": "/…/PassForge.app/Contents/MacOS/passforge-host",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://<EXTENSION_ID>/"]
+}
+```
+
+`scripts/build-mac.sh <EXTENSION_ID>` does steps 1 and 3 as part of the full build.
+
+**4. Allow the host to read the vault key**
+
+The first time Chrome launches `passforge-host`, macOS shows a Keychain prompt for `database-key`. Click **Always Allow**. (You can trigger it outside Chrome to get it over with — see [Troubleshooting](#12-troubleshooting).)
+
+**5. Use it**
+
+Click the toolbar icon (pin it via the puzzle-piece menu) or press **⌘⇧L**.
+
+- First run: badge **`backend disconnected`**, a warning strip, Generate/Copy greyed out. *This is intentional*: the dependency is visible.
+- **Servers** tab → **Connect**. The badge turns **`backend connected`** and the backend row shows `http://127.0.0.1:<port> · v12.0.0`.
+- **Generate** tab: type the master password → fingerprint glyphs appear (computed by the backend) → **Generate** / **Copy**.
+- Your Connect/Disconnect choice is remembered (`chrome.storage.local`) across popup opens.
+
+### Permissions, and why
+
+| Permission | Used for |
+|---|---|
+| `nativeMessaging` | pairing + vault prefill through `passforge-host` |
+| `host_permissions: http://127.0.0.1/*` | calling the local backend |
+| `activeTab` | reading the current tab's hostname to prefill *Site* |
+| `storage` | remembering whether you chose to be connected |
+
+No remote hosts, no content scripts, no background network activity.
+
+### Updating after a rebuild
+
+`yarn workspace passforge-extension build` rewrites `dist/`; then click ↻ on the PassForge card in `chrome://extensions`. The ID doesn't change. If you rebuilt `PassForge.app`, the host binary changed too — expect one more Keychain prompt.
+
+---
+
+## 6. The Servers panel — demonstrating the severance
+
+Both frontends have the same two-section panel.
+
+### Section 1 · Backend — *required to generate*
+
+| Row | Meaning |
+|---|---|
+| `● PassForge local backend · http://127.0.0.1:53473 · v12.0.0 · connected` | paired and healthy |
+| `○ … · disconnected` | you disconnected; credentials dropped |
+| `● … · unreachable` + error | pairing or health check failed (app not running? host not installed?) |
+
+**Demo script**
+
+1. In the desktop app select an entry, click **Reveal** → password appears.
+2. Click the header chip → **Disconnect** → **Close**. The Secret well now shows *"Backend disconnected — this frontend cannot generate passwords."* Reveal and Copy fail with *"Not connected to the PassForge backend."*
+3. **Connect** → works again.
+4. Same in the extension: **Servers → Disconnect** → Generate/Copy disabled; reopen the popup → still disconnected; **Connect** → working.
+
+Why this is real and not a UI flag: the desktop UI's *only* generation path is `POST /api/entries/{id}/generate`; the extension's is `POST /api/generate`. Neither bundle contains `lesspass-core` or the TypeScript port (that package was deleted in PR #20 — the extension bundle is 32 modules of UI).
+
+### Section 2 · Algorithm server — *used by the backend*
+
+| Row | Meaning |
+|---|---|
+| **Built-in (serverless)** `Active` | the backend derives locally with LessPass. No network. |
+| `127.0.0.1:8790 · PassForge reference server · 12.0.0` + algorithm picker | a known server, probed live through the backend |
+
+- **Add server** → URL is probed (`/v1/info` via the backend) and saved to `knownServers`.
+- **Use** → the backend's generation mode becomes `server · <host> · <algorithm>`. Every password changes (different algorithm ⇒ different output — by design).
+- **Disconnect** on the active server → back to serverless.
+- The list and the active choice are **backend settings**, so the desktop app, the extension and the CLI (`--server`) all see the same thing. Changing it in the extension changes what the desktop app generates.
+
+The extension can't reach algorithm servers itself (its only host permission is loopback); it asks the backend to probe them (`POST /api/server-info`) and edits settings with `PUT /api/settings`. Both require the app to be **unlocked**.
+
+---
+
+## 7. Deploying your own algorithm server
+
+`crates/passforge-server` is a small, stateless axum service implementing [`passforge-remote-v1`](docs/remote-protocol.md). Anyone can run one; any client can switch between them.
+
+### What it does — and doesn't — know
+
+Per request it receives **32 bytes** that are the output of PBKDF2 over (site ‖ login ‖ master password ‖ hashed settings) on the client. It returns 32 bytes. It never receives the site, login, master password, counter, options, or the final password, and it cannot compute the password from its own output because the client mixes in a second key that never leaves the device. It keeps no state and logs no bodies.
+
+What it *can* do: return wrong bytes (passwords change, nothing leaks) and observe IP/timing metadata.
+
+### Algorithms
+
+| id | definition | portable? |
+|---|---|---|
+| `argon2id-v1` (default) | Argon2id m=64 MiB, t=3, p=1 | yes — any server gives the same output |
+| `pbkdf2-sha512-v1` | PBKDF2-HMAC-SHA512, 210 000 iterations | yes |
+| `hmac-pepper-v1` | HMAC-SHA256 with a **server-side pepper** | **no** — only *this* server (with *this* pepper) can reproduce those passwords |
+
+Use a pepper only if you understand the trade: it means an attacker who steals your master password still can't derive passwords without your server — and it means **losing the pepper loses the passwords**. Back it up like a private key.
+
+### Configuration (environment variables)
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PASSFORGE_BIND` | `127.0.0.1:8787` | listen address |
+| `PASSFORGE_SERVER_NAME` | `PassForge reference server` | shown to clients in `/v1/info` |
+| `PASSFORGE_MAX_CONCURRENT` | `4` | concurrent derivations (Argon2id uses 64 MiB each); excess → `503` |
+| `PASSFORGE_PEPPER` | unset | hex, ≥ 32 bytes decoded; enables `hmac-pepper-v1` |
+| `PASSFORGE_PEPPER_FILE` | unset | path to a file containing the hex pepper (preferred over the env var) |
+
+### Option A — run it on your laptop (what the demo uses)
+
+```bash
+cargo build --release -p passforge-server
+PASSFORGE_BIND=127.0.0.1:8790 ./target/release/passforge-server
+# passforge-server listening on 127.0.0.1:8790; algorithms: argon2id-v1, pbkdf2-sha512-v1
+
+curl http://127.0.0.1:8790/v1/info
+```
+
+Then in the desktop app: **Servers → Add server → `http://127.0.0.1:8790` → Use**. Plain `http://` is accepted for loopback only; the UI warns for anything else.
+
+### Option B — a Linux VM / VPS with systemd + a TLS reverse proxy
+
+Clients talk to algorithm servers directly from the backend using `ureq`, so **TLS is mandatory for anything that is not localhost**. Terminate TLS in Caddy or nginx and keep the server bound to loopback.
+
+**Build** (on the server, or cross-compile and copy the binary):
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+git clone https://github.com/benforcapita/PassForge.git && cd PassForge
+cargo build --release -p passforge-server
+sudo install -m 0755 target/release/passforge-server /usr/local/bin/passforge-server
+sudo useradd --system --home /var/lib/passforge --shell /usr/sbin/nologin passforge
+```
+
+**Optional pepper** (keep it out of the unit file and out of git):
+
+```bash
+sudo install -d -o passforge -g passforge -m 0700 /etc/passforge
+openssl rand -hex 32 | sudo tee /etc/passforge/pepper >/dev/null
+sudo chown passforge:passforge /etc/passforge/pepper && sudo chmod 0400 /etc/passforge/pepper
+# BACK THIS FILE UP. Losing it loses every password derived with hmac-pepper-v1.
+```
+
+**`/etc/systemd/system/passforge-server.service`**
+
+```ini
+[Unit]
+Description=PassForge algorithm server (passforge-remote-v1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=passforge
+Group=passforge
+ExecStart=/usr/local/bin/passforge-server
+Environment=PASSFORGE_BIND=127.0.0.1:8787
+Environment=PASSFORGE_SERVER_NAME=algorithms.example.com
+Environment=PASSFORGE_MAX_CONCURRENT=8
+# Environment=PASSFORGE_PEPPER_FILE=/etc/passforge/pepper
+Restart=on-failure
+RestartSec=2
+# Hardening — the server needs nothing but a socket.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+# 64 MiB per concurrent Argon2id + headroom:
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now passforge-server
+systemctl status passforge-server
+curl http://127.0.0.1:8787/v1/info
+```
+
+**Caddy** (automatic Let's Encrypt), `/etc/caddy/Caddyfile`:
+
+```caddy
+algorithms.example.com {
+    reverse_proxy 127.0.0.1:8787
+    request_body { max_size 4KB }
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        -Server
+    }
+    log {
+        # do not log request bodies; access logs with IPs are your call
+        output discard
+    }
+}
+```
+
+**nginx** equivalent:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name algorithms.example.com;
+    ssl_certificate     /etc/letsencrypt/live/algorithms.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/algorithms.example.com/privkey.pem;
+    client_max_body_size 4k;
+    access_log off;
+    location / {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_set_header Host $host;
+    }
+}
+```
+
+The server already answers CORS `*` for browser clients and never logs bodies. Then, on your clients: **Servers → Add server → `https://algorithms.example.com` → Use**, and in the CLI `--server https://algorithms.example.com`.
+
+### Option C — Docker
+
+There is no Dockerfile in the repo yet; this one builds a static-ish image in two stages:
+
+```dockerfile
+# Dockerfile.server
+FROM rust:1-bookworm AS build
+WORKDIR /src
+COPY . .
+RUN cargo build --release -p passforge-server
+
+FROM debian:bookworm-slim
+RUN useradd --system --uid 10001 passforge
+COPY --from=build /src/target/release/passforge-server /usr/local/bin/passforge-server
+USER passforge
+ENV PASSFORGE_BIND=0.0.0.0:8787
+EXPOSE 8787
+ENTRYPOINT ["/usr/local/bin/passforge-server"]
+```
+
+```bash
+docker build -f Dockerfile.server -t passforge-server .
+docker run --rm -p 127.0.0.1:8787:8787 \
+  -e PASSFORGE_SERVER_NAME="my algorithms" \
+  -e PASSFORGE_MAX_CONCURRENT=8 \
+  --memory=1g --read-only --cap-drop=ALL \
+  passforge-server
+```
+
+Put the same Caddy/nginx in front for TLS. For a pepper, mount a secret file read-only and set `PASSFORGE_PEPPER_FILE=/run/secrets/pepper`.
+
+### Operating notes
+
+- **Capacity**: each Argon2id derivation costs 64 MiB and ~100–300 ms. `PASSFORGE_MAX_CONCURRENT × 64 MiB` is your RAM budget; the server returns `503` above it rather than swapping.
+- **Upgrades are safe for portable algorithms** — `argon2id-v1` and `pbkdf2-sha512-v1` are frozen definitions. New algorithms get new ids.
+- **Migration between servers**: any server with the same portable algorithm id yields the same passwords. Only `hmac-pepper-v1` ties you to a pepper.
+- **Monitoring**: `GET /v1/info` is a fine health check. There's no metrics endpoint by design (nothing interesting to count that isn't metadata).
+
+### Writing a different server
+
+Implement two endpoints — `GET /v1/info`, `POST /v1/derive` — per [docs/remote-protocol.md](docs/remote-protocol.md). The input is 32 bytes of hex, the output ≥ 32 bytes of hex. Don't log bodies. That's the whole contract; the clients share nothing else with you.
+
+---
+
+## 8. The CLI
+
+```bash
+cd cli && python3 -m pip install --user -e .
+lesspass example.org alice masterpassword                 # serverless (built-in)
+lesspass example.org alice masterpassword -L 20 -C 2 --no-symbols
+lesspass example.org alice masterpassword --server https://algorithms.example.com
+lesspass example.org alice masterpassword --server https://algorithms.example.com --algorithm pbkdf2-sha512-v1
+```
+
+The CLI is a standalone offline tool (it embeds the algorithm by necessity — it *is* a backend), useful for scripting and for proving that the desktop/extension output matches a clean-room implementation. See [cli/README.md](cli/README.md).
+
+---
+
+## 9. Local backend API reference
+
+Base URL: `http://127.0.0.1:<port>` where `<port>` is in `~/Library/Application Support/PassForge/api-info.json`.
+Every route requires `Authorization: Bearer <token>` with the contents of `api-token` (0600). CORS admits `chrome-extension://`, `moz-extension://`, `safari-web-extension://` and the desktop webview (`tauri://localhost`) only.
+
+| Method & path | Needs unlock | Purpose |
+|---|---|---|
+| `GET /api/health` | no | `{ "version", "locked" }` |
+| `POST /api/generate` | no | one-shot: `{ masterPassword, profile }` → `{ password }`; master password zeroized after use. Honors the backend's generation mode. |
+| `POST /api/fingerprint` | no | `{ masterPassword }` → fingerprint glyphs |
+| `GET /api/entries?q=` | yes | search vault entries |
+| `GET /api/entries/{id}` | yes | one entry's parameters |
+| `POST /api/entries/{id}/generate` | yes | derive with the session's master password; marks entry used. **The desktop UI's generation path.** |
+| `GET /api/settings` | yes | crypto defaults, timers, `generation`, `knownServers` |
+| `PUT /api/settings` | yes | replace settings (URLs normalized, `knownServers` deduped) |
+| `POST /api/server-info` | yes | `{ url }` → that algorithm server's `/v1/info`, fetched by the backend |
+
+Errors are `{ "error": "…" }` with `401` (token), `403` (locked), `404`, `400`, `500`.
+
+Wire shape of a `profile` (lesspass-core flattens options, snake_case `salt_fields`):
+
+```json
+{ "site": "github.com", "login": "dev@passforge.io", "counter": 2,
+  "lowercase": true, "uppercase": true, "digits": true, "symbols": true, "length": 20,
+  "salt_fields": [] }
+```
+
+Native-messaging host ops (`com.passforge.desktop`, length-prefixed JSON on stdio): `ping`, `search {query}`, `get_entry {entry_id}`, `generate {entry_id, master_password}`, `api_info`, `lock`.
+
+---
+
+## 10. Security model
+
+**Guarantees**
+
+- Passwords are never written to disk, logs, or the vault; the vault holds parameters only (SQLCipher, random key in Keychain).
+- The master password exists only in backend RAM while unlocked and is zeroized on lock/idle/quit; `/api/generate` zeroizes it after each request.
+- Frontends contain no derivation code and cannot generate without the backend. This is verified by tests (`api_tests`, desktop vitest "Servers panel — backend severance").
+- Loopback-only backend with a random 256-bit bearer token in a 0600 file; vault routes additionally need the unlocked session.
+- Keychain reads distinguish "not found" from "denied"; a denied read can never cause the vault key to be regenerated.
+- Algorithm servers are zero-knowledge per [docs/remote-protocol.md](docs/remote-protocol.md): one unlinkable 32-byte input per request, output useless without a device-local key.
+- Clipboard auto-clears after a configurable delay, and only if it still holds the password.
+
+**Not covered / accepted**
+
+- Anything running as your user can read `api-token` and talk to the backend (same trust level as the native host and as your browser profile). The token prevents cross-origin web pages, not local malware.
+- A password returned to a frontend is a JavaScript string; it cannot be zeroized.
+- Deterministic schemes are open to offline guessing by someone who knows site, login and one output; PBKDF2/Argon2 cost is the mitigation.
+- Debug builds re-prompt Keychain on every rebuild (ad-hoc signing). Production builds should be signed and notarized.
+- macOS only (v1); Chromium only (v1). No Firefox/Safari, no mobile.
+
+Full list: [docs/security-checklist.md](docs/security-checklist.md).
+
+---
+
+## 11. Development
+
+```bash
+# Rust: core, protocol, server, backend, host — 60+ tests
+cargo test --workspace
+
+# JS: desktop UI (vitest + testing-library), extension
+yarn install && yarn build && yarn test
+
+# Python CLI
+cd cli && PYTHONPATH=. python3 -m unittest discover -s tests -t .
+
+# Desktop UI in a browser with the in-memory mock backend (no Tauri):
+yarn workspace passforge-desktop dev     # http://localhost:1420
+
+# Desktop app in dev mode (hot reload; NOTE: every Rust file save rebuilds
+# and restarts the app, which re-triggers the Keychain prompt):
+cd desktop && cargo tauri dev
+```
+
+Notable tests:
+
+- `desktop/src-tauri/tests/api_tests.rs` — bearer enforcement on every route, lock gate, `/api/generate` byte-identical to `lesspass-core`, `/api/generate` honors server mode against a real in-process `passforge-server`, entry-generate parity with IPC, settings normalization, origin policy.
+- `desktop/src/test/app.test.tsx` — "disconnecting the backend makes generation impossible", "reconnecting restores generation", "unreachable backend surfaced", add/use/disconnect algorithm server.
+- `crates/passforge-protocol` + `crates/passforge-server` — blinding/finishing vectors and derive endpoints.
+
+CI: `.github/workflows/desktop-test.yml`, `packages-test.yml`, `cli-test.yml`.
+
+---
+
+## 12. Troubleshooting
+
+**Extension badge says `backend unreachable` / Connect fails with "Specified native messaging host not found"**
+The host manifest isn't registered for *this* extension ID. Compare the ID on `chrome://extensions` with `allowed_origins` in `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.passforge.desktop.json`, and rerun `install-host.sh … <ID> chrome`. Chrome reads the manifest at launch time of the host, no browser restart needed.
+
+**Connect fails with "app is not running"**
+`api-info.json` is missing — launch `PassForge.app`. (The host only reads files; it can't start the app.)
+
+**Connect hangs for a while, then fails**
+A Keychain prompt for `passforge-host` is waiting behind other windows. Trigger it deliberately and click Always Allow:
+
+```bash
+printf '\x0e\x00\x00\x00{"op":"search"}' | \
+  target/release/bundle/macos/PassForge.app/Contents/MacOS/passforge-host | strings
+```
+
+**Section 2 says "Unlock the PassForge app…"**
+Settings routes require the unlocked session. Unlock the app, reopen the popup.
+
+**The app panicked at start with `file is not a database`**
+The Keychain `database-key` doesn't match `passforge.db`. This could only happen on builds before `b5248924` when a denied Keychain prompt caused a key rewrite. The vault file is unrecoverable; move it aside and the app creates a fresh one (you lose entry *parameters*, never passwords — re-adding an entry with the same site/login/counter gives the same password).
+
+**Algorithm server shows "unreachable"**
+`curl <url>/v1/info` from the Mac. Remember the *backend* performs the probe, not the browser; and non-loopback servers must be `https://`.
+
+**Port 8787 already in use**
+Another service (commonly a Python dev server) — pick any port: `PASSFORGE_BIND=127.0.0.1:8790`.
+
+**`yarn: command not found` with Node ≥ 25**
+Corepack is no longer bundled: `npm i -g corepack && corepack enable`, or run the vendored release directly: `node .yarn/releases/yarn-4.14.1.cjs <cmd>`.
+
+**`cargo: command not found` though rustup is installed via Homebrew**
+Add `/opt/homebrew/opt/rustup/bin` to `PATH` (or `brew link rustup`).
+
+---
+
+## 13. License and credit
+
+PassForge is licensed under the **GNU GPLv3**.
+
+It is a fork of [LessPass](https://github.com/lesspass/lesspass) by Guillaume Vincent, itself based on an idea from the [Master Password](https://masterpassword.app/) app. The deterministic algorithm — site + login + master password → password, every time, with nothing stored — is LessPass's; PassForge keeps that promise, moves the algorithm behind a local API, and makes any remote participation zero-knowledge and self-hostable.

@@ -1,6 +1,6 @@
 # PassForge
 
-PassForge is a local-first, stateless password manager built on the LessPass algorithm. Passwords are regenerated deterministically from a site, a login, and your master password — never stored, never synced, no accounts, no server.
+PassForge is a local-first, stateless password manager built on the LessPass algorithm. Passwords are regenerated deterministically from a site, a login, and your master password — never stored, never synced, no accounts. Optionally, an interchangeable zero-knowledge algorithm server can take part in derivation — it never sees your site, login, master password, settings, or the resulting password (see `docs/remote-protocol.md`).
 
 ### Features
 
@@ -8,13 +8,14 @@ PassForge is a local-first, stateless password manager built on the LessPass alg
 - **Encrypted local metadata** — SQLCipher-backed SQLite stores entries (site, login, counter, password options, salt fields) so you can organize and revisit sites without remembering every parameter.
 - **Keychain + Touch ID** — The database encryption key lives in the macOS Keychain; an optional Touch ID convenience gate can feed a remembered master password to `unlock`. The desktop holds the master password only in RAM and zeroizes it on lock, idle timeout, or quit.
 - **Entry organization** — Folders (hierarchical) and tags (freeform).
-- **Chromium MV3 extension** (`packages/passforge-extension`) — stateless generator on its own; when the `passforge-host` native-messaging host is installed it prefills profile parameters for the current tab. It never stores passwords or receives the master password.
-- **Offline CLI** (`cli/`) — `pip install lesspass`; `lesspass site login masterpassword` prints the generated password.
-- **Security-first design** — No cloud sync, no accounts, no network services. Generated passwords are never written to disk or logs. Clipboard auto-clears after a configurable delay.
+- **Chromium MV3 extension** (`packages/passforge-extension`) — stateless generator on its own; when the `passforge-host` native-messaging host is installed it prefills profile parameters for the current tab. It never stores passwords or receives the master password. Supports the same optional algorithm servers.
+- **Offline CLI** (`cli/`) — `pip install lesspass`; `lesspass site login masterpassword` prints the generated password. Supports the same optional algorithm servers.
+- **Optional algorithm servers** — `crates/passforge-server` reference server (Argon2id, PBKDF2-SHA512, optional server pepper) speaking the stateless `passforge-remote-v1` API; serverless mode keeps the built-in LessPass algorithm.
+- **Security-first design** — No cloud sync, no accounts, no network traffic unless you pick an algorithm server. Generated passwords are never written to disk or logs. Clipboard auto-clears after a configurable delay.
 
 ### What PassForge is NOT
 
-- Not a cloud-sync password manager — no server, no accounts, no network traffic.
+- Not a cloud-sync password manager — no accounts, no sync; algorithm servers are optional, stateless and zero-knowledge.
 - Not a password vault — passwords are never stored, only the parameters to regenerate them.
 - Not cross-platform desktop (v1) — macOS only.
 - Not a Safari or Firefox extension (v1) — Chromium only.
@@ -24,10 +25,12 @@ PassForge is a local-first, stateless password manager built on the LessPass alg
 
 - `desktop/` — Tauri v2 + React desktop app (`passforge-desktop` crate in `desktop/src-tauri/`).
 - `crates/lesspass-core/` — Rust implementation of the password-generation algorithm.
+- `crates/passforge-protocol/` — Client-side primitives and types for the remote algorithm protocol.
+- `crates/passforge-server/` — Reference stateless remote algorithm server.
 - `packages/lesspass/` — TypeScript implementation of the same algorithm, used by the extension.
 - `packages/passforge-extension/` — Chromium MV3 extension.
 - `cli/` — Python CLI.
-- `docs/` — design system, security checklist, macOS verification checklist.
+- `docs/` — design system, security checklist, macOS verification checklist, remote protocol specification.
 
 ### Verification
 

@@ -4,11 +4,14 @@
 //! supplied over the (same-user) stdio channel. Passwords are never
 //! stored, matching the app's stateless model.
 
-use crate::commands::{derive_password, load_settings};
+use crate::commands::{derive_password_with, load_settings};
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
+use crate::remote;
+use passforge_protocol::DeriveResponse;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
+use zeroize::Zeroize;
 
 const MAX_FRAME: u32 = 1024 * 1024;
 
@@ -65,6 +68,13 @@ pub fn write_frame(w: &mut impl Write, payload: &str) -> Result<()> {
 }
 
 pub fn dispatch(db: Option<&VaultDb>, payload: &str) -> Response {
+    dispatch_with(db, payload, remote::derive)
+}
+
+fn dispatch_with<F>(db: Option<&VaultDb>, payload: &str, remote: F) -> Response
+where
+    F: FnOnce(&str, Option<&str>, &str) -> Result<DeriveResponse>,
+{
     let request: Request = match serde_json::from_str(payload) {
         Ok(r) => r,
         Err(e) => return Response::err(format!("bad request: {e}")),
@@ -91,18 +101,99 @@ pub fn dispatch(db: Option<&VaultDb>, payload: &str) -> Response {
             }),
             None => Response::err("vault unavailable"),
         },
-        Request::Generate { entry_id, master_password } => match db {
-            Some(db) => respond((|| {
-                let settings = load_settings(db);
-                let entry = db
-                    .get_entry(&entry_id)?
-                    .ok_or_else(|| PassForgeError::EntryNotFound(entry_id.clone()))?;
-                let password = derive_password(&entry, &master_password, &settings)?;
-                db.mark_used(&entry_id)?;
-                Ok(serde_json::json!({ "password": password }))
-            })()),
-            None => Response::err("vault unavailable"),
-        },
+        Request::Generate { entry_id, mut master_password } => {
+            let response = match db {
+                Some(db) => respond((|| {
+                    let settings = load_settings(db);
+                    let entry = db
+                        .get_entry(&entry_id)?
+                        .ok_or_else(|| PassForgeError::EntryNotFound(entry_id.clone()))?;
+                    let password =
+                        derive_password_with(&entry, &master_password, &settings, remote)?;
+                    db.mark_used(&entry_id)?;
+                    Ok(serde_json::json!({ "password": password }))
+                })()),
+                None => Response::err("vault unavailable"),
+            };
+            master_password.zeroize();
+            response
+        }
         Request::Lock => Response::ok(serde_json::Value::Null),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{EntryInput, FolderInput, GenerationMode};
+    use lesspass_core::PasswordOptions;
+    use passforge_protocol::{blind, finish_password};
+
+    #[test]
+    fn generate_uses_saved_server_mode() {
+        let db = VaultDb::memory().unwrap();
+        db.migrate().unwrap();
+        let folder = db
+            .create_folder(FolderInput {
+                parent_id: None,
+                name: "Personal".into(),
+            })
+            .unwrap();
+        let entry = db
+            .create_entry(EntryInput {
+                site: "example.org".into(),
+                login: "alice".into(),
+                counter: 1,
+                options: PasswordOptions::default(),
+                salt_fields: vec![],
+                crypto: None,
+                folder_id: folder.id,
+                group_ids: vec![],
+                tags: vec![],
+            })
+            .unwrap();
+        let master = "native-host-master";
+        let mut settings = load_settings(&db);
+        settings.generation = GenerationMode::Server {
+            url: "https://algorithm.example/".into(),
+            algorithm: Some("pbkdf2-sha512-v1".into()),
+        };
+        db.set_kv("settings", &serde_json::to_string(&settings).unwrap())
+            .unwrap();
+        let expected_blind = blind(
+            &entry.profile,
+            master,
+            &settings.default_crypto,
+        )
+        .input_hex();
+        let mut called = false;
+        let payload = serde_json::json!({
+            "op": "generate",
+            "entry_id": entry.id.clone(),
+            "master_password": master,
+        })
+        .to_string();
+        let response = dispatch_with(Some(&db), &payload, |url, algorithm, input| {
+            called = true;
+            assert_eq!(url, "https://algorithm.example");
+            assert_eq!(algorithm, Some("pbkdf2-sha512-v1"));
+            assert_eq!(input, expected_blind);
+            Ok(DeriveResponse {
+                algorithm: "pbkdf2-sha512-v1".into(),
+                output: hex::encode([0x42; 32]),
+            })
+        });
+
+        let Response::Ok { result } = response else {
+            panic!("server-mode generation failed");
+        };
+        assert!(called);
+        let password = result["password"].as_str().unwrap();
+        let blinded = blind(&entry.profile, master, &settings.default_crypto);
+        assert_eq!(
+            password,
+            finish_password(&blinded, &[0x42; 32], &entry.profile.options)
+                .unwrap()
+        );
     }
 }

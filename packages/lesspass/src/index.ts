@@ -2,6 +2,24 @@ import { calcEntropy, hmac } from "./crypto";
 import { createFingerprint } from "./fingerprint";
 import { PasswordOptions, renderPassword } from "./render-password";
 
+export {
+  blind,
+  deriveRemote,
+  fetchServerInfo,
+  finishEntropy,
+  finishPassword,
+  generatePasswordRemote,
+  normalizeServerUrl,
+  settingsDigest,
+} from "./remote";
+export type {
+  Blinded,
+  DeriveResponse,
+  RemoteCryptoConfig,
+  RemoteProfile,
+  ServerInfo,
+} from "./remote";
+
 export interface PasswordProfile extends PasswordOptions {
   site: string;
   login: string;

@@ -1,8 +1,12 @@
-use lesspass_core::{PasswordOptions, CryptoConfig};
-use passforge_desktop::commands::{derive_password, synthesize_fingerprints};
+use lesspass_core::{CryptoConfig, PasswordOptions, calc_entropy, render_password};
+use passforge_desktop::commands::{
+    derive_password, derive_password_with, synthesize_fingerprints,
+};
 use passforge_desktop::db::VaultDb;
-use passforge_desktop::models::{EntryInput, FolderInput, Settings};
+use passforge_desktop::error::PassForgeError;
+use passforge_desktop::models::{EntryInput, FolderInput, GenerationMode, Settings};
 use passforge_desktop::session::SessionState;
+use passforge_protocol::{DeriveResponse, blind, finish_password};
 
 fn sample_entry(folder_id: String) -> EntryInput {
     EntryInput {
@@ -120,4 +124,108 @@ fn master_fingerprint_is_deterministic_and_varies() {
     assert_eq!(a1, a2);
     assert_eq!(a1.len(), 3);
     assert_ne!(format!("{a1:?}"), format!("{b:?}"));
+}
+
+#[test]
+fn serverless_generation_matches_lesspass_core() {
+    let db = VaultDb::memory().unwrap();
+    db.migrate().unwrap();
+    let folder = db
+        .create_folder(FolderInput {
+            parent_id: None,
+            name: "Personal".into(),
+        })
+        .unwrap();
+    let entry = db.create_entry(sample_entry(folder.id)).unwrap();
+    let settings = Settings::default();
+    let master = "fixed-master-password";
+    let crypto = entry
+        .profile
+        .crypto
+        .as_ref()
+        .unwrap_or(&settings.default_crypto);
+    let expected_entropy = calc_entropy(&entry.profile, master, crypto);
+    let expected = render_password(&expected_entropy, &entry.profile.options).unwrap();
+
+    assert_eq!(
+        derive_password(&entry, master, &settings).unwrap(),
+        expected
+    );
+}
+
+#[test]
+fn server_generation_sends_blinded_input_and_finishes_locally() {
+    let db = VaultDb::memory().unwrap();
+    db.migrate().unwrap();
+    let folder = db
+        .create_folder(FolderInput {
+            parent_id: None,
+            name: "Personal".into(),
+        })
+        .unwrap();
+    let entry = db.create_entry(sample_entry(folder.id)).unwrap();
+    let master = "fixed-master-password";
+    let settings = Settings {
+        generation: GenerationMode::Server {
+            url: "  https://algorithm.example/// ".into(),
+            algorithm: Some("pbkdf2-sha512-v1".into()),
+        },
+        ..Settings::default()
+    };
+    let expected_blind = blind(&entry.profile, master, &settings.default_crypto).input_hex();
+    let server_output = [0x42; 32];
+
+    let actual = derive_password_with(&entry, master, &settings, |url, algorithm, input| {
+        assert_eq!(url, "https://algorithm.example");
+        assert_eq!(algorithm, Some("pbkdf2-sha512-v1"));
+        assert_eq!(input, expected_blind);
+        Ok(DeriveResponse {
+            algorithm: "pbkdf2-sha512-v1".into(),
+            output: hex::encode(server_output),
+        })
+    })
+    .unwrap();
+    let expected = finish_password(
+        &blind(&entry.profile, master, &settings.default_crypto),
+        &server_output,
+        &entry.profile.options,
+    )
+    .unwrap();
+
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn server_generation_propagates_transport_and_invalid_hex_errors() {
+    let db = VaultDb::memory().unwrap();
+    db.migrate().unwrap();
+    let folder = db
+        .create_folder(FolderInput {
+            parent_id: None,
+            name: "Personal".into(),
+        })
+        .unwrap();
+    let entry = db.create_entry(sample_entry(folder.id)).unwrap();
+    let settings = Settings {
+        generation: GenerationMode::Server {
+            url: "https://algorithm.example".into(),
+            algorithm: None,
+        },
+        ..Settings::default()
+    };
+
+    let transport_error = derive_password_with(&entry, "master", &settings, |_, _, _| {
+        Err(PassForgeError::Remote("offline".into()))
+    })
+    .unwrap_err();
+    assert!(matches!(transport_error, PassForgeError::Remote(message) if message == "offline"));
+
+    let invalid_hex = derive_password_with(&entry, "master", &settings, |_, _, _| {
+        Ok(DeriveResponse {
+            algorithm: "argon2id-v1".into(),
+            output: "not-hex".into(),
+        })
+    })
+    .unwrap_err();
+    assert!(matches!(invalid_hex, PassForgeError::Remote(_)));
 }

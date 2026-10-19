@@ -15,7 +15,7 @@
       }
     }
   },
-  "permissions": ["activeTab", "nativeMessaging"],
+  "permissions": ["activeTab", "nativeMessaging", "storage"],
   "background": {
     "service_worker": "background.js",
     "type": "module"

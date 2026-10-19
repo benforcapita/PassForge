@@ -9,6 +9,7 @@ from lesspass.version import __version__
 from lesspass.cli import parse_args
 from lesspass.profile import create_profile
 from lesspass.password import generate_password
+from lesspass.remote import RemoteError, generate_password_remote
 from lesspass.clipboard import copy, get_system_copy_command
 from lesspass.fingerprint import getpass_with_fingerprint
 
@@ -48,10 +49,21 @@ def main(args=sys.argv[1:]):
 
     profile = create_profile(args)
     try:
-        generated_password = generate_password(profile, master_password)
+        if args.algorithm and not args.server:
+            print("error: --algorithm requires --server")
+            sys.exit(2)
+        if args.server:
+            generated_password = generate_password_remote(
+                profile, master_password, args.server, args.algorithm
+            )
+        else:
+            generated_password = generate_password(profile, master_password)
     except exceptions.ExcludeAllCharsAvailable:
         print("error: you can't exclude all chars available")
         sys.exit(6)
+    except RemoteError as error:
+        print("error: %s" % error)
+        sys.exit(7)
 
     if args.clipboard:
         try:

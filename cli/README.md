@@ -56,6 +56,15 @@
 
     LESSPASS_MASTER_PASSWORD="masterpassword" lesspass site login
 
+## Algorithm servers
+
+Use `--server URL` to derive through an optional zero-knowledge algorithm
+server. Pass `--algorithm ID` to select an algorithm; omit it to use the
+server default. Serverless generation remains the default.
+
+    lesspass example.org alice masterpassword --server https://algorithms.example
+    lesspass example.org alice masterpassword --server https://algorithms.example --algorithm pbkdf2-sha512-v1
+
 ## License
 
 This project is licensed under the terms of the GNU GPLv3.

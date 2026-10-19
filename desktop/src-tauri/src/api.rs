@@ -20,7 +20,10 @@
 //!   so a locked app serves nothing.
 //! - CORS is restricted to browser-extension schemes.
 
-use crate::commands::{load_settings, master_fingerprint, require_unlocked, synthesize_fingerprints};
+use crate::commands::{
+    derive_profile_password, load_settings, master_fingerprint, require_unlocked,
+    synthesize_fingerprints,
+};
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
 use crate::session::SessionState;
@@ -32,12 +35,12 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use lesspass_core::{CryptoConfig, PasswordProfile};
+use lesspass_core::PasswordProfile;
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tower_http::cors::CorsLayer;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 const TOKEN_FILE: &str = "api-token";
 const INFO_FILE: &str = "api-info.json";
@@ -180,26 +183,26 @@ struct GenerateRequest {
     profile: PasswordProfile,
 }
 
+/// Honors the app's configured generation mode (serverless or algorithm
+/// server), exactly like the desktop UI and the native host do. Derivation
+/// may block on a remote server, so it runs off the async executor.
 async fn generate(
     State(state): State<ApiState>,
-    Json(mut body): Json<GenerateRequest>,
+    Json(body): Json<GenerateRequest>,
 ) -> Response {
-    let result = (|| -> Result<String> {
-        state.session.touch();
-        let settings = {
-            let db = state.db.lock().expect("db mutex poisoned");
-            load_settings(&db)
-        };
-        let crypto: CryptoConfig = body
-            .profile
-            .crypto
-            .clone()
-            .unwrap_or_else(|| settings.default_crypto.clone());
-        let entropy = lesspass_core::calc_entropy(&body.profile, &body.master_password, &crypto);
-        lesspass_core::render_password(&entropy, &body.profile.options)
-            .map_err(|err| PassForgeError::InvalidRequest(err.to_string()))
-    })();
-    body.master_password.zeroize();
+    state.session.touch();
+    let settings = {
+        let db = state.db.lock().expect("db mutex poisoned");
+        load_settings(&db)
+    };
+    let GenerateRequest { master_password, profile } = body;
+    let master_password = Zeroizing::new(master_password);
+    let result = tokio::task::spawn_blocking(move || {
+        derive_profile_password(&profile, &master_password, &settings)
+    })
+    .await
+    .map_err(|_| PassForgeError::InvalidRequest("password generation task failed".into()))
+    .and_then(|r| r);
     match result {
         Ok(password) => Json(serde_json::json!({ "password": password })).into_response(),
         Err(err) => map_err(err),

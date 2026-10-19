@@ -6,6 +6,7 @@ import type {
   Folder,
   FolderInput,
   ImportReport,
+  ServerInfo,
   Settings,
   VaultEntry,
 } from "./types";
@@ -50,6 +51,7 @@ export type Api = {
   generatePassword: (entryId: string) => Promise<string>;
   getSettings: () => Promise<Settings>;
   saveSettings: (settings: Settings) => Promise<Settings>;
+  serverInfo: (url: string) => Promise<ServerInfo>;
   recordActivity: () => Promise<void>;
   biometricSupported: () => Promise<boolean>;
   masterPasswordStored: () => Promise<boolean>;
@@ -80,6 +82,7 @@ const tauriApi: Api = {
   generatePassword: (entryId: string) => invoke<string>("generate_password", { entryId }),
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
+  serverInfo: (url: string) => invoke<ServerInfo>("server_info", { url }),
   biometricSupported: () => invoke<boolean>("biometric_supported"),
   masterPasswordStored: () => invoke<boolean>("master_password_stored"),
   biometricUnlock: () => invoke<void>("biometric_unlock"),

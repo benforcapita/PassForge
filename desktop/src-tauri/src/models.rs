@@ -83,6 +83,20 @@ pub struct Settings {
     pub default_crypto: CryptoConfig,
     pub idle_lock_seconds: u64,
     pub clipboard_clear_seconds: u64,
+    #[serde(default)]
+    pub generation: GenerationMode,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(tag = "mode", rename_all = "camelCase")]
+pub enum GenerationMode {
+    #[default]
+    Serverless,
+    Server {
+        url: String,
+        #[serde(default)]
+        algorithm: Option<String>,
+    },
 }
 
 impl Default for Settings {
@@ -91,6 +105,51 @@ impl Default for Settings {
             default_crypto: CryptoConfig::default(),
             idle_lock_seconds: 60,
             clipboard_clear_seconds: 30,
+            generation: GenerationMode::Serverless,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn settings_without_generation_default_to_serverless() {
+        let settings: Settings = serde_json::from_str(
+            r#"{"defaultCrypto":{"iterations":100000,"keylen":32,"digest":"sha256"},"idleLockSeconds":60,"clipboardClearSeconds":30}"#,
+        )
+        .unwrap();
+        assert_eq!(settings.generation, GenerationMode::Serverless);
+    }
+
+    #[test]
+    fn server_generation_settings_round_trip() {
+        let settings = Settings {
+            generation: GenerationMode::Server {
+                url: "https://algorithm.example".into(),
+                algorithm: Some("pbkdf2-sha512-v1".into()),
+            },
+            ..Settings::default()
+        };
+        let encoded = serde_json::to_string(&settings).unwrap();
+        let decoded: Settings = serde_json::from_str(&encoded).unwrap();
+        assert_eq!(decoded, settings);
+        assert!(encoded.contains(r#""generation":{"mode":"server","url":"https://algorithm.example","algorithm":"pbkdf2-sha512-v1"}"#));
+
+        let server_default = Settings {
+            generation: GenerationMode::Server {
+                url: "https://algorithm.example".into(),
+                algorithm: None,
+            },
+            ..Settings::default()
+        };
+        let encoded = serde_json::to_string(&server_default).unwrap();
+        assert!(encoded
+            .contains(r#""mode":"server","url":"https://algorithm.example","algorithm":null"#));
+        assert_eq!(
+            serde_json::from_str::<Settings>(&encoded).unwrap(),
+            server_default
+        );
     }
 }

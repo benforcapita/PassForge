@@ -184,7 +184,7 @@ function Popup() {
         </button>
       </div>
 
-      {error && <div className="hint" style={{ color: "var(--danger, #e5484d)" }}>{error}</div>}
+      {error && <div className="error">{error}</div>}
       <div className="hint">
         {vault === "on"
           ? `Severed: this extension holds no algorithm — ${profileId ? "profile params loaded, " : ""}generation happens in the PassForge app.`

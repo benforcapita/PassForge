@@ -6,7 +6,7 @@ import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { Select } from "../components/ui/Select";
 import { TextInput } from "../components/ui/TextInput";
-import type { Settings } from "../types";
+import type { GenerationMode, ServerInfo, Settings } from "../types";
 
 type Props = {
   settings: Settings;
@@ -18,6 +18,7 @@ type Props = {
 const DIGESTS = ["sha256", "sha512", "sha1"] as const;
 
 export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }: Props) {
+  const initialGeneration = settings.generation ?? { mode: "serverless" as const };
   const [iterations, setIterations] = useState(String(settings.defaultCrypto.iterations));
   const [keylen, setKeylen] = useState(String(settings.defaultCrypto.keylen));
   const [digest, setDigest] = useState(settings.defaultCrypto.digest);
@@ -29,12 +30,37 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
   const [busy, setBusy] = useState(false);
   const [vaultMsg, setVaultMsg] = useState<string | null>(null);
   const [vaultBusy, setVaultBusy] = useState(false);
+  const [generationMode, setGenerationMode] = useState<GenerationMode["mode"]>(
+    initialGeneration.mode,
+  );
+  const [serverUrl, setServerUrl] = useState(
+    initialGeneration.mode === "server" ? initialGeneration.url : "",
+  );
+  const [algorithm, setAlgorithm] = useState<string | null>(
+    initialGeneration.mode === "server" ? initialGeneration.algorithm : null,
+  );
+  const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [testingServer, setTestingServer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const JSON_FILTER = { name: "JSON", extensions: ["json"] };
 
   const errText = (err: unknown) =>
     err && typeof err === "object" && "message" in err ? String(err.message) : String(err);
+
+  const testConnection = async () => {
+    setServerInfo(null);
+    setServerError(null);
+    setTestingServer(true);
+    try {
+      setServerInfo(await api.serverInfo(serverUrl));
+    } catch (err) {
+      setServerError(errText(err));
+    } finally {
+      setTestingServer(false);
+    }
+  };
 
   const doExport = async () => {
     setVaultMsg(null);
@@ -103,6 +129,24 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
   };
 
   const save = async () => {
+    const generation: GenerationMode =
+      generationMode === "serverless"
+        ? { mode: "serverless" }
+        : { mode: "server", url: serverUrl.trim(), algorithm };
+    if (generation.mode === "server") {
+      try {
+        const parsedUrl = new URL(generation.url);
+        if (
+          (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") ||
+          !parsedUrl.hostname
+        ) {
+          throw new Error();
+        }
+      } catch {
+        setError("Enter a valid http:// or https:// server URL.");
+        return;
+      }
+    }
     const parsed: Settings = {
       defaultCrypto: {
         iterations: Number(iterations),
@@ -111,6 +155,7 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
       },
       idleLockSeconds: Number(idleLockSeconds),
       clipboardClearSeconds: Number(clipboardClearSeconds),
+      generation,
     };
     if (!Number.isFinite(parsed.defaultCrypto.iterations) || parsed.defaultCrypto.iterations <= 0) {
       setError("Iterations must be a positive integer.");
@@ -131,6 +176,19 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
     }
   };
 
+  const remoteHttpWarning = (() => {
+    try {
+      const parsedUrl = new URL(serverUrl.trim());
+      return (
+        parsedUrl.protocol === "http:" &&
+        !["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsedUrl.hostname)
+      );
+    } catch {
+      return false;
+    }
+  })();
+  const selectedAlgorithm = serverInfo?.algorithms.find((item) => item.id === algorithm);
+
   return (
     <Modal
       title="Preferences"
@@ -147,6 +205,138 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
       }
     >
       <div className="flex flex-col gap-3">
+        <section className="flex flex-col gap-2.5">
+          <p className="text-[11px] uppercase tracking-[0.02em] text-pf-text-muted">
+            Password generation
+          </p>
+          <div
+            role="group"
+            aria-label="Password generation"
+            className="grid grid-cols-2 overflow-hidden rounded-sm border border-pf-border-subtle"
+          >
+            <button
+              type="button"
+              aria-pressed={generationMode === "serverless"}
+              onClick={() => setGenerationMode("serverless")}
+              className={`border-r border-pf-border-subtle px-3 py-2 text-left transition-colors ${
+                generationMode === "serverless"
+                  ? "bg-pf-accent-muted text-pf-text-primary"
+                  : "bg-pf-base text-pf-text-secondary hover:bg-pf-raised"
+              }`}
+            >
+              <span className="block text-[13px] font-medium">Serverless</span>
+              <span className="mt-0.5 block text-[11px] text-pf-text-muted">
+                Built-in LessPass algorithm. Nothing leaves this device.
+              </span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={generationMode === "server"}
+              onClick={() => setGenerationMode("server")}
+              className={`px-3 py-2 text-left transition-colors ${
+                generationMode === "server"
+                  ? "bg-pf-accent-muted text-pf-text-primary"
+                  : "bg-pf-base text-pf-text-secondary hover:bg-pf-raised"
+              }`}
+            >
+              <span className="block text-[13px] font-medium">Algorithm server</span>
+              <span className="mt-0.5 block text-[11px] text-pf-text-muted">
+                Choose a stateless remote algorithm.
+              </span>
+            </button>
+          </div>
+
+          {generationMode === "server" && (
+            <div className="flex flex-col gap-2">
+              <div>
+                <label
+                  htmlFor="algorithm-server-url"
+                  className="mb-1 block text-[13px] font-medium text-pf-text-secondary"
+                >
+                  Server URL
+                </label>
+                <div className="flex gap-2">
+                  <TextInput
+                    id="algorithm-server-url"
+                    value={serverUrl}
+                    onChange={(e) => {
+                      setServerUrl(e.target.value);
+                      setServerInfo(null);
+                      setServerError(null);
+                    }}
+                    placeholder="https://algorithm.example"
+                    className="min-w-0 flex-1 font-mono"
+                  />
+                  <Button
+                    variant="ghost"
+                    onClick={() => void testConnection()}
+                    disabled={testingServer}
+                  >
+                    {testingServer ? "Testing…" : "Test connection"}
+                  </Button>
+                </div>
+              </div>
+              {serverInfo && (
+                <p role="status" className="text-[11px] text-pf-accent">
+                  {serverInfo.name} · {serverInfo.version}
+                </p>
+              )}
+              {serverError && (
+                <p role="alert" className="text-[11px] text-pf-text-error">
+                  {serverError}
+                </p>
+              )}
+              <div>
+                <label
+                  htmlFor="algorithm-server-algorithm"
+                  className="mb-1 block text-[13px] font-medium text-pf-text-secondary"
+                >
+                  Algorithm
+                </label>
+                <Select
+                  id="algorithm-server-algorithm"
+                  value={algorithm ?? ""}
+                  onChange={(e) => setAlgorithm(e.target.value || null)}
+                  className="font-mono"
+                >
+                  {serverInfo ? (
+                    <>
+                      <option value="">
+                        Server default ({serverInfo.default_algorithm})
+                      </option>
+                      {serverInfo.algorithms.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.id} — {item.description}
+                          {!item.portable ? " · server-bound" : ""}
+                        </option>
+                      ))}
+                    </>
+                  ) : (
+                    <option value={algorithm ?? ""}>
+                      {algorithm ?? "Server default"}
+                    </option>
+                  )}
+                </Select>
+              </div>
+              <p className="text-[11px] leading-relaxed text-pf-text-muted">
+                The server receives one blinded hash per password — never your site, login, master
+                password, settings, or the generated password. Changing server or algorithm changes
+                every generated password.
+              </p>
+              {remoteHttpWarning && (
+                <p role="note" className="text-[11px] text-pf-warning">
+                  Use HTTPS for remote servers.
+                </p>
+              )}
+              {selectedAlgorithm?.portable === false && (
+                <p role="note" className="text-[11px] text-pf-warning">
+                  Only this server can reproduce these passwords.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
         <p className="text-[11px] uppercase tracking-[0.02em] text-pf-text-muted">Default crypto</p>
         <div className="grid grid-cols-3 gap-2">
           <div>

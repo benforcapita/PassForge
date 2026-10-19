@@ -16,6 +16,9 @@ pub enum PassForgeError {
     Io(#[from] std::io::Error),
     #[error("invalid request: {0}")]
     InvalidRequest(String),
+    #[allow(dead_code)]
+    #[error("algorithm server error: {0}")]
+    Remote(String),
 }
 
 pub type Result<T> = std::result::Result<T, PassForgeError>;

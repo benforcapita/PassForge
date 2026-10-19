@@ -8,8 +8,9 @@ use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use lesspass_core::{PasswordOptions, PasswordProfile};
 use passforge_desktop::api::{self, ApiState};
+use passforge_desktop::commands::derive_profile_password;
 use passforge_desktop::db::VaultDb;
-use passforge_desktop::models::{EntryInput, FolderInput};
+use passforge_desktop::models::{EntryInput, FolderInput, GenerationMode, Settings};
 use passforge_desktop::session::SessionState;
 use std::sync::{Arc, Mutex};
 use tower::ServiceExt;
@@ -85,6 +86,76 @@ async fn generate_matches_direct_core_derivation() {
     )
     .unwrap();
     assert_eq!(got, want);
+}
+
+/// The API must follow the app's generation mode: with an algorithm server
+/// saved in settings, `/api/generate` derives through that server exactly like
+/// the desktop UI and native host do — never the serverless path.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn generate_honors_server_generation_mode() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+    let server = tokio::spawn(async move {
+        let config = passforge_server::ServerConfig {
+            name: "api test server".into(),
+            pepper: None::<zeroize::Zeroizing<Vec<u8>>>,
+            max_concurrent: 4,
+        };
+        axum::serve(listener, passforge_server::app(config))
+            .with_graceful_shutdown(async {
+                let _ = shutdown_rx.await;
+            })
+            .await
+            .unwrap();
+    });
+
+    let st = state();
+    let settings = Settings {
+        generation: GenerationMode::Server {
+            url: url.clone(),
+            algorithm: Some("pbkdf2-sha512-v1".into()),
+        },
+        ..Settings::default()
+    };
+    st.db
+        .lock()
+        .unwrap()
+        .set_kv("settings", &serde_json::to_string(&settings).unwrap())
+        .unwrap();
+
+    let resp = api::router(st)
+        .oneshot(req(
+            "POST",
+            "/api/generate",
+            Some(serde_json::json!({
+                "masterPassword": "correct horse",
+                "profile": profile(),
+            })),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let got = json(resp).await["password"].as_str().unwrap().to_string();
+
+    let profile: PasswordProfile = serde_json::from_value(profile()).unwrap();
+    let want = tokio::task::spawn_blocking(move || {
+        derive_profile_password(&profile, "correct horse", &settings).unwrap()
+    })
+    .await
+    .unwrap();
+    assert_eq!(got, want);
+
+    let profile: PasswordProfile = serde_json::from_value(self::profile()).unwrap();
+    let serverless = lesspass_core::render_password(
+        &lesspass_core::calc_entropy(&profile, "correct horse", &Default::default()),
+        &profile.options,
+    )
+    .unwrap();
+    assert_ne!(got, serverless, "server mode must not fall back to serverless");
+
+    shutdown_tx.send(()).unwrap();
+    server.await.unwrap();
 }
 
 #[tokio::test]

@@ -21,6 +21,7 @@ body {
   border: 1px solid var(--pf-border-moderate); color: var(--pf-text-muted);
 }
 .badge.on { color: var(--pf-accent-primary); border-color: var(--pf-accent-primary); }
+.error { color: var(--pf-status-error); font-size: 11px; overflow-wrap: anywhere; }
 
 label { font-size: 11px; color: var(--pf-text-secondary); display: block; margin-bottom: 3px; }
 .field input, .field select {

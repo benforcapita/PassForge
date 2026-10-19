@@ -5,7 +5,7 @@
 set -euo pipefail
 
 HOST_PATH="${1:?path to passforge-host binary required}"
-EXT_ID="${2:-REPLACE_WITH_EXTENSION_ID}"
+EXT_ID="${2:-ihgkdijknaongdcmebhaaiagcafmnaic}"
 BROWSER="${3:-chrome}"
 
 if [ ! -x "$HOST_PATH" ]; then

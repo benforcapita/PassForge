@@ -1,0 +1,149 @@
+name: release
+
+# Push a tag like v12.0.0 to build and publish a GitHub Release:
+#   PassForge_<ver>_universal.dmg   desktop app (Apple Silicon + Intel), ad-hoc signed
+#   passforge-extension-<ver>.zip   Chrome MV3 extension (load unpacked; fixed ID)
+#   passforge-server-<ver>-<os>-<arch>.tar.gz   self-hostable algorithm server
+#   SHA256SUMS
+# Signing/notarization is not configured yet (no Apple Developer ID): macOS
+# will ask users to approve the app once — see README "Download".
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build and publish"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+  CARGO_TERM_COLOR: always
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: corepack enable
+
+      - name: Rust targets
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: yarn install --immutable
+
+      - name: Tests
+        run: |
+          yarn test
+          cargo test -p passforge-desktop -p lesspass-core -p passforge-protocol -p passforge-server
+
+      - name: Tauri CLI
+        run: cargo install tauri-cli --version '^2' --locked
+
+      - name: Build PassForge.app + dmg (universal)
+        working-directory: desktop
+        run: cargo tauri build --target universal-apple-darwin
+
+      - name: Extension zip
+        run: |
+          VER="${TAG#v}"
+          (cd packages/passforge-extension/dist && zip -qr "$GITHUB_WORKSPACE/passforge-extension-$VER.zip" .)
+
+      - name: passforge-server (macOS universal)
+        run: |
+          VER="${TAG#v}"
+          cargo build --release -p passforge-server --target aarch64-apple-darwin
+          cargo build --release -p passforge-server --target x86_64-apple-darwin
+          mkdir -p srv && lipo -create -output srv/passforge-server \
+            target/aarch64-apple-darwin/release/passforge-server target/x86_64-apple-darwin/release/passforge-server
+          tar -C srv -czf "passforge-server-$VER-macos-universal.tar.gz" passforge-server
+
+      - name: Collect
+        run: |
+          mkdir -p dist
+          cp target/universal-apple-darwin/release/bundle/dmg/*.dmg dist/
+          mv passforge-extension-*.zip passforge-server-*.tar.gz dist/
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*
+
+  server-linux:
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: |
+          VER="${TAG#v}"
+          cargo build --release -p passforge-server
+          tar -C target/release -czf "passforge-server-$VER-linux-${{ matrix.arch }}.tar.gz" passforge-server
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-linux-${{ matrix.arch }}
+          path: passforge-server-*.tar.gz
+
+  publish:
+    needs: [macos, server-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Checksums
+        working-directory: assets
+        run: sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="${TAG#v}"
+          cat > notes.md <<EOF
+          ## Install (macOS 13+, Apple Silicon or Intel)
+
+          1. Download **PassForge_${VER}_universal.dmg**, open it and drag **PassForge** to **Applications**.
+          2. First launch: this build is **not yet notarized**, so macOS blocks it once.
+             Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**
+             (or run \`xattr -dr com.apple.quarantine /Applications/PassForge.app\`).
+          3. Click **Always Allow** on the Keychain prompt and choose your master password.
+             The app registers itself with Chrome, Brave, Edge, Arc and Chromium automatically.
+
+          **Chrome extension:** download **passforge-extension-${VER}.zip**, unzip it,
+          open \`chrome://extensions\` → Developer mode → **Load unpacked** → pick the folder.
+          Its ID is always \`ihgkdijknaongdcmebhaaiagcafmnaic\`. Then open it (⌘⇧L) → **Servers** → **Connect**.
+
+          **Self-hosted algorithm server (optional):** \`passforge-server-${VER}-<os>-<arch>.tar.gz\`,
+          see the README section "Deploying your own algorithm server".
+
+          Verify downloads with \`shasum -a 256 -c SHA256SUMS\`.
+          EOF
+          sed -i 's/^          //' notes.md
+          gh release create "$TAG" assets/* --title "PassForge $VER" --notes-file notes.md --verify-tag

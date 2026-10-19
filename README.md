@@ -20,6 +20,40 @@ Both frontends ship with a **Servers** panel that lets you see, connect to and d
 
 ---
 
+## Download
+
+**[⬇ Latest release](https://github.com/benforcapita/PassForge/releases/latest)** — macOS 13+ (Apple Silicon and Intel).
+
+| File | What it is |
+|---|---|
+| `PassForge_<version>_universal.dmg` | The desktop app with its embedded backend |
+| `passforge-extension-<version>.zip` | The Chrome extension (also works in Brave, Edge, Arc, Chromium) |
+| `passforge-server-<version>-<os>-<arch>.tar.gz` | Optional self-hosted algorithm server (macOS universal, Linux x86_64 / aarch64) |
+| `SHA256SUMS` | Checksums: `shasum -a 256 -c SHA256SUMS` |
+
+**Install the app**
+
+1. Open the `.dmg` and drag **PassForge** into **Applications**.
+2. Launch it. Releases are **not notarized yet** (no Apple Developer ID), so macOS blocks the first launch:
+   open **System Settings → Privacy & Security**, scroll to *"PassForge" was blocked…* and click **Open Anyway**.
+   Terminal alternative: `xattr -dr com.apple.quarantine /Applications/PassForge.app`.
+3. Click **Always Allow** on the Keychain prompt (the vault key lives in your Keychain), then pick your master password.
+
+On every launch the app registers its native-messaging helper with each installed Chromium-family browser, so there is no script to run.
+
+**Install the extension**
+
+1. Unzip `passforge-extension-<version>.zip`.
+2. `chrome://extensions` → enable **Developer mode** → **Load unpacked** → choose the unzipped folder.
+3. The ID is always **`ihgkdijknaongdcmebhaaiagcafmnaic`** (pinned by the manifest's public key), which is what the app registers.
+4. Open the popup (⌘⇧L) → **Servers** → **Connect**. The first connection triggers one more Keychain prompt for the helper — **Always Allow**.
+
+**Updating:** replace the app in Applications and reload the extension. Because builds are ad-hoc signed, macOS treats each version as a new app: expect the *Open Anyway* step and the Keychain prompts once per update. Your vault is untouched.
+
+To build from source instead, see [Quick start](#3-quick-start-macos).
+
+---
+
 ## Table of contents
 
 1. [How it works](#1-how-it-works)
@@ -228,38 +262,22 @@ yarn workspace passforge-extension build      # → packages/passforge-extension
 1. Open `chrome://extensions`.
 2. Enable **Developer mode** (top right).
 3. **Load unpacked** → choose `packages/passforge-extension/dist` (absolute path; in the file dialog press ⌘⇧G and paste it).
-4. Note the **ID** on the PassForge card (32 lowercase letters).
+4. The card shows the ID **`ihgkdijknaongdcmebhaaiagcafmnaic`**. It is pinned by the public `key` in `public/manifest.json`, so it is the same on every machine and every path (a test in `browser_hosts_tests.rs` keeps the key and the app's constant in sync). The matching private key is not in the repo; it's only needed for a future Chrome Web Store / CRX upload.
 
-Chrome derives the ID of an unpacked extension from the absolute path of its folder, so it is stable as long as you don't move the repo. You can precompute it:
+**3. The native-messaging host is registered by the app**
 
-```bash
-python3 - "$(cd packages/passforge-extension/dist && pwd -P)" <<'EOF'
-import hashlib, sys
-h = hashlib.sha256(sys.argv[1].encode()).hexdigest()[:32]
-print("".join(chr(ord("a") + int(c, 16)) for c in h))
-EOF
-```
-
-**3. Register the native-messaging host for that ID**
-
-```bash
-./desktop/src-tauri/native-messaging/install-host.sh \
-  "$PWD/target/release/bundle/macos/PassForge.app/Contents/MacOS/passforge-host" \
-  <EXTENSION_ID> chrome          # chrome | chromium | edge | brave
-```
-
-This writes `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.passforge.desktop.json`:
+On every launch, `PassForge.app` writes `com.passforge.desktop.json` into the `NativeMessagingHosts` directory of each installed Chromium-family browser (Chrome, Chrome Beta, Chromium, Brave, Edge, Arc), pointing at its own bundled helper:
 
 ```json
 {
   "name": "com.passforge.desktop",
-  "path": "/…/PassForge.app/Contents/MacOS/passforge-host",
+  "path": "/Applications/PassForge.app/Contents/MacOS/passforge-host",
   "type": "stdio",
-  "allowed_origins": ["chrome-extension://<EXTENSION_ID>/"]
+  "allowed_origins": ["chrome-extension://ihgkdijknaongdcmebhaaiagcafmnaic/"]
 }
 ```
 
-`scripts/build-mac.sh <EXTENSION_ID>` does steps 1 and 3 as part of the full build.
+It only rewrites the file when it changed, so moving the app just works after one relaunch. To register manually (e.g. a dev build that isn't running), `./desktop/src-tauri/native-messaging/install-host.sh <path-to-passforge-host> [extension-id] [chrome|chromium|edge|brave]` still works; the extension ID defaults to the pinned one.
 
 **4. Allow the host to read the vault key**
 

@@ -3,6 +3,10 @@ use passforge_desktop::{api, session, vault};
 use std::sync::{Arc, Mutex};
 
 fn main() {
+    let registered = passforge_desktop::browser_hosts::register_bundled_host();
+    if !registered.is_empty() {
+        eprintln!("passforge: registered native host for {}", registered.join(", "));
+    }
     let db = vault::open().expect("vault opens");
     let session = session::SessionState::default();
     session.set_idle_timeout(commands::load_settings(&db).idle_lock_seconds);

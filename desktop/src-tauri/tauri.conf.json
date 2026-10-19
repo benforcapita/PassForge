@@ -27,12 +27,18 @@
   },
   "bundle": {
     "active": true,
-    "targets": "app",
+    "targets": [
+      "app",
+      "dmg"
+    ],
     "macOS": {
-      "minimumSystemVersion": "13.0"
+      "minimumSystemVersion": "13.0",
+      "signingIdentity": "-"
     },
     "externalBin": [
       "binaries/passforge-host"
-    ]
+    ],
+    "category": "Utility",
+    "shortDescription": "Stateless password manager — frontends severed from the algorithm."
   }
 }

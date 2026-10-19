@@ -1,5 +1,6 @@
 pub mod api;
 pub mod biometric;
+pub mod browser_hosts;
 pub mod commands;
 pub mod db;
 pub mod error;

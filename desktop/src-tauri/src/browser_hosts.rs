@@ -51,9 +51,11 @@ pub fn manifest_json(host_path: &Path) -> String {
     .expect("static manifest serializes")
 }
 
-/// Writes the manifest for every browser whose profile root exists.
-/// Returns the browsers that were (re)written.
-pub fn register(home: &Path, host_path: &Path) -> Vec<&'static str> {
+/// Writes the manifest for every browser whose profile root exists under
+/// `home`. Returns the (browser, manifest path) pairs that were (re)written.
+/// Used by `--register-hosts` so a pkg postinstall running as root can write
+/// into — and chown back to — the console user's home directory.
+pub fn register_full(home: &Path, host_path: &Path) -> Vec<(&'static str, PathBuf)> {
     let body = manifest_json(host_path);
     let mut written = Vec::new();
     for (name, root, hosts) in browser_dirs(home) {
@@ -65,10 +67,19 @@ pub fn register(home: &Path, host_path: &Path) -> Vec<&'static str> {
             continue;
         }
         if std::fs::create_dir_all(&hosts).and_then(|_| std::fs::write(&file, &body)).is_ok() {
-            written.push(name);
+            written.push((name, file));
         }
     }
     written
+}
+
+/// Writes the manifest for every browser whose profile root exists.
+/// Returns the browsers that were (re)written.
+pub fn register(home: &Path, host_path: &Path) -> Vec<&'static str> {
+    register_full(home, host_path)
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect()
 }
 
 /// Registers the host that ships next to the running executable (inside

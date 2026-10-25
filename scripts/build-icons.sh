@@ -100,6 +100,18 @@ PY
 
 cp "$TMP/splash/1024x1024.png" mobile/assets/splash-icon.png
 
+# --- DMG window background (660x400) --------------------------------------------
+# Non-square raster: render the SVG with headless Chrome.
+CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+if [ -x "$CHROME" ]; then
+  "$CHROME" --headless --disable-gpu --hide-scrollbars \
+    --window-size=660,400 --force-device-scale-factor=1 \
+    --screenshot="$PWD/assets/brand/dmg-background.png" \
+    "file://$PWD/assets/brand/dmg-background.svg" >/dev/null 2>&1
+else
+  echo "warning: Chrome not found; skipping dmg-background.png" >&2
+fi
+
 # --- Docs logo ------------------------------------------------------------------
 mkdir -p docs/media
 cp "$MARK" docs/media/logo.svg

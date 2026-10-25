@@ -58,6 +58,26 @@ fn registers_only_installed_browsers_and_is_idempotent() {
     assert!(!brave.1.exists());
 }
 
+#[test]
+fn register_full_returns_manifest_paths() {
+    let home = tempfile::tempdir().unwrap();
+    for (.., root, hosts) in browser_hosts::browser_dirs(home.path()) {
+        if root.ends_with("Chrome") || root.ends_with("google-chrome") {
+            std::fs::create_dir_all(root).unwrap();
+            let _ = hosts;
+        }
+    }
+    let host = Path::new("/Applications/PassForge.app/Contents/MacOS/passforge-host");
+    let written = browser_hosts::register_full(home.path(), host);
+    assert_eq!(written.len(), 1);
+    assert_eq!(written[0].0, "chrome");
+    assert!(written[0].1.ends_with(format!("{HOST_NAME}.json")));
+    assert!(written[0].1.starts_with(home.path()));
+    assert!(written[0].1.is_file());
+    // Idempotent: unchanged manifests are not rewritten.
+    assert!(browser_hosts::register_full(home.path(), host).is_empty());
+}
+
 fn base64_decode(s: &str) -> Vec<u8> {
     const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = Vec::new();

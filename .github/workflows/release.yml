@@ -2,11 +2,17 @@ name: release
 
 # Push a tag like v12.0.0 to build and publish a GitHub Release:
 #   PassForge_<ver>_universal.dmg   desktop app (Apple Silicon + Intel), ad-hoc signed
+#   PassForge-<ver>.pkg             installer pkg (auto-registers browser hosts)
 #   passforge-extension-<ver>.zip   Chrome MV3 extension (load unpacked; fixed ID)
 #   passforge-server-<ver>-<os>-<arch>.tar.gz   self-hostable algorithm server
+#   install-server.sh               curl|bash server installer
 #   SHA256SUMS
-# Signing/notarization is not configured yet (no Apple Developer ID): macOS
-# will ask users to approve the app once — see README "Download".
+# The macos job signs and notarizes when the APPLE_CERTIFICATE,
+# APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY, APPLE_ID,
+# APPLE_PASSWORD and APPLE_TEAM_ID secrets are set; otherwise the app and dmg
+# stay ad-hoc signed and macOS asks users to approve once — see README
+# "Download". The server container image is pushed to
+# ghcr.io/<owner>/passforge-server:<ver> and :latest.
 
 on:
   push:
@@ -27,6 +33,8 @@ env:
 jobs:
   macos:
     runs-on: macos-14
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,9 +61,46 @@ jobs:
       - name: Tauri CLI
         run: cargo install tauri-cli --version '^2' --locked
 
+      - name: Import Apple signing certificate (optional)
+        if: env.APPLE_CERTIFICATE != ''
+        env:
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          CERT_FILE="$(mktemp).p12"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$CERT_FILE"
+          KEYCHAIN="$(mktemp -d)/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$CERT_FILE" -k "$KEYCHAIN" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain
+          rm -f "$CERT_FILE"
+          {
+            echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+            echo "APPLE_ID=$APPLE_ID"
+            echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+          } >> "$GITHUB_ENV"
+          echo "::notice::Apple signing identity imported; build will sign and notarize"
+
       - name: Build PassForge.app + dmg (universal)
         working-directory: desktop
         run: cargo tauri build --target universal-apple-darwin
+
+      - name: Build PassForge-<ver>.pkg
+        run: |
+          VER="${TAG#v}"
+          APP="target/universal-apple-darwin/release/bundle/macos/PassForge.app"
+          scripts/build-pkg.sh "$APP" "$VER" dist-pkg
+          mv "dist-pkg/PassForge-$VER.pkg" .
 
       - name: Extension zip
         run: |
@@ -76,7 +121,7 @@ jobs:
         run: |
           mkdir -p dist
           cp target/universal-apple-darwin/release/bundle/dmg/*.dmg dist/
-          mv passforge-extension-*.zip passforge-server-*.tar.gz dist/
+          mv passforge-extension-*.zip passforge-server-*.tar.gz PassForge-*.pkg dist/
           ls -la dist
 
       - uses: actions/upload-artifact@v4
@@ -108,8 +153,34 @@ jobs:
           name: server-linux-${{ matrix.arch }}
           path: passforge-server-*.tar.gz
 
+  server-image:
+    permissions:
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - name: Compute version
+        run: echo "VER=${TAG#v}" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.server
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/passforge-server:${{ env.VER }}
+            ghcr.io/${{ github.repository_owner }}/passforge-server:latest
+
   publish:
-    needs: [macos, server-linux]
+    needs: [macos, server-linux, server-image]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -119,6 +190,8 @@ jobs:
         with:
           path: assets
           merge-multiple: true
+      - name: Installer script asset
+        run: cp scripts/install-server.sh assets/
       - name: Checksums
         working-directory: assets
         run: sha256sum * > SHA256SUMS && cat SHA256SUMS
@@ -130,8 +203,10 @@ jobs:
           cat > notes.md <<EOF
           ## Install (macOS 13+, Apple Silicon or Intel)
 
-          1. Download **PassForge_${VER}_universal.dmg**, open it and drag **PassForge** to **Applications**.
-          2. First launch: this build is **not yet notarized**, so macOS blocks it once.
+          1. Recommended: download **PassForge-${VER}.pkg** — it installs to /Applications
+             and registers the browser companion automatically. Or download
+             **PassForge_${VER}_universal.dmg**, open it and drag **PassForge** to **Applications**.
+          2. First launch: if this build was not notarized, macOS blocks it once.
              Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**
              (or run \`xattr -dr com.apple.quarantine /Applications/PassForge.app\`).
           3. Click **Always Allow** on the Keychain prompt and choose your master password.
@@ -141,10 +216,39 @@ jobs:
           open \`chrome://extensions\` → Developer mode → **Load unpacked** → pick the folder.
           Its ID is always \`ihgkdijknaongdcmebhaaiagcafmnaic\`. Then open it (⌘⇧L) → **Servers** → **Connect**.
 
-          **Self-hosted algorithm server (optional):** \`passforge-server-${VER}-<os>-<arch>.tar.gz\`,
+          **Self-hosted algorithm server (optional):** one-liner installer
+          \`curl -fsSL https://raw.githubusercontent.com/benforcapita/PassForge/main/scripts/install-server.sh | sudo bash\`,
+          Docker \`docker run -p 8787:8787 ghcr.io/${GITHUB_REPOSITORY_OWNER}/passforge-server:${VER}\`,
+          or \`passforge-server-${VER}-<os>-<arch>.tar.gz\` —
           see the README section "Deploying your own algorithm server".
 
-          Verify downloads with \`shasum -a 256 -c SHA256SUMS\`.
+          Verify downloads with \`shasum -a 256 -c SHA256SUMS\` (the sums also
+          cover \`install-server.sh\`).
           EOF
           sed -i 's/^          //' notes.md
           gh release create "$TAG" assets/* --title "PassForge $VER" --notes-file notes.md --verify-tag
+
+      - name: Homebrew tap snippets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="${TAG#v}"
+          DMG="assets/PassForge_${VER}_universal.dmg"
+          DMG_SHA="$(sha256sum "$DMG" | awk '{print $1}')"
+          SRC_SHA="$(curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${TAG}.tar.gz" | sha256sum | awk '{print $1}')"
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ### Homebrew tap updates (copy into the homebrew-passforge tap)
+
+          \`Casks/passforge.rb\`:
+          \`\`\`ruby
+          version "${VER}"
+          sha256 "${DMG_SHA}"
+          \`\`\`
+
+          \`Formula/passforge-server.rb\`:
+          \`\`\`ruby
+          url "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${TAG}.tar.gz"
+          sha256 "${SRC_SHA}"
+          \`\`\`
+          EOF
+          sed -i 's/^          //' "$GITHUB_STEP_SUMMARY" 2>/dev/null || true

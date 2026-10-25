@@ -1,0 +1,15 @@
+# Builds a minimal passforge-server image (see README §7 "Option C — Docker").
+#   docker build -f Dockerfile.server -t passforge-server .
+#   docker run --rm -p 127.0.0.1:8787:8787 passforge-server
+FROM rust:1-bookworm AS build
+WORKDIR /src
+COPY . .
+RUN cargo build --release -p passforge-server
+
+FROM debian:bookworm-slim
+RUN useradd --system --uid 10001 passforge
+COPY --from=build /src/target/release/passforge-server /usr/local/bin/passforge-server
+USER passforge
+ENV PASSFORGE_BIND=0.0.0.0:8787
+EXPOSE 8787
+ENTRYPOINT ["/usr/local/bin/passforge-server"]

@@ -28,18 +28,24 @@ Both frontends ship with a **Servers** panel that lets you see, connect to and d
 
 | File | What it is |
 |---|---|
-| `PassForge_<version>_universal.dmg` | The desktop app with its embedded backend |
+| `PassForge-<version>.pkg` | **Recommended.** Installer package — drops the app in `/Applications` and registers the browser companion for you |
+| `PassForge_<version>_universal.dmg` | The desktop app with its embedded backend (drag-to-install) |
 | `passforge-extension-<version>.zip` | The Chrome extension (also works in Brave, Edge, Arc, Chromium) |
+| `install-server.sh` | One-line installer for the algorithm server (systemd / launchd) |
 | `passforge-server-<version>-<os>-<arch>.tar.gz` | Optional self-hosted algorithm server (macOS universal, Linux x86_64 / aarch64) |
 | `SHA256SUMS` | Checksums: `shasum -a 256 -c SHA256SUMS` |
 
 **Install the app**
 
-1. Open the `.dmg` and drag **PassForge** into **Applications**.
-2. Launch it. Releases are **not notarized yet** (no Apple Developer ID), so macOS blocks the first launch:
-   open **System Settings → Privacy & Security**, scroll to *"PassForge" was blocked…* and click **Open Anyway**.
-   Terminal alternative: `xattr -dr com.apple.quarantine /Applications/PassForge.app`.
-3. Click **Always Allow** on the Keychain prompt (the vault key lives in your Keychain), then pick your master password.
+- **pkg (recommended):** open `PassForge-<version>.pkg` and follow the installer. It puts
+  `PassForge.app` in `/Applications` and registers the native-messaging helper with your browsers automatically.
+- **dmg:** open `PassForge_<version>_universal.dmg` and drag **PassForge** into **Applications**.
+- **Homebrew:** `brew install --cask benforcapita/passforge/passforge`
+  (requires the `benforcapita/homebrew-passforge` tap — populated from `packaging/homebrew/`).
+- Launch it. Unsigned (not yet notarized) builds are blocked once by macOS:
+  open **System Settings → Privacy & Security**, scroll to *"PassForge" was blocked…* and click **Open Anyway**.
+  Terminal alternative: `xattr -dr com.apple.quarantine /Applications/PassForge.app`.
+- Click **Always Allow** on the Keychain prompt (the vault key lives in your Keychain), then pick your master password.
 
 On every launch the app registers its native-messaging helper with each installed Chromium-family browser, so there is no script to run.
 
@@ -378,6 +384,31 @@ Use a pepper only if you understand the trade: it means an attacker who steals y
 | `PASSFORGE_PEPPER` | unset | hex, ≥ 32 bytes decoded; enables `hmac-pepper-v1` |
 | `PASSFORGE_PEPPER_FILE` | unset | path to a file containing the hex pepper (preferred over the env var) |
 
+### Option 0 — the installer (quickest)
+
+Every release ships `install-server.sh`. It downloads the right tarball, verifies
+it against `SHA256SUMS`, installs `/usr/local/bin/passforge-server`, and wires up
+a hardened systemd unit on Linux or a launchd daemon on macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/benforcapita/PassForge/main/scripts/install-server.sh | sudo bash
+# or with options:
+curl -fsSL .../install-server.sh | sudo bash -s -- \
+  --bind 127.0.0.1:8787 --name "algorithms.example.com" --max-concurrent 8 --with-pepper
+```
+
+`--with-pepper` generates `/etc/passforge/pepper` (mode 0400, never overwritten) —
+**back it up like a private key**; losing it loses every `hmac-pepper-v1` password.
+Re-running upgrades the binary and restarts the service; `--uninstall` removes the
+service and binary (it keeps `/etc/passforge`). See `--help` for all flags.
+
+Homebrew (from the `benforcapita/homebrew-passforge` tap):
+
+```bash
+brew install benforcapita/passforge/passforge-server
+brew services start passforge-server
+```
+
 ### Option A — run it on your laptop (what the demo uses)
 
 ```bash
@@ -494,31 +525,20 @@ The server already answers CORS `*` for browser clients and never logs bodies. T
 
 ### Option C — Docker
 
-There is no Dockerfile in the repo yet; this one builds a static-ish image in two stages:
-
-```dockerfile
-# Dockerfile.server
-FROM rust:1-bookworm AS build
-WORKDIR /src
-COPY . .
-RUN cargo build --release -p passforge-server
-
-FROM debian:bookworm-slim
-RUN useradd --system --uid 10001 passforge
-COPY --from=build /src/target/release/passforge-server /usr/local/bin/passforge-server
-USER passforge
-ENV PASSFORGE_BIND=0.0.0.0:8787
-EXPOSE 8787
-ENTRYPOINT ["/usr/local/bin/passforge-server"]
-```
+`Dockerfile.server` (repo root) builds a minimal two-stage image, and releases
+push a multi-arch image to `ghcr.io/benforcapita/passforge-server`:
 
 ```bash
-docker build -f Dockerfile.server -t passforge-server .
+# prebuilt release image:
 docker run --rm -p 127.0.0.1:8787:8787 \
   -e PASSFORGE_SERVER_NAME="my algorithms" \
   -e PASSFORGE_MAX_CONCURRENT=8 \
   --memory=1g --read-only --cap-drop=ALL \
-  passforge-server
+  ghcr.io/benforcapita/passforge-server:latest
+
+# or build it yourself:
+docker build -f Dockerfile.server -t passforge-server .
+docker run --rm -p 127.0.0.1:8787:8787 passforge-server
 ```
 
 Put the same Caddy/nginx in front for TLS. For a pepper, mount a secret file read-only and set `PASSFORGE_PEPPER_FILE=/run/secrets/pepper`.

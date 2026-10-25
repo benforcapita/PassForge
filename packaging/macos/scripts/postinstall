@@ -1,0 +1,16 @@
+#!/bin/bash
+# Registers the passforge-host native-messaging manifest for the console user,
+# so Chrome/Brave/Edge/Arc/Chromium can pair with the freshly installed app.
+set -u
+
+USER_NAME="$(stat -f%Su /dev/console 2>/dev/null || true)"
+# Nobody logged in (or SSH install): skip — the app re-registers on every launch.
+if [ -z "$USER_NAME" ] || [ "$USER_NAME" = "root" ]; then
+  exit 0
+fi
+
+APP_BIN="/Applications/PassForge.app/Contents/MacOS/passforge-desktop"
+if [ -x "$APP_BIN" ]; then
+  "$APP_BIN" --register-hosts --user "$USER_NAME" >>/tmp/passforge-postinstall.log 2>&1 || true
+fi
+exit 0

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>PassForge</title>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+    <options customize="never" require-scripts="false" rootVolumeOnly="true"/>
+    <pkg-ref id="com.passforge.desktop"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.passforge.desktop"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.passforge.desktop" visible="false">
+        <pkg-ref id="com.passforge.desktop"/>
+    </choice>
+    <pkg-ref id="com.passforge.desktop" version="0" auth="root">#passforge-app.pkg</pkg-ref>
+</installer-gui-script>

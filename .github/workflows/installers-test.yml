@@ -1,0 +1,76 @@
+name: installers-test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile.server"
+      - ".dockerignore"
+      - "scripts/install-server.sh"
+      - "scripts/build-pkg.sh"
+      - "packaging/**"
+      - "crates/passforge-server/**"
+      - ".github/workflows/installers-test.yml"
+  pull_request:
+    paths:
+      - "Dockerfile.server"
+      - ".dockerignore"
+      - "scripts/install-server.sh"
+      - "scripts/build-pkg.sh"
+      - "packaging/**"
+      - "crates/passforge-server/**"
+      - ".github/workflows/installers-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck scripts/*.sh packaging/macos/scripts/postinstall
+
+  docker-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -f Dockerfile.server -t passforge-server:test .
+      - name: Smoke test /v1/info
+        run: |
+          docker run -d --name srv -p 127.0.0.1:8787:8787 passforge-server:test
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8787/v1/info && break || sleep 1
+          done
+          curl -sf http://127.0.0.1:8787/v1/info | tee info.json
+          grep -q '"passforge-remote-v1"' info.json
+          docker rm -f srv
+
+  install-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Build server and stage a fake release dir
+        run: |
+          cargo build --release -p passforge-server
+          mkdir -p "$GITHUB_WORKSPACE/dist-test"
+          tar -C target/release -czf "$GITHUB_WORKSPACE/dist-test/passforge-server-0.0.0-test-linux-x86_64.tar.gz" passforge-server
+          (cd "$GITHUB_WORKSPACE/dist-test" && sha256sum * > SHA256SUMS)
+      - name: Install from local dir and smoke test
+        run: |
+          sudo bash scripts/install-server.sh --from-dir "$GITHUB_WORKSPACE/dist-test" --version 0.0.0-test
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:8787/v1/info && break || sleep 1
+          done
+          curl -sf http://127.0.0.1:8787/v1/info | grep -q '"passforge-remote-v1"'
+          systemctl is-active passforge-server
+      - name: Idempotent re-run (upgrade path)
+        run: sudo bash scripts/install-server.sh --from-dir "$GITHUB_WORKSPACE/dist-test" --version 0.0.0-test
+      - name: Uninstall
+        run: |
+          sudo bash scripts/install-server.sh --uninstall
+          test ! -f /usr/local/bin/passforge-server
+          test ! -f /etc/systemd/system/passforge-server.service
+          ! systemctl is-active passforge-server 2>/dev/null

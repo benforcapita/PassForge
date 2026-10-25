@@ -24,7 +24,7 @@ Both frontends ship with a **Servers** panel that lets you see, connect to and d
 
 ## Download
 
-**[⬇ Latest release](https://github.com/benforcapita/PassForge/releases/latest)** — macOS 13+ (Apple Silicon and Intel).
+**[⬇ Latest release](https://github.com/benforcapita/PassForge/releases/latest)** — macOS 13+ (Apple Silicon and Intel). What changed: [CHANGELOG.md](CHANGELOG.md).
 
 | File | What it is |
 |---|---|
@@ -204,7 +204,7 @@ DIR="$HOME/Library/Application Support/PassForge"
 PORT=$(python3 -c "import json;print(json.load(open('$DIR/api-info.json'))['port'])")
 TOKEN=$(cat "$DIR/api-token")
 curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:$PORT/api/health
-# {"locked":false,"version":"12.0.0"}
+# {"locked":false,"version":"12.1.0"}
 ```
 
 ---
@@ -298,7 +298,7 @@ The first time Chrome launches `passforge-host`, macOS shows a Keychain prompt f
 Click the toolbar icon (pin it via the puzzle-piece menu) or press **⌘⇧L**.
 
 - First run: badge **`backend disconnected`**, a warning strip, Generate/Copy greyed out. *This is intentional*: the dependency is visible.
-- **Servers** tab → **Connect**. The badge turns **`backend connected`** and the backend row shows `http://127.0.0.1:<port> · v12.0.0`.
+- **Servers** tab → **Connect**. The badge turns **`backend connected`** and the backend row shows `http://127.0.0.1:<port> · v12.1.0`.
 - **Generate** tab: type the master password → fingerprint glyphs appear (computed by the backend) → **Generate** / **Copy**.
 - Your Connect/Disconnect choice is remembered (`chrome.storage.local`) across popup opens.
 
@@ -376,7 +376,7 @@ Both frontends have the same two-section panel.
 
 | Row | Meaning |
 |---|---|
-| `● PassForge local backend · http://127.0.0.1:53473 · v12.0.0 · connected` | paired and healthy |
+| `● PassForge local backend · http://127.0.0.1:53473 · v12.1.0 · connected` | paired and healthy |
 | `○ … · disconnected` | you disconnected; credentials dropped |
 | `● … · unreachable` + error | pairing or health check failed (app not running? host not installed?) |
 
@@ -394,7 +394,7 @@ Why this is real and not a UI flag: the desktop UI's *only* generation path is `
 | Row | Meaning |
 |---|---|
 | **Built-in (serverless)** `Active` | the backend derives locally with LessPass. No network. |
-| `127.0.0.1:8790 · PassForge reference server · 12.0.0` + algorithm picker | a known server, probed live through the backend |
+| `127.0.0.1:8790 · PassForge reference server · 12.1.0` + algorithm picker | a known server, probed live through the backend |
 
 - **Add server** → URL is probed (`/v1/info` via the backend) and saved to `knownServers`.
 - **Use** → the backend's generation mode becomes `server · <host> · <algorithm>`. Every password changes (different algorithm ⇒ different output — by design).

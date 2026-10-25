@@ -201,6 +201,8 @@ jobs:
         run: |
           VER="${TAG#v}"
           cat > notes.md <<EOF
+          **What's new:** see [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/CHANGELOG.md).
+
           ## Install (macOS 13+, Apple Silicon or Intel)
 
           1. Recommended: download **PassForge-${VER}.pkg** — it installs to /Applications

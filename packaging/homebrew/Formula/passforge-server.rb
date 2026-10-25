@@ -2,7 +2,7 @@ class PassforgeServer < Formula
   desc "Stateless algorithm server for PassForge (passforge-remote-v1)"
   homepage "https://github.com/benforcapita/PassForge"
   # url/sha256 are filled in by release.yml when the homebrew-passforge tap is updated.
-  url "https://github.com/benforcapita/PassForge/archive/refs/tags/v12.0.0.tar.gz"
+  url "https://github.com/benforcapita/PassForge/archive/refs/tags/v12.1.0.tar.gz"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "GPL-3.0-only"
 

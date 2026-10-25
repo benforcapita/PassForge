@@ -2284,7 +2284,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lesspass-core"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "hex",
  "hmac",
@@ -2923,7 +2923,7 @@ dependencies = [
 
 [[package]]
 name = "passforge-desktop"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -2970,7 +2970,7 @@ dependencies = [
 
 [[package]]
 name = "passforge-protocol"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "hex",
  "hmac",
@@ -2986,7 +2986,7 @@ dependencies = [
 
 [[package]]
 name = "passforge-server"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "argon2",
  "axum",

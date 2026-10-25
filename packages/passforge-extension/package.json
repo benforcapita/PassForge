@@ -1,6 +1,6 @@
 {
   "name": "passforge-extension",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "PassForge Chromium MV3 extension \u2014 stateless password generator with optional vault profile lookup via the passforge-host native messenger.",
   "license": "GPL-3.0-only",
   "private": true,

@@ -1,5 +1,5 @@
 cask "passforge" do
-  version "12.0.0"
+  version "12.1.0"
   # sha256 is filled in by release.yml when the homebrew-passforge tap is updated.
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 

@@ -147,6 +147,8 @@ crates/lesspass-core/        the password algorithm (the only place it exists)
 crates/passforge-protocol/   client primitives for passforge-remote-v1 (blind / finish)
 crates/passforge-server/     reference algorithm server (axum)
 packages/passforge-extension/  Chromium MV3 extension (React) — no algorithm code
+packages/passforge-protocol-js/  TypeScript client half of passforge-remote-v1 (no serverless path)
+mobile/                      iOS app preview (Expo SDK 57) — algorithm-server mode only
 cli/                         Python CLI (`pip install lesspass`), optional --server
 docs/
   remote-protocol.md         the algorithm-server protocol, byte for byte
@@ -619,6 +621,21 @@ The CLI is a standalone offline tool (it embeds the algorithm by necessity — i
 
 ---
 
+## 8b. iOS app (preview)
+
+`mobile/` is the start of an iPhone app (Expo SDK 57, React Native). There's no desktop backend on a phone, so the app is a client of an **algorithm server only**. It has no built-in algorithm: no reachable server, no password. It runs the client half of `passforge-remote-v1` from [`packages/passforge-protocol-js`](packages/passforge-protocol-js): blind on the device, derive on the server, finish on the device. That package is checked byte-for-byte against vectors generated from the Rust crates, and CI fails if they drift.
+
+With the same server, algorithm and parameters, the phone produces the same password as the desktop app in server mode.
+
+```bash
+yarn install && yarn workspace passforge-protocol build
+cd mobile && npm install && npx expo start     # scan with Expo Go (SDK 57) on an iPhone
+```
+
+Expo Go requires an Expo account sign-in. Simulator and native builds need Xcode (`npx expo run:ios`). The phone must reach the server over https; the [server installer](#7-deploying-your-own-algorithm-server) plus Caddy is the quickest route. Not yet supported: sync with the desktop vault, and iOS AutoFill or passkey-provider extensions, which need native code and an Apple Developer account. Details: [mobile/README.md](mobile/README.md).
+
+---
+
 ## 9. Local backend API reference
 
 Base URL: `http://127.0.0.1:<port>` where `<port>` is in `~/Library/Application Support/PassForge/api-info.json`.
@@ -678,7 +695,7 @@ Native-messaging host ops (`com.passforge.desktop`, length-prefixed JSON on stdi
 - A password returned to a frontend is a JavaScript string; it cannot be zeroized.
 - Deterministic schemes are open to offline guessing by someone who knows site, login and one output; PBKDF2/Argon2 cost is the mitigation.
 - Debug builds re-prompt Keychain on every rebuild (ad-hoc signing). Production builds should be signed and notarized.
-- macOS only (v1); Chromium only (v1). No Firefox/Safari, no mobile.
+- Desktop is macOS only and the extension Chromium only (v1). No Firefox/Safari. iOS is a preview: algorithm-server mode only, with no vault sync and no AutoFill.
 
 Full list: [docs/security-checklist.md](docs/security-checklist.md).
 

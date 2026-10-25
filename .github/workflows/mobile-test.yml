@@ -1,0 +1,50 @@
+name: mobile-test
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "mobile/**"
+      - "packages/passforge-protocol-js/**"
+      - "crates/passforge-protocol/**"
+      - "crates/lesspass-core/**"
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "packages/passforge-protocol-js/**"
+      - "crates/passforge-protocol/**"
+      - "crates/lesspass-core/**"
+  workflow_dispatch:
+jobs:
+  protocol-vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Vectors are up to date with the Rust implementation
+        run: |
+          cargo run -q -p passforge-protocol --example vectors > /tmp/vectors.json
+          diff -u packages/passforge-protocol-js/test/vectors.json /tmp/vectors.json
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - name: Build passforge-protocol (consumed via file:)
+        run: |
+          yarn install --immutable
+          yarn workspace passforge-protocol build
+          yarn workspace passforge-protocol test
+      - working-directory: mobile
+        run: npm ci
+      - working-directory: mobile
+        run: npx tsc --noEmit
+      - working-directory: mobile
+        run: npm test -- --ci
+      - working-directory: mobile
+        run: npx expo-doctor
+      - working-directory: mobile
+        run: npx expo export --platform ios --output-dir /tmp/expo-export

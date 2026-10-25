@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "PassForge",
+    "slug": "passforge",
+    "scheme": "passforge",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#070A0F",
+    "ios": {
+      "bundleIdentifier": "com.passforge.mobile",
+      "supportsTablet": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#070A0F"
+        }
+      ]
+    ]
+  }
+}

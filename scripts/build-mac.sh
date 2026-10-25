@@ -17,7 +17,7 @@ need() { command -v "$1" >/dev/null 2>&1 || { echo "missing: $1 — $2" >&2; exi
 need cargo "install Rust via https://rustup.rs"
 need node "install Node 22 (e.g. brew install node@22 or nvm install 22)"
 need xcodebuild "install Xcode command line tools: xcode-select --install"
-command -v corepack >/dev/null 2>&1 && corepack enable >/dev/null 2>&1 || true
+if command -v corepack >/dev/null 2>&1; then corepack enable >/dev/null 2>&1 || true; fi
 need yarn "enable corepack (corepack enable) so yarn 4 is available"
 
 echo "==> yarn install"

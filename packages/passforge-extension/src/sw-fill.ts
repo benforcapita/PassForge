@@ -17,11 +17,14 @@ export type Sender = {
 
 export type FillResult =
   | { kind: "fill"; tabId: number; frameId: number; username: string; password: string }
+  | { kind: "migrate-fill"; tabId: number; frameId: number; username: string; current: string; next: string }
   | { kind: "reject"; reason: string };
 
 export type Registration = { tabId: number; frameId: number; url: string };
 
 export type FillDeps = {
+  migrationPreview(entryId: string): Promise<{ current: string; next: string }>;
+  migrate(entryId: string): Promise<unknown>;
   /** Look up the nonce registered by `pf:dropdown-opened`. The registering
    * sender is the content script, so its frameId/url are Chrome-verified —
    * never page-supplied data. */
@@ -167,4 +170,52 @@ export async function handleCreateAndFill(
   const entry = candidates.find((c) => c.id === created.id);
   if (!entry) return { kind: "reject", reason: "created entry does not match the frame url" };
   return fillEntry(deps, tabId, reg.frameId, entry);
+}
+
+/** pf:migrate-fill {entryId, nonce} — same guards as handleFill; returns the
+ * sealed entry's {current,next} pair for the registered frame. */
+export async function handleMigrateFill(
+  deps: FillDeps,
+  sender: Sender | undefined,
+  extensionOrigin: string,
+  entryId: string,
+  nonce: string,
+): Promise<FillResult> {
+  if (!isFrameSender(sender, extensionOrigin)) {
+    return { kind: "reject", reason: "sender is not the autofill frame" };
+  }
+  const tabId = sender?.tab?.id;
+  if (typeof tabId !== "number") return { kind: "reject", reason: "no tab on sender" };
+  const reg = deps.registration(nonce);
+  if (!reg || reg.tabId !== tabId) {
+    return { kind: "reject", reason: "no matching dropdown registration" };
+  }
+  const candidates = await deps.autofill(reg.url);
+  const entry = candidates.find((c) => c.id === entryId);
+  if (!entry) return { kind: "reject", reason: "entry does not match the frame url" };
+  const { current, next } = await deps.migrationPreview(entryId);
+  return {
+    kind: "migrate-fill", tabId, frameId: reg.frameId,
+    username: entry.login, current, next,
+  };
+}
+
+/** pf:migrate-complete {entryId, nonce} — user confirmed the site accepted
+ * the change; clears the seal server-side. */
+export async function handleMigrateComplete(
+  deps: FillDeps,
+  sender: Sender | undefined,
+  extensionOrigin: string,
+  entryId: string,
+  nonce: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isFrameSender(sender, extensionOrigin)) {
+    return { ok: false, error: "sender is not the autofill frame" };
+  }
+  const tabId = sender?.tab?.id;
+  if (typeof tabId !== "number") return { ok: false, error: "no tab on sender" };
+  const reg = deps.registration(nonce);
+  if (!reg || reg.tabId !== tabId) return { ok: false, error: "no matching dropdown registration" };
+  await deps.migrate(entryId);
+  return { ok: true };
 }

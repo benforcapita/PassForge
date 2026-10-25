@@ -134,3 +134,22 @@ describe("fillForm", () => {
     expect((d2.querySelector("[name=b]") as HTMLInputElement).value).toBe("pw2");
   });
 });
+
+it("classifies a change-password form (current + 2 new)", () => {
+  document.body.innerHTML = `<form>
+    <input type="password" name="cur" autocomplete="current-password">
+    <input type="password" name="n1" autocomplete="new-password">
+    <input type="password" name="n2" autocomplete="new-password">
+  </form>`;
+  const forms = detectForms(document);
+  expect(forms).toHaveLength(1);
+  expect(forms[0].kind).toBe("change");
+  expect(forms[0].currentPassword?.getAttribute("name")).toBe("cur");
+});
+
+it("classifies 3 anonymous password fields as change", () => {
+  document.body.innerHTML = `<form>
+    <input type="password" name="a"><input type="password" name="b"><input type="password" name="c">
+  </form>`;
+  expect(detectForms(document)[0].kind).toBe("change");
+});

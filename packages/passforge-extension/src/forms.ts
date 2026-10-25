@@ -2,12 +2,14 @@
 // APIs — so it is unit-tested under jsdom. The page only ever sees the icon
 // and the dropdown chrome; entry data stays inside the extension.
 
-export type FormKind = "login" | "signup";
+export type FormKind = "login" | "signup" | "change";
 
 export type DetectedForm = {
   kind: FormKind;
   username: HTMLInputElement | null;
   passwords: HTMLInputElement[];
+  /** For `change` forms: the current-password field. */
+  currentPassword?: HTMLInputElement;
 };
 
 export function isVisible(el: HTMLElement): boolean {
@@ -59,14 +61,26 @@ export function detectForms(root: ParentNode = document): DetectedForm[] {
 
   const forms: DetectedForm[] = [];
   for (const fields of grouped.values()) {
-    const isSignup =
-      fields.length >= 2 ||
-      fields.some((f) => (f.getAttribute("autocomplete") ?? "").toLowerCase() === "new-password");
-    const first = fields[0];
+    const ac = (f: HTMLInputElement) => (f.getAttribute("autocomplete") ?? "").toLowerCase();
+    // change-password needs an OLD field plus NEW field(s): a lone
+    // current-password input is just a login form.
+    const explicitCurrent = fields.find((f) => ac(f) === "current-password");
+    const hasNew = fields.some((f) => ac(f) === "new-password");
+    const currentPassword =
+      fields.length >= 2
+        ? (explicitCurrent && hasNew ? explicitCurrent : undefined) ??
+          (fields.length >= 3 ? fields[0] : undefined)
+        : undefined;
+    const kind: FormKind = currentPassword
+      ? "change"
+      : fields.length >= 2 || fields.some((f) => ac(f) === "new-password")
+        ? "signup"
+        : "login";
     forms.push({
-      kind: isSignup ? "signup" : "login",
-      username: findUsernameField(first),
+      kind,
+      username: findUsernameField(fields[0]),
       passwords: fields,
+      currentPassword,
     });
   }
   return forms;

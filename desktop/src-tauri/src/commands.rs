@@ -304,6 +304,15 @@ pub async fn generate_entry_password(
     entry_id: &str,
 ) -> Result<String> {
     require_unlocked(session)?;
+    {
+        let db = db.lock().expect("db mutex poisoned");
+        if let Some(sealed) = db.get_sealed(entry_id)? {
+            let root = session.root_key("passforge-seal-root-v1")?;
+            let password = crate::seal::unseal(&root, entry_id, &sealed)?;
+            db.mark_used(entry_id)?;
+            return Ok((*password).clone());
+        }
+    }
     let (entry, settings, master_bytes) = {
         let db = db.lock().expect("db mutex poisoned");
         let entry = db
@@ -420,6 +429,107 @@ pub fn save_settings(
 // Backup commands
 // ---------------------------------------------------------------------------
 
+/// Preview a sealed entry's migration: current = unsealed legacy password,
+/// next = a fresh derive of the entry's profile ignoring the seal.
+pub async fn migration_preview_inner(
+    db: &Arc<Mutex<VaultDb>>,
+    session: &SessionState,
+    entry_id: &str,
+) -> Result<serde_json::Value> {
+    require_unlocked(session)?;
+    let (entry, sealed, settings, master_bytes) = {
+        let db = db.lock().expect("db mutex poisoned");
+        let entry = db
+            .get_entry(entry_id)?
+            .ok_or_else(|| PassForgeError::EntryNotFound(entry_id.to_string()))?;
+        let sealed = db
+            .get_sealed(entry_id)?
+            .ok_or_else(|| PassForgeError::InvalidRequest("entry is not sealed".into()))?;
+        (entry, sealed, load_settings(&db), session.master_password_bytes()?)
+    };
+    let root = session.root_key("passforge-seal-root-v1")?;
+    let current = crate::seal::unseal(&root, entry_id, &sealed)?;
+    let master_bytes = Zeroizing::new(master_bytes);
+    let next = tokio::task::spawn_blocking(move || {
+        let mut b = master_bytes;
+        let master = String::from_utf8(std::mem::take(&mut *b))
+            .map_err(|e| { let mut x = e.into_bytes(); x.zeroize(); PassForgeError::InvalidRequest("master password is not valid UTF-8".into()) })?;
+        derive_password(&entry, &master, &settings)
+    })
+    .await
+    .map_err(|_| PassForgeError::InvalidRequest("derive task failed".into()))??;
+    Ok(serde_json::json!({ "current": *current, "next": next }))
+}
+
+/// Finish a migration: clear the seal, keep the entry as generated, bump
+/// the migrated counter used by the sidebar progress.
+pub async fn complete_migration_inner(
+    db: &Arc<Mutex<VaultDb>>,
+    session: &SessionState,
+    entry_id: &str,
+) -> Result<VaultEntry> {
+    require_unlocked(session)?;
+    let db = db.lock().expect("db mutex poisoned");
+    if db.get_sealed(entry_id)?.is_none() {
+        return Err(PassForgeError::InvalidRequest("entry is not sealed".into()));
+    }
+    db.set_sealed(entry_id, None)?;
+    let stats = db.get_kv("migration_stats")?.unwrap_or_default();
+    let n: i64 = serde_json::from_str::<serde_json::Value>(&stats)
+        .ok()
+        .and_then(|v| v["migrated"].as_i64())
+        .unwrap_or(0);
+    db.set_kv("migration_stats", &serde_json::json!({"migrated": n + 1}).to_string())?;
+    db.get_entry(entry_id)?.ok_or(PassForgeError::EntryNotFound(entry_id.to_string()))
+}
+
+#[tauri::command]
+pub async fn migration_preview(entry_id: String, state: State<'_, AppState>, session: State<'_, SessionState>) -> Result<serde_json::Value> {
+    migration_preview_inner(&state.db, &session, &entry_id).await
+}
+
+#[tauri::command]
+pub async fn complete_migration(entry_id: String, state: State<'_, AppState>, session: State<'_, SessionState>) -> Result<VaultEntry> {
+    complete_migration_inner(&state.db, &session, &entry_id).await
+}
+
+#[tauri::command]
+pub fn list_sealed(state: State<AppState>, session: State<SessionState>) -> Result<serde_json::Value> {
+    require_unlocked(&session)?;
+    let db = state.db.lock().expect("db mutex poisoned");
+    let mut entries = db.search_entries("")?;
+    entries.retain(|e| e.kind == crate::models::EntryKind::Sealed);
+    synthesize_fingerprints(&mut entries)?;
+    let stats = db.get_kv("migration_stats")?.unwrap_or_default();
+    let migrated = serde_json::from_str::<serde_json::Value>(&stats)
+        .ok()
+        .and_then(|v| v["migrated"].as_u64())
+        .unwrap_or(0);
+    Ok(serde_json::json!({ "entries": entries, "migrated": migrated }))
+}
+
+/// Import passwords from a CSV/JSON file — IPC only, so the plaintext file
+/// never crosses the loopback API.
+#[tauri::command]
+pub async fn import_passwords(path: String, state: State<'_, AppState>, session: State<'_, SessionState>) -> Result<serde_json::Value> {
+    require_unlocked(&session)?;
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| PassForgeError::InvalidRequest(format!("cannot read {path}: {e}")))?;
+    let parsed = crate::import::parse(&content)?;
+    let settings = {
+        let db = state.db.lock().expect("db mutex poisoned");
+        load_settings(&db)
+    };
+    let db = state.db.clone();
+    let session = session.inner().clone();
+    let report = tokio::task::spawn_blocking(move || {
+        crate::import::import_credentials(&db, &session, &settings, parsed)
+    })
+    .await
+    .map_err(|_| PassForgeError::InvalidRequest("import task failed".into()))??;
+    serde_json::to_value(report).map_err(Into::into)
+}
+
 /// Write every folder and entry profile to `path` as JSON. The export holds
 /// no generated passwords (PassForge never stores them) but is still
 /// sensitive metadata.
@@ -428,10 +538,17 @@ pub fn export_vault(path: String, state: State<AppState>, session: State<Session
     require_unlocked(&session)?;
     let db = state.db.lock().expect("db mutex poisoned");
     let export = VaultExport {
-        version: 1,
+        version: 2,
         exported_at: chrono::Utc::now().to_rfc3339(),
         folders: db.list_folders()?,
-        entries: db.list_all_entries()?,
+        entries: db
+            .list_all_entries()?
+            .into_iter()
+            .map(|entry| crate::models::ExportedEntry {
+                sealed: db.get_sealed(&entry.id).ok().flatten(),
+                entry,
+            })
+            .collect(),
     };
     std::fs::write(&path, serde_json::to_string_pretty(&export)?)?;
     Ok(())

@@ -37,6 +37,8 @@ function deps(overrides: Partial<FillDeps> = {}): FillDeps & { calls: string[] }
       calls.push(`generate:${id}`);
       return "s3cret-pw";
     },
+    migrationPreview: async () => ({ current: "old-pw", next: "new-pw" }),
+    migrate: async () => ({}),
     createEntry: async () => {
       calls.push("create");
       return { id: "new" };

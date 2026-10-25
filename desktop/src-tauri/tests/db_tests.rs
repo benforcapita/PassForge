@@ -1,6 +1,6 @@
 use lesspass_core::PasswordOptions;
 use passforge_desktop::db::VaultDb;
-use passforge_desktop::models::{EntryInput, FolderInput};
+use passforge_desktop::models::{EntryInput, ExportedEntry, FolderInput, VaultExport};
 
 fn sample_entry(folder_id: String) -> EntryInput {
     EntryInput {
@@ -315,7 +315,7 @@ fn export_import_roundtrips_folders_and_entries() {
         version: 1,
         exported_at: "2026-01-01T00:00:00Z".into(),
         folders: source.list_folders().unwrap(),
-        entries: source.list_all_entries().unwrap(),
+        entries: source.list_all_entries().unwrap().into_iter().map(|entry| ExportedEntry { entry, sealed: None }).collect(),
     };
     let json = serde_json::to_string_pretty(&doc).unwrap();
     let parsed: VaultExport = serde_json::from_str(&json).unwrap();
@@ -353,7 +353,7 @@ fn import_is_idempotent_and_skips_existing_rows() {
         version: 1,
         exported_at: "2026-01-01T00:00:00Z".into(),
         folders: db.list_folders().unwrap(),
-        entries: db.list_all_entries().unwrap(),
+        entries: db.list_all_entries().unwrap().into_iter().map(|entry| ExportedEntry { entry, sealed: None }).collect(),
     };
 
     // Importing the vault into itself must create nothing.
@@ -406,7 +406,7 @@ fn import_rejects_whole_file_when_any_entry_is_invalid() {
         version: 1,
         exported_at: "2026-01-01T00:00:00Z".into(),
         folders: source.list_folders().unwrap(),
-        entries,
+        entries: entries.into_iter().map(|entry| ExportedEntry { entry, sealed: None }).collect(),
     };
 
     let target = VaultDb::memory().unwrap();
@@ -417,8 +417,61 @@ fn import_rejects_whole_file_when_any_entry_is_invalid() {
     assert!(target.list_folders().unwrap().is_empty());
 
     let mut doc = doc;
-    doc.entries[1].profile.crypto = None;
-    doc.entries[0].profile.options.length = 1_000_000;
+    doc.entries[1].entry.profile.crypto = None;
+    doc.entries[0].entry.profile.options.length = 1_000_000;
     assert!(target.import_export(&doc).is_err());
     assert!(target.list_all_entries().unwrap().is_empty());
+}
+
+#[test]
+fn migrates_v1_vault_adding_sealed_column() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("v.db");
+    {
+        // A pre-migration vault: entries table without sealed_json.
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE entries (id TEXT PRIMARY KEY, site TEXT NOT NULL, login TEXT NOT NULL,
+             counter INTEGER NOT NULL, options_json TEXT NOT NULL, salt_fields_json TEXT NOT NULL,
+             crypto_json TEXT, folder_id TEXT NOT NULL, created_at TEXT NOT NULL,
+             updated_at TEXT NOT NULL, last_used_at TEXT);"
+        ).unwrap();
+    }
+    let db = VaultDb::open(&path).unwrap();
+    db.migrate().unwrap();
+    db.migrate().unwrap(); // idempotent
+}
+
+#[test]
+fn sealed_roundtrip_and_export_v2() {
+    use passforge_desktop::seal::seal;
+    let db = VaultDb::memory().unwrap();
+    db.migrate().unwrap();
+    let folder = db.create_folder(FolderInput { parent_id: None, name: "f".into() }).unwrap();
+    let entry = db.create_entry(EntryInput {
+        site: "s.io".into(), login: "l".into(), counter: 1,
+        options: Default::default(), salt_fields: vec![], crypto: None,
+        folder_id: folder.id, group_ids: vec![], tags: vec![],
+    }).unwrap();
+    let blob = seal(&[9u8; 32], &entry.id, "pw").unwrap();
+    db.set_sealed(&entry.id, Some(&blob)).unwrap();
+    assert_eq!(db.get_sealed(&entry.id).unwrap(), Some(blob.clone()));
+    assert_eq!(db.count_sealed().unwrap(), 1);
+    // kind shows up on reads, blob does not travel on VaultEntry
+    let e = db.get_entry(&entry.id).unwrap().unwrap();
+    assert_eq!(e.kind, passforge_desktop::models::EntryKind::Sealed);
+    // the blob itself (salt/nonce/ct) must not travel on VaultEntry
+    let json = serde_json::to_string(&e).unwrap();
+    assert!(!json.contains(&blob.ct) && !json.contains("\"nonce\"") && !json.contains("sealedJson"));
+    // export v2 carries sealed blobs; import restores them
+    let export = VaultExport {
+        version: 2, exported_at: "t".into(), folders: db.list_folders().unwrap(),
+        entries: vec![ExportedEntry { entry: e.clone(), sealed: Some(blob.clone()) }],
+    };
+    let json = serde_json::to_string(&export).unwrap();
+    let parsed: VaultExport = serde_json::from_str(&json).unwrap();
+    let db2 = VaultDb::memory().unwrap();
+    db2.migrate().unwrap();
+    db2.import_export(&parsed).unwrap();
+    assert_eq!(db2.get_sealed(&entry.id).unwrap(), Some(blob));
 }

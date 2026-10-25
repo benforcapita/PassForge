@@ -40,10 +40,20 @@ impl EntryInput {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum EntryKind {
+    #[default]
+    Generated,
+    Sealed,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultEntry {
     pub id: String,
+    #[serde(default)]
+    pub kind: EntryKind,
     pub profile: PasswordProfile,
     pub folder_id: String,
     pub group_ids: Vec<String>,
@@ -57,6 +67,8 @@ pub struct VaultEntry {
 #[serde(rename_all = "camelCase")]
 pub struct EntrySummary {
     pub id: String,
+    #[serde(default)]
+    pub kind: EntryKind,
     pub site: String,
     pub login: String,
     pub counter: u32,
@@ -75,7 +87,18 @@ pub struct VaultExport {
     pub version: u32,
     pub exported_at: String,
     pub folders: Vec<Folder>,
-    pub entries: Vec<VaultEntry>,
+    pub entries: Vec<ExportedEntry>,
+}
+
+/// VaultEntry + its optional sealed blob. The blob is serialized only in
+/// exports — never on VaultEntry/EntrySummary, so it can't reach frontends.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportedEntry {
+    #[serde(flatten)]
+    pub entry: VaultEntry,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sealed: Option<crate::seal::SealedSecret>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

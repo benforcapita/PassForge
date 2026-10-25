@@ -45,6 +45,21 @@ async fn main() {
         .unwrap();
     }
 
+    // --seed-sealed: add a sealed legacy entry for the migration e2e
+    // (sealed under master "test-master").
+    if std::env::args().any(|a| a == "--seed-sealed") {
+        let session = SessionState::default();
+        session.unlock(b"test-master".to_vec()).unwrap();
+        let e = db.create_entry(EntryInput {
+            site: "localhost".into(), login: "carol@example.com".into(), counter: 1,
+            options: PasswordOptions::default(), salt_fields: vec![], crypto: None,
+            folder_id: folder.id.clone(), group_ids: vec![], tags: vec![],
+        }).unwrap();
+        let root = session.root_key("passforge-seal-root-v1").unwrap();
+        db.set_sealed(&e.id, Some(&passforge_desktop::seal::seal(&root, &e.id, "OldPassw0rd!").unwrap())).unwrap();
+        println!("seeded sealed entry {}", e.id);
+    }
+
     let session = SessionState::default();
     if std::env::args().nth(2).as_deref() != Some("--locked") {
         session.unlock(b"test-master".to_vec()).unwrap();

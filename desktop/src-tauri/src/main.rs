@@ -120,6 +120,10 @@ fn main() {
             commands::forget_master_password,
             commands::export_vault,
             commands::import_vault,
+            commands::import_passwords,
+            commands::migration_preview,
+            commands::complete_migration,
+            commands::list_sealed,
         ]);
 
     let builder = builder

@@ -4,7 +4,7 @@
 // service worker; the content script only ever receives the final
 // {username, password} pair, addressed to exactly this tab+frame.
 
-import { detectForms, fillForm, type DetectedForm } from "./forms";
+import { detectForms, fillForm, fillInput, type DetectedForm } from "./forms";
 
 const ICON_HOST_ATTR = "data-pf-icon-host";
 const DROPDOWN_ID = "pf-autofill-frame";
@@ -121,20 +121,27 @@ function openDropdown(field: HTMLInputElement, form: DetectedForm) {
     pf: nonce,
   });
   frame.src = `${chrome.runtime.getURL("frame.html")}#${params.toString()}`;
+  const r = field.getBoundingClientRect();
+  const width = Math.min(Math.max(r.width, 280), window.innerWidth - 8);
+  // Anchor to the field's left edge; clamp inside the viewport.
+  const left = Math.min(
+    Math.max(4, r.left + window.scrollX),
+    window.scrollX + window.innerWidth - width - 4,
+  );
   Object.assign(frame.style, {
     position: "absolute",
     zIndex: "2147483647",
     border: "1px solid #30363D",
     borderRadius: "8px",
-    width: "320px",
-    height: "280px",
+    width: `${width}px`,
+    height: "64px", // resized by the frame via postMessage (pf:resize)
     background: "#0D1117",
     colorScheme: "dark",
     boxShadow: "0 8px 30px rgba(0,0,0,.55)",
+    overflow: "hidden",
   });
-  const r = field.getBoundingClientRect();
   frame.style.top = `${r.bottom + window.scrollY + 4}px`;
-  frame.style.left = `${Math.max(4, r.left + window.scrollX - 160)}px`;
+  frame.style.left = `${left}px`;
   document.documentElement.appendChild(frame);
   currentDropdown = frame;
 }
@@ -151,10 +158,15 @@ function closeDropdown() {
   currentForm = null;
 }
 
-// Page messages: only the dropdown's own window may talk, and only to close.
+// Page messages: only the dropdown's own window may talk — to close or to
+// report its content height.
 window.addEventListener("message", (e) => {
   if (e.source !== currentDropdown?.contentWindow) return;
   if (e.data?.type === "pf:close") closeDropdown();
+  if (e.data?.type === "pf:resize" && currentDropdown) {
+    const h = Number(e.data.height);
+    if (Number.isFinite(h)) currentDropdown.style.height = `${Math.min(Math.max(h, 48), 320)}px`;
+  }
 });
 
 document.addEventListener("pointerdown", (e) => {
@@ -170,6 +182,11 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "pf:fill-values" && currentForm) {
     fillForm(currentForm, String(msg.username ?? ""), String(msg.password ?? ""));
     closeDropdown();
+  } else if (msg?.type === "pf:migrate-values" && currentForm?.kind === "change" && currentForm.currentPassword) {
+    fillInput(currentForm.currentPassword, String(msg.current ?? ""));
+    for (const f of currentForm.passwords) {
+      if (f !== currentForm.currentPassword) fillInput(f, String(msg.next ?? ""));
+    }
   } else if (msg?.type === "pf:fill-values") {
     // No open dropdown — a shortcut/command fill targets the focused form.
     const form = detectForms(document)[0];

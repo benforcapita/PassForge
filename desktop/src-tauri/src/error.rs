@@ -10,6 +10,8 @@ pub enum PassForgeError {
     EntryNotFound(String),
     #[error("vault is locked")]
     Locked,
+    #[error("this password was imported under a different master password")]
+    SealMismatch,
     #[error("keychain error: {0}")]
     Keychain(String),
     #[error("io error: {0}")]

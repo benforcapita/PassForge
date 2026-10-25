@@ -58,6 +58,7 @@ export type WireProfile = {
 
 export type EntrySummary = {
   id: string;
+  kind?: "generated" | "sealed";
   site: string;
   login: string;
   counter: number;
@@ -230,6 +231,14 @@ export async function saveSettings(settings: Settings): Promise<Settings> {
 }
 
 /** Probe an algorithm server *through* the backend (we can't reach it ourselves). */
+export async function migrationPreview(entryId: string): Promise<{ current: string; next: string }> {
+  return call(`/api/entries/${entryId}/migration-preview`, undefined, "POST");
+}
+
+export async function migrate(entryId: string): Promise<unknown> {
+  return call(`/api/entries/${entryId}/migrate`, undefined, "POST");
+}
+
 export async function serverInfo(url: string): Promise<ServerInfo> {
   return call<ServerInfo>("/api/server-info", { url });
 }

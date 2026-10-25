@@ -3,7 +3,10 @@
 // fill pipeline, the toolbar badge, and the context-menu/keyboard triggers.
 
 import * as backend from "./backend-client";
-import { handleCandidates, handleCreateAndFill, handleFill, rpcAllowed } from "./sw-fill";
+import {
+  handleCandidates, handleCreateAndFill, handleFill, handleMigrateComplete,
+  handleMigrateFill, rpcAllowed,
+} from "./sw-fill";
 
 const RPC_METHODS: Record<string, (...args: never[]) => Promise<unknown>> = {
   savedIntent: backend.savedIntent,
@@ -19,6 +22,8 @@ const RPC_METHODS: Record<string, (...args: never[]) => Promise<unknown>> = {
   serverInfo: backend.serverInfo,
   autofill: backend.autofill,
   createEntry: backend.createEntry,
+  migrationPreview: backend.migrationPreview,
+  migrate: backend.migrate,
   generateEntry: backend.generateEntry,
 } as never;
 
@@ -41,6 +46,8 @@ const fillDeps = {
   autofill: backend.autofill,
   generateEntry: backend.generateEntry,
   createEntry: backend.createEntry,
+  migrationPreview: backend.migrationPreview,
+  migrate: backend.migrate,
 };
 
 // ---------------------------------------------------------------------------
@@ -121,6 +128,35 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg?.type === "pf:migrate-fill" && typeof msg.entryId === "string" && typeof msg.nonce === "string") {
+    void handleMigrateFill(fillDeps, sender, chrome.runtime.getURL(""), msg.entryId, msg.nonce)
+      .then((result) => {
+        if (result.kind === "migrate-fill") {
+          return chrome.tabs.sendMessage(
+            result.tabId,
+            {
+              type: "pf:migrate-values",
+              username: result.username,
+              current: result.current,
+              next: result.next,
+            },
+            { frameId: result.frameId },
+          );
+        }
+        return result;
+      })
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+    return true;
+  }
+
+  if (msg?.type === "pf:migrate-complete" && typeof msg.entryId === "string" && typeof msg.nonce === "string") {
+    void handleMigrateComplete(fillDeps, sender, chrome.runtime.getURL(""), msg.entryId, msg.nonce)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+    return true;
+  }
+
   if (msg?.type === "pf:fill" && typeof msg.entryId === "string" && typeof msg.nonce === "string") {
     void handleFill(fillDeps, sender, chrome.runtime.getURL(""), msg.entryId, msg.nonce)
       .then(async (result) => {
@@ -132,7 +168,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           );
           sendResponse({ ok: true });
         } else {
-          sendResponse({ ok: false, error: result.reason });
+          sendResponse({ ok: false, error: result.kind === "reject" ? result.reason : "rejected" });
         }
       })
       .catch((e) => sendResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }));
@@ -150,7 +186,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           );
           sendResponse({ ok: true });
         } else {
-          sendResponse({ ok: false, error: result.reason });
+          sendResponse({ ok: false, error: result.kind === "reject" ? result.reason : "rejected" });
         }
       })
       .catch((e) => sendResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }));

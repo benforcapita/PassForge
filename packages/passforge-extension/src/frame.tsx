@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 import * as api from "./api";
 import "./styles.css";
 
-type Params = { url: string; kind: "login" | "signup"; username: string; pf: string };
+type Params = { url: string; kind: "login" | "signup" | "change"; username: string; pf: string };
 type State =
   | { phase: "loading" }
   | { phase: "disconnected" }
@@ -18,7 +18,7 @@ function params(): Params {
   const p = new URLSearchParams(location.hash.slice(1));
   return {
     url: p.get("url") ?? "",
-    kind: p.get("kind") === "signup" ? "signup" : "login",
+    kind: (p.get("kind") as "login" | "signup" | "change") || "login",
     username: p.get("username") ?? "",
     pf: p.get("pf") ?? "",
   };
@@ -40,6 +40,7 @@ function Frame() {
   const [state, setState] = useState<State>({ phase: "loading" });
   const [login, setLogin] = useState(params().username);
   const [error, setError] = useState("");
+  const [migrated, setMigrated] = useState<{ entryId: string; done: boolean } | null>(null);
   const p = params();
 
   useEffect(() => {
@@ -47,6 +48,19 @@ function Frame() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  // Report content height so the content script can size the iframe.
+  useEffect(() => {
+    const post = () =>
+      window.parent.postMessage(
+        { type: "pf:resize", height: document.documentElement.scrollHeight },
+        "*",
+      );
+    post();
+    const ro = new ResizeObserver(post);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  });
 
   useEffect(() => {
     void (async () => {
@@ -70,6 +84,26 @@ function Frame() {
     try {
       await chrome.runtime.sendMessage({ type: "pf:fill", entryId, nonce: p.pf });
       close();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const migrateFill = async (entryId: string) => {
+    setError("");
+    try {
+      await chrome.runtime.sendMessage({ type: "pf:migrate-fill", entryId, nonce: p.pf });
+      setMigrated({ entryId, done: false });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const markMigrated = async (entryId: string) => {
+    setError("");
+    try {
+      await chrome.runtime.sendMessage({ type: "pf:migrate-complete", entryId, nonce: p.pf });
+      setMigrated({ entryId, done: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -105,14 +139,31 @@ function Frame() {
       )}
       {state.phase === "error" && <div className="error">{state.message}</div>}
 
-      {state.phase === "ready" && (
+      {migrated && !migrated.done && (
+        <div className="signup">
+          <div className="section-title">After submitting: did the change succeed?</div>
+          <button className="action primary" onClick={() => void markMigrated(migrated.entryId)}>
+            Yes, mark migrated
+          </button>
+          <button className="action" onClick={() => setMigrated(null)}>Not yet</button>
+        </div>
+      )}
+      {migrated?.done && <div className="smeta">Migrated — the vault now stores a generated entry.</div>}
+      {state.phase === "ready" && !migrated && (
         <div className="entries">
-          {state.entries.map((e) => (
-            <button key={e.id} className="entry" onClick={() => void fill(e.id)}>
-              <span className="ename">{e.login}</span>
-              <span className="esite">{e.site}</span>
-            </button>
-          ))}
+          {state.entries.map((e) =>
+            p.kind === "change" && e.kind === "sealed" ? (
+              <button key={e.id} className="entry" onClick={() => void migrateFill(e.id)}>
+                <span className="ename">{e.login}</span>
+                <span className="esite">Migrate this account: fill current + new</span>
+              </button>
+            ) : (
+              <button key={e.id} className="entry" onClick={() => void fill(e.id)}>
+                <span className="ename">{e.login}</span>
+                <span className="esite">{e.site}</span>
+              </button>
+            ),
+          )}
           {state.entries.length === 0 && p.kind === "login" && (
             <div className="smeta">No entries match {hostOf(p.url)}.</div>
           )}

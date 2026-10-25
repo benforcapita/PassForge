@@ -587,3 +587,94 @@ async fn autofill_and_create_entry_reject_missing_token() {
         assert_eq!(resp.status(), StatusCode::UNAUTHORIZED, "{path} without token");
     }
 }
+
+/// Sealed-entry lifecycle: generate returns the legacy password, preview
+/// shows current vs next, migrate clears the seal. Wrong master -> 409.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn sealed_entry_generate_preview_migrate() {
+    use passforge_desktop::seal;
+    let st = state();
+    let entry_id = {
+        let db = st.db.lock().unwrap();
+        let folder = db.create_folder(FolderInput { parent_id: None, name: "w".into() }).unwrap();
+        let e = db.create_entry(EntryInput {
+            site: "legacy.io".into(), login: "old@legacy.io".into(), counter: 1,
+            options: PasswordOptions::default(), salt_fields: vec![], crypto: None,
+            folder_id: folder.id, group_ids: vec![], tags: vec![],
+        }).unwrap();
+        e.id
+    };
+    st.session.unlock(b"correct horse".to_vec()).unwrap();
+    {
+        let db = st.db.lock().unwrap();
+        let root = st.session.root_key("passforge-seal-root-v1").unwrap();
+        db.set_sealed(&entry_id, Some(&seal::seal(&root, &entry_id, "OldPassw0rd!").unwrap())).unwrap();
+    }
+    let app = api::router(st.clone());
+
+    // generate returns the SEALED password and reports kind=sealed
+    let resp = app.clone().oneshot(req("POST", &format!("/api/entries/{entry_id}/generate"), None)).await.unwrap();
+    let body = json(resp).await;
+    assert_eq!(body["password"], "OldPassw0rd!");
+    assert_eq!(body["kind"], "sealed");
+
+    // migration list shows it
+    let resp = app.clone().oneshot(req("GET", "/api/migration", None)).await.unwrap();
+    let body = json(resp).await;
+    assert_eq!(body["entries"].as_array().unwrap().len(), 1);
+
+    // preview: current = legacy, next = fresh derive
+    let resp = app.clone().oneshot(req("POST", &format!("/api/entries/{entry_id}/migration-preview"), None)).await.unwrap();
+    let body = json(resp).await;
+    assert_eq!(body["current"], "OldPassw0rd!");
+    let next = body["next"].as_str().unwrap().to_string();
+    assert_ne!(next, "OldPassw0rd!");
+
+    // migrate then generate returns next
+    let resp = app.clone().oneshot(req("POST", &format!("/api/entries/{entry_id}/migrate"), None)).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let resp = app.clone().oneshot(req("POST", &format!("/api/entries/{entry_id}/generate"), None)).await.unwrap();
+    let body = json(resp).await;
+    assert_eq!(body["password"], next);
+    assert_eq!(body["kind"], "generated");
+}
+
+#[tokio::test]
+async fn migration_routes_reject_missing_token_and_locked() {
+    let app = api::router(state());
+    for path in ["/api/migration", "/api/entries/x/migration-preview", "/api/entries/x/migrate"] {
+        let resp = app.clone().oneshot(
+            Request::builder().method(if path == "/api/migration" { "GET" } else { "POST" }).uri(path)
+                .body(Body::empty()).unwrap()).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED, "{path}");
+        let resp = app.clone().oneshot(req(if path == "/api/migration" { "GET" } else { "POST" }, path, None)).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::FORBIDDEN, "{path} locked");
+    }
+}
+
+/// Sealed under master A is unreadable under master B -> 409 SealMismatch.
+#[tokio::test]
+async fn sealed_wrong_master_is_409() {
+    use passforge_desktop::seal;
+    let st = state();
+    let entry_id = {
+        let db = st.db.lock().unwrap();
+        let folder = db.create_folder(FolderInput { parent_id: None, name: "w".into() }).unwrap();
+        db.create_entry(EntryInput {
+            site: "a.io".into(), login: "u".into(), counter: 1,
+            options: PasswordOptions::default(), salt_fields: vec![], crypto: None,
+            folder_id: folder.id, group_ids: vec![], tags: vec![],
+        }).unwrap().id
+    };
+    st.session.unlock(b"master-a".to_vec()).unwrap();
+    {
+        let db = st.db.lock().unwrap();
+        let root = st.session.root_key("passforge-seal-root-v1").unwrap();
+        db.set_sealed(&entry_id, Some(&seal::seal(&root, &entry_id, "pw").unwrap())).unwrap();
+    }
+    st.session.unlock(b"master-b".to_vec()).unwrap();
+    let resp = api::router(st)
+        .oneshot(req("POST", &format!("/api/entries/{entry_id}/generate"), None))
+        .await.unwrap();
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+}

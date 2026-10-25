@@ -22,8 +22,9 @@
 //! - CORS is restricted to browser-extension schemes.
 
 use crate::commands::{
-    derive_profile_password, generate_entry_password, load_settings, master_fingerprint,
-    persist_settings, require_unlocked, synthesize_fingerprints,
+    complete_migration_inner, derive_profile_password, generate_entry_password, load_settings,
+    master_fingerprint, migration_preview_inner, persist_settings, require_unlocked,
+    synthesize_fingerprints,
 };
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
@@ -132,6 +133,9 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/entries/{id}", get(get_entry))
         .route("/api/entries/{id}/generate", post(generate_entry))
         .route("/api/settings", get(get_settings).put(put_settings))
+        .route("/api/migration", get(list_migration))
+        .route("/api/entries/{id}/migration-preview", post(migration_preview))
+        .route("/api/entries/{id}/migrate", post(migrate_entry))
         .route("/api/server-info", post(server_info))
         .route_layer(middleware::from_fn_with_state(state.clone(), require_token))
         .layer(cors)
@@ -184,6 +188,7 @@ fn api_error(status: StatusCode, err: &PassForgeError) -> Response {
 fn map_err(err: PassForgeError) -> Response {
     let status = match err {
         PassForgeError::Locked => StatusCode::FORBIDDEN,
+        PassForgeError::SealMismatch => StatusCode::CONFLICT,
         PassForgeError::EntryNotFound(_) => StatusCode::NOT_FOUND,
         PassForgeError::InvalidRequest(_) => StatusCode::BAD_REQUEST,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -347,6 +352,48 @@ async fn get_entry(
     }
 }
 
+async fn migration_preview(
+    State(state): State<ApiState>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Response {
+    state.session.touch();
+    match migration_preview_inner(&state.db, &state.session, &id).await {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+async fn migrate_entry(
+    State(state): State<ApiState>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Response {
+    state.session.touch();
+    match complete_migration_inner(&state.db, &state.session, &id).await {
+        Ok(entry) => Json(serde_json::to_value(entry).unwrap_or_default()).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+async fn list_migration(State(state): State<ApiState>) -> Response {
+    let result = (|| -> Result<serde_json::Value> {
+        require_unlocked(&state.session)?;
+        let db = state.db.lock().expect("db mutex poisoned");
+        let mut entries = db.search_entries("")?;
+        entries.retain(|e| e.kind == crate::models::EntryKind::Sealed);
+        synthesize_fingerprints(&mut entries)?;
+        let stats = db.get_kv("migration_stats")?.unwrap_or_default();
+        let migrated = serde_json::from_str::<serde_json::Value>(&stats)
+            .ok()
+            .and_then(|v| v["migrated"].as_u64())
+            .unwrap_or(0);
+        Ok(serde_json::json!({ "entries": entries, "migrated": migrated }))
+    })();
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
 async fn get_settings(State(state): State<ApiState>) -> Response {
     let result = (|| -> Result<serde_json::Value> {
         require_unlocked(&state.session)?;
@@ -366,8 +413,16 @@ async fn generate_entry(
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Response {
     state.session.touch();
+    let kind = {
+        let db = state.db.lock().expect("db mutex poisoned");
+        if db.get_sealed(&id).ok().flatten().is_some() {
+            "sealed"
+        } else {
+            "generated"
+        }
+    };
     match generate_entry_password(&state.db, &state.session, &id).await {
-        Ok(password) => Json(serde_json::json!({ "password": password })).into_response(),
+        Ok(password) => Json(serde_json::json!({ "password": password, "kind": kind })).into_response(),
         Err(err) => map_err(err),
     }
 }

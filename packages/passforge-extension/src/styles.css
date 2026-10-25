@@ -4,7 +4,6 @@
 
 body {
   margin: 0;
-  width: 340px;
   background: var(--pf-surface-canvas);
   color: var(--pf-text-primary);
   font-family: Inter, system-ui, sans-serif;
@@ -12,7 +11,7 @@ body {
   line-height: 18px;
 }
 
-.popup { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.popup { padding: 14px; display: flex; flex-direction: column; gap: 10px; width: 340px; }
 .header { display: flex; align-items: center; justify-content: space-between; }
 .title { font-size: 16px; font-weight: 600; }
 .badge {
@@ -115,9 +114,9 @@ button.ghost {
 .hint { font-size: 11px; color: var(--pf-text-muted); }
 .warning { font-size: 11px; color: var(--pf-status-warning); }
 
-/* Autofill dropdown frame */
-.frame { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.frame .entries { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
+/* Autofill dropdown frame — fluid to the iframe's width, no h-overflow */
+.frame { padding: 10px; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
+.frame .entries { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; overflow-x: hidden; }
 button.entry {
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
   padding: 6px 8px; border: 1px solid var(--pf-border-moderate); border-radius: var(--pf-radius-md);
@@ -125,8 +124,8 @@ button.entry {
   font: inherit; text-align: left; cursor: pointer;
 }
 button.entry:hover { border-color: var(--pf-accent-primary); }
-button.entry .ename { font-size: 12px; font-weight: 500; }
-button.entry .esite { font-size: 11px; color: var(--pf-text-secondary); }
+button.entry .ename { font-size: 12px; font-weight: 500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.entry .esite { font-size: 11px; color: var(--pf-text-secondary); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .frame .signup { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .frame .field input {
   width: 100%; box-sizing: border-box; padding: 6px 8px; font: inherit;

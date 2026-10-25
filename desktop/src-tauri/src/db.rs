@@ -1,10 +1,12 @@
 use crate::error::{PassForgeError, Result};
 use crate::models::{
-    EntryInput, EntrySummary, Folder, FolderInput, ImportReport, VaultEntry, VaultExport,
+    EntryInput, EntryKind, EntrySummary, Folder, FolderInput, ImportReport,
+    VaultEntry, VaultExport,
 };
+use crate::seal::SealedSecret;
 use chrono::Utc;
 use lesspass_core::PasswordProfile;
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use uuid::Uuid;
 
 pub struct VaultDb {
@@ -87,7 +89,50 @@ impl VaultDb {
             );
             "#,
         )?;
+        // Sealed legacy passwords: added after v1, so migrate existing
+        // vaults in place. sealed_json never joins VaultEntry reads.
+        let has_col = self
+            .conn
+            .prepare("PRAGMA table_info(entries)")?
+            .query_map([], |r| r.get::<_, String>(1))?
+            .any(|c| c.map(|n| n == "sealed_json").unwrap_or(false));
+        if !has_col {
+            self.conn
+                .execute_batch("ALTER TABLE entries ADD COLUMN sealed_json TEXT")?;
+        }
         Ok(())
+    }
+
+    /// Store or clear a sealed legacy password on an entry.
+    pub fn set_sealed(&self, id: &str, sealed: Option<&SealedSecret>) -> Result<()> {
+        let json = sealed.map(serde_json::to_string).transpose()?;
+        self.conn.execute(
+            "UPDATE entries SET sealed_json = ?1 WHERE id = ?2",
+            rusqlite::params![json, id],
+        )?;
+        Ok(())
+    }
+
+    /// The sealed blob for an entry, if any. Stays off VaultEntry.
+    pub fn get_sealed(&self, id: &str) -> Result<Option<SealedSecret>> {
+        let raw: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT sealed_json FROM entries WHERE id = ?1",
+                rusqlite::params![id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .flatten();
+        raw.map(|j| serde_json::from_str(&j).map_err(Into::into)).transpose()
+    }
+
+    pub fn count_sealed(&self) -> Result<i64> {
+        Ok(self.conn.query_row(
+            "SELECT count(*) FROM entries WHERE sealed_json IS NOT NULL",
+            [],
+            |r| r.get(0),
+        )?)
     }
 
     pub fn create_folder(&self, input: FolderInput) -> Result<Folder> {
@@ -145,8 +190,7 @@ impl VaultDb {
 
     pub fn get_entry(&self, id: &str) -> Result<Option<VaultEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, site, login, counter, options_json, salt_fields_json, crypto_json, folder_id, created_at, updated_at, last_used_at
-             FROM entries WHERE id = ?1",
+            "SELECT id, site, login, counter, options_json, salt_fields_json, crypto_json, folder_id, created_at, updated_at, last_used_at, (sealed_json IS NOT NULL) FROM entries WHERE id = ?1",
         )?;
         let mut rows = stmt.query(params![id])?;
         let Some(row) = rows.next()? else {
@@ -158,8 +202,7 @@ impl VaultDb {
 
     pub fn list_all_entries(&self) -> Result<Vec<VaultEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, site, login, counter, options_json, salt_fields_json, crypto_json, folder_id, created_at, updated_at, last_used_at
-             FROM entries ORDER BY site ASC, login ASC",
+            "SELECT id, site, login, counter, options_json, salt_fields_json, crypto_json, folder_id, created_at, updated_at, last_used_at, (sealed_json IS NOT NULL) FROM entries ORDER BY site ASC, login ASC",
         )?;
         let mut rows = stmt.query([])?;
         let mut entries = Vec::new();
@@ -185,6 +228,7 @@ impl VaultDb {
 
         Ok(VaultEntry {
             id: entry_id.clone(),
+            kind: if row.get::<_, bool>(11)? { EntryKind::Sealed } else { EntryKind::Generated },
             profile,
             folder_id: row.get(7)?,
             group_ids: self.group_ids_for_entry(&entry_id)?,
@@ -259,13 +303,14 @@ impl VaultDb {
     pub fn search_entries(&self, query: &str) -> Result<Vec<EntrySummary>> {
         let like = format!("%{}%", query);
         let mut stmt = self.conn.prepare(
-            "SELECT id, site, login, counter, folder_id, last_used_at FROM entries
+            "SELECT id, site, login, counter, folder_id, last_used_at, (sealed_json IS NOT NULL) FROM entries
              WHERE site LIKE ?1 OR login LIKE ?1
              ORDER BY last_used_at DESC, site ASC, login ASC",
         )?;
         let rows = stmt.query_map(params![like], |row| {
             Ok(EntrySummary {
                 id: row.get(0)?,
+                kind: if row.get::<_, bool>(6)? { EntryKind::Sealed } else { EntryKind::Generated },
                 site: row.get(1)?,
                 login: row.get(2)?,
                 counter: row.get::<_, i64>(3)? as u32,
@@ -284,9 +329,15 @@ impl VaultDb {
     /// exist, so re-importing the same file is a no-op. The whole import is
     /// rejected if any entry carries invalid crypto or password options.
     pub fn import_export(&self, export: &VaultExport) -> Result<ImportReport> {
+        if export.version != 1 && export.version != 2 {
+            return Err(PassForgeError::InvalidRequest(format!(
+                "unsupported export version {}",
+                export.version
+            )));
+        }
         for entry in &export.entries {
-            entry.profile.validate().map_err(|err| {
-                PassForgeError::InvalidRequest(format!("entry {}: {err}", entry.id))
+            entry.entry.profile.validate().map_err(|err| {
+                PassForgeError::InvalidRequest(format!("entry {}: {err}", entry.entry.id))
             })?;
         }
         let tx = self.conn.unchecked_transaction()?;
@@ -313,17 +364,17 @@ impl VaultDb {
                  (id, site, login, counter, options_json, salt_fields_json, crypto_json, folder_id, created_at, updated_at, last_used_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                 params![
-                    &entry.id,
-                    &entry.profile.site,
-                    &entry.profile.login,
-                    entry.profile.counter,
-                    serde_json::to_string(&entry.profile.options)?,
-                    serde_json::to_string(&entry.profile.salt_fields)?,
-                    serde_json::to_string(&entry.profile.crypto)?,
-                    &entry.folder_id,
-                    &entry.created_at,
-                    &entry.updated_at,
-                    &entry.last_used_at,
+                    &entry.entry.id,
+                    &entry.entry.profile.site,
+                    &entry.entry.profile.login,
+                    entry.entry.profile.counter,
+                    serde_json::to_string(&entry.entry.profile.options)?,
+                    serde_json::to_string(&entry.entry.profile.salt_fields)?,
+                    serde_json::to_string(&entry.entry.profile.crypto)?,
+                    &entry.entry.folder_id,
+                    &entry.entry.created_at,
+                    &entry.entry.updated_at,
+                    &entry.entry.last_used_at,
                 ],
             )?;
             if affected == 0 {
@@ -331,7 +382,13 @@ impl VaultDb {
                 continue;
             }
             report.entries_created += 1;
-            for tag in &entry.tags {
+            if let Some(sealed) = &entry.sealed {
+                tx.execute(
+                    "UPDATE entries SET sealed_json = ?1 WHERE id = ?2",
+                    params![serde_json::to_string(sealed)?, &entry.entry.id],
+                )?;
+            }
+            for tag in &entry.entry.tags {
                 let tag_id = Uuid::new_v4().to_string();
                 tx.execute(
                     "INSERT OR IGNORE INTO tags (id, name) VALUES (?1, ?2)",
@@ -344,17 +401,17 @@ impl VaultDb {
                 )?;
                 tx.execute(
                     "INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?1, ?2)",
-                    params![&entry.id, &existing_id],
+                    params![&entry.entry.id, &existing_id],
                 )?;
             }
-            for group_id in &entry.group_ids {
+            for group_id in &entry.entry.group_ids {
                 tx.execute(
                     "INSERT OR IGNORE INTO groups (id, name) VALUES (?1, ?2)",
                     params![group_id, group_id],
                 )?;
                 tx.execute(
                     "INSERT OR IGNORE INTO entry_groups (entry_id, group_id) VALUES (?1, ?2)",
-                    params![&entry.id, group_id],
+                    params![&entry.entry.id, group_id],
                 )?;
             }
         }

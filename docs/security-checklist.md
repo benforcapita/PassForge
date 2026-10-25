@@ -67,6 +67,29 @@ Status of the threat model as of the vault-hardening + security pass.
   could call it *if it also reads the token* — requires vault-dir access,
   i.e. already user-level code execution.
 
+## Extension autofill
+- [x] Matching happens in the backend (`GET /api/autofill?url=`): the page and
+  content script never enumerate vault entries; only the extension-origin
+  `frame.html` dropdown fetches candidates, through the service worker.
+- [x] Host matching is strict: exact host or `"."`-suffixed subdomain
+  (`login.github.com` matches `github.com`; `github.com.evil.io` does not),
+  https only except `http://localhost|127.*|::1` — unit-tested in
+  `autofill.rs` and `api_tests.rs`.
+- [x] Fill sender is verified: `pf:fill`/`pf:create-and-fill` are only
+  accepted from `chrome-extension://<self>/frame.html`, only against a
+  dropdown nonce registered by the content script (Chrome-verified
+  `sender.url`/`frameId`, not page data), and the backend re-checks the
+  entry against the registered frame URL before `generate` runs.
+- [x] `{username, password}` is delivered by `chrome.tabs.sendMessage` to
+  exactly the registered tab+frameId; the page receives nothing until the
+  user clicks an entry.
+- [x] Content scripts are an isolated world; the dropdown iframe is a
+  `chrome-extension://` document in a page-inaccessible frame — a hostile
+  page can spoof visuals (icons, fake dropdowns) but cannot reach entry
+  data, which is the standing browser-autofill threat model.
+- [ ] A malicious page can fake a PassForge icon/dropdown — phishing is
+  out of scope (same as every password manager's autofill UI).
+
 ## Native messaging host
 - [x] Chrome `allowed_origins` restricts the manifest to the extension ID.
 - [x] `open_existing_at` never creates the vault or key; missing vault

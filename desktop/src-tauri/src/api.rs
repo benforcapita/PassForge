@@ -27,7 +27,7 @@ use crate::commands::{
 };
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
-use crate::models::Settings;
+use crate::models::{EntryInput, FolderInput, Settings};
 use crate::session::SessionState;
 use axum::{
     extract::{Query, State},
@@ -127,7 +127,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/health", get(health))
         .route("/api/generate", post(generate))
         .route("/api/fingerprint", post(fingerprint))
-        .route("/api/entries", get(search_entries))
+        .route("/api/entries", get(search_entries).post(create_entry))
+        .route("/api/autofill", get(autofill_entries))
         .route("/api/entries/{id}", get(get_entry))
         .route("/api/entries/{id}/generate", post(generate_entry))
         .route("/api/settings", get(get_settings).put(put_settings))
@@ -268,6 +269,62 @@ async fn search_entries(
     })();
     match result {
         Ok(rows) => Json(rows).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+#[derive(Deserialize)]
+struct AutofillQuery {
+    url: String,
+}
+
+/// Entry candidates for the extension's autofill dropdown. Matching happens
+/// here — the page and the content script never see vault data.
+async fn autofill_entries(
+    State(state): State<ApiState>,
+    Query(query): Query<AutofillQuery>,
+) -> Response {
+    let result = (|| -> Result<serde_json::Value> {
+        require_unlocked(&state.session)?;
+        let db = state.db.lock().expect("db mutex poisoned");
+        let mut rows = db.search_entries("")?;
+        rows.retain(|row| crate::autofill::site_matches(&row.site, &query.url));
+        drop(db);
+        synthesize_fingerprints(&mut rows)?;
+        serde_json::to_value(rows).map_err(Into::into)
+    })();
+    match result {
+        Ok(rows) => Json(rows).into_response(),
+        Err(err) => map_err(err),
+    }
+}
+
+/// Creates a vault entry (extension "generate for this signup" flow). An
+/// empty `folderId` lands in the first folder — or a fresh "Personal" folder
+/// when the vault has none, like the desktop UI's default selection.
+async fn create_entry(
+    State(state): State<ApiState>,
+    Json(mut input): Json<EntryInput>,
+) -> Response {
+    let result = (|| -> Result<serde_json::Value> {
+        require_unlocked(&state.session)?;
+        let db = state.db.lock().expect("db mutex poisoned");
+        if input.folder_id.is_empty() {
+            input.folder_id = match db.list_folders()?.into_iter().next() {
+                Some(folder) => folder.id,
+                None => db
+                    .create_folder(FolderInput {
+                        parent_id: None,
+                        name: "Personal".into(),
+                    })?
+                    .id,
+            };
+        }
+        let entry = db.create_entry(input)?;
+        serde_json::to_value(entry).map_err(Into::into)
+    })();
+    match result {
+        Ok(entry) => Json(entry).into_response(),
         Err(err) => map_err(err),
     }
 }

@@ -1,4 +1,5 @@
 pub mod api;
+pub mod autofill;
 pub mod biometric;
 pub mod browser_hosts;
 pub mod commands;

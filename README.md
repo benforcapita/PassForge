@@ -300,6 +300,17 @@ Click the toolbar icon (pin it via the puzzle-piece menu) or press **⌘⇧L**.
 - **Generate** tab: type the master password → fingerprint glyphs appear (computed by the backend) → **Generate** / **Copy**.
 - Your Connect/Disconnect choice is remembered (`chrome.storage.local`) across popup opens.
 
+### Autofill
+
+Login and signup forms get a small PassForge icon at the field's right edge. Clicking it opens a dropdown listing the vault entries that match the current site's host; clicking an entry fills username and password. On signup forms the dropdown can instead **generate a new password for the site** — it creates a vault entry (default options) and fills it into every new-password field. The keyboard command **⌘⇧F** (Ctrl+Shift+F) and the right-click menu item **Fill with PassForge** open the same dropdown for the focused field.
+
+The trust design matters: a page can only *see* the icon and the dropdown chrome.
+
+- The content script (`content.js`, isolated world) only detects form fields, draws the icon and hosts the dropdown iframe. **It never sees entry data.**
+- The dropdown is `frame.html` — an `chrome-extension://` document the page cannot read or touch — and it is the frame (not the content script) that asks the service worker for candidates.
+- On a click the service worker verifies the sender is its own `frame.html`, looks up the page URL that the content script registered with a per-dropdown nonce (Chrome-verified `sender.url`, not page data), re-checks the entry against that URL via `GET /api/autofill`, derives the password with `POST /api/entries/{id}/generate`, and delivers `{username, password}` to exactly that tab+frame. The content script then writes the values via the native value setter so React-controlled inputs update.
+- `github.com.evil.io` never sees a `github.com` entry (matching is exact host or strict subdomain, https only except loopback http), the page gets nothing until you pick an entry, and a locked app shows *"Unlock the PassForge app to autofill"* instead of candidates.
+
 ### Permissions, and why
 
 | Permission | Used for |
@@ -308,8 +319,17 @@ Click the toolbar icon (pin it via the puzzle-piece menu) or press **⌘⇧L**.
 | `host_permissions: http://127.0.0.1/*` | calling the local backend |
 | `activeTab` | reading the current tab's hostname to prefill *Site* |
 | `storage` | remembering whether you chose to be connected |
+| `scripting` | required alongside the content-script declaration for autofill |
+| `contextMenus` | the "Fill with PassForge" right-click item |
+| `webNavigation` | resolving the page frame's verified URL during a fill |
+| `alarms` | periodic backend health check for the toolbar badge |
+| `content_scripts: <all_urls>` | detecting login/signup fields on every page (all frames) |
 
-No remote hosts, no content scripts, no background network activity.
+Content scripts do run on all pages to detect login forms — but entry data and
+passwords never pass through page context: matching happens in the backend,
+candidate fetching in the extension-origin dropdown, and the page's content
+script only receives the final `{username, password}` pair after you click an
+entry. No remote hosts, no background network activity beyond `127.0.0.1`.
 
 ### Updating after a rebuild
 
@@ -582,6 +602,8 @@ Every route requires `Authorization: Bearer <token>` with the contents of `api-t
 | `POST /api/fingerprint` | no | `{ masterPassword }` → fingerprint glyphs |
 | `GET /api/entries?q=` | yes | search vault entries |
 | `GET /api/entries/{id}` | yes | one entry's parameters |
+| `GET /api/autofill?url=` | yes | entries whose site matches the page URL (exact host or strict subdomain; https only except loopback), most recently used first |
+| `POST /api/entries` | yes | create an entry from `EntryInput`; empty `folderId` uses the first (or a new "Personal") folder |
 | `POST /api/entries/{id}/generate` | yes | derive with the session's master password; marks entry used. **The desktop UI's generation path.** |
 | `GET /api/settings` | yes | crypto defaults, timers, `generation`, `knownServers` |
 | `PUT /api/settings` | yes | replace settings (URLs normalized, `knownServers` deduped) |

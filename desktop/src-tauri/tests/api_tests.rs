@@ -414,3 +414,176 @@ async fn put_settings_rejects_invalid_default_crypto() {
         32
     );
 }
+
+/// `/api/autofill` filters entries by the page URL — the page and its
+/// content script never learn which entries exist, only the SW does.
+#[tokio::test]
+async fn autofill_matches_only_the_page_site() {
+    let st = state();
+    {
+        let db = st.db.lock().unwrap();
+        let folder = db
+            .create_folder(FolderInput { parent_id: None, name: "work".into() })
+            .unwrap();
+        for (site, login) in [
+            ("localhost", "alice@example.com"),
+            ("github.com", "dev@passforge.io"),
+            ("app.github.com", "ci@passforge.io"),
+        ] {
+            db.create_entry(EntryInput {
+                site: site.into(),
+                login: login.into(),
+                counter: 1,
+                options: PasswordOptions::default(),
+                salt_fields: vec![],
+                crypto: None,
+                folder_id: folder.id.clone(),
+                group_ids: vec![],
+                tags: vec![],
+            })
+            .unwrap();
+        }
+    }
+    let app = api::router(st.clone());
+
+    // Locked: forbidden.
+    let resp = app
+        .clone()
+        .oneshot(req("GET", "/api/autofill?url=https://github.com/", None))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+
+    st.session.unlock(b"master".to_vec()).unwrap();
+
+    // github.com page: both github.com and the subdomain-scoped entry match
+    // (a github.com page is NOT offered a login.github.com entry).
+    let resp = app
+        .clone()
+        .oneshot(req("GET", "/api/autofill?url=https://github.com/login", None))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let rows = json(resp).await;
+    let sites: Vec<_> = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["site"].as_str().unwrap())
+        .collect();
+    assert_eq!(sites, ["github.com"]);
+    // Fingerprints are synthesized like search results.
+    assert!(rows[0]["fingerprint"].is_object() || rows[0]["fingerprint"].is_array());
+
+    // Subdomain page sees the parent-domain entry, not sibling subdomains.
+    let resp = app
+        .clone()
+        .oneshot(req("GET", "/api/autofill?url=https://login.github.com/", None))
+        .await
+        .unwrap();
+    let rows = json(resp).await;
+    assert_eq!(rows.as_array().unwrap().len(), 1);
+    assert_eq!(rows.as_array().unwrap()[0]["site"], "github.com");
+
+    // The app.github.com entry page matches its own entry plus the parent.
+    let resp = app
+        .clone()
+        .oneshot(req("GET", "/api/autofill?url=https://app.github.com/", None))
+        .await
+        .unwrap();
+    let rows = json(resp).await;
+    assert_eq!(rows.as_array().unwrap().len(), 2);
+
+    // A lookalike host gets nothing; non-loopback http gets nothing.
+    for url in [
+        "https://github.com.evil.io/",
+        "http://github.com/",
+        "ftp://github.com/",
+    ] {
+        let resp = app
+            .clone()
+            .oneshot(req("GET", &format!("/api/autofill?url={url}"), None))
+            .await
+            .unwrap();
+        assert_eq!(json(resp).await.as_array().unwrap().len(), 0, "{url}");
+    }
+
+    // Loopback http matches the localhost entry.
+    let resp = app
+        .oneshot(req("GET", "/api/autofill?url=http://localhost:3000/login", None))
+        .await
+        .unwrap();
+    let rows = json(resp).await;
+    assert_eq!(rows.as_array().unwrap()[0]["site"], "localhost");
+}
+
+/// `POST /api/entries` creates an entry usable by generate — the extension's
+/// signup flow end to end.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn create_entry_then_generate_round_trip() {
+    let st = state();
+    let app = api::router(st.clone());
+    let input = serde_json::json!({
+        "site": "newapp.io",
+        "login": "me@newapp.io",
+        "counter": 1,
+        "options": {"lowercase": true, "uppercase": true, "digits": true, "symbols": true, "length": 16},
+        "saltFields": [],
+        "crypto": null,
+        "folderId": "",
+        "groupIds": [],
+        "tags": []
+    });
+
+    // Locked: forbidden.
+    let resp = app
+        .clone()
+        .oneshot(req("POST", "/api/entries", Some(input.clone())))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+
+    st.session.unlock(b"correct horse".to_vec()).unwrap();
+    let resp = app
+        .clone()
+        .oneshot(req("POST", "/api/entries", Some(input)))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let entry = json(resp).await;
+    let id = entry["id"].as_str().unwrap().to_string();
+    assert_eq!(entry["profile"]["site"], "newapp.io");
+    // Empty folderId landed in the auto-created folder.
+    assert!(!entry["folderId"].as_str().unwrap().is_empty());
+
+    // Generate through the session, exactly like a fill.
+    let resp = app
+        .oneshot(req("POST", &format!("/api/entries/{id}/generate"), None))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let password = json(resp).await["password"].as_str().unwrap().to_string();
+    assert!(!password.is_empty());
+}
+
+#[tokio::test]
+async fn autofill_and_create_entry_reject_missing_token() {
+    let app = api::router(state());
+    for (method, path) in [
+        ("GET", "/api/autofill?url=https://github.com/"),
+        ("POST", "/api/entries"),
+    ] {
+        let resp = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(method)
+                    .uri(path)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED, "{path} without token");
+    }
+}

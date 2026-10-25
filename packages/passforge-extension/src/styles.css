@@ -114,3 +114,25 @@ button.ghost {
 .fingerprint .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .hint { font-size: 11px; color: var(--pf-text-muted); }
 .warning { font-size: 11px; color: var(--pf-status-warning); }
+
+/* Autofill dropdown frame */
+.frame { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.frame .entries { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
+button.entry {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 6px 8px; border: 1px solid var(--pf-border-moderate); border-radius: var(--pf-radius-md);
+  background: var(--pf-surface-raised); color: var(--pf-text-primary);
+  font: inherit; text-align: left; cursor: pointer;
+}
+button.entry:hover { border-color: var(--pf-accent-primary); }
+button.entry .ename { font-size: 12px; font-weight: 500; }
+button.entry .esite { font-size: 11px; color: var(--pf-text-secondary); }
+.frame .signup { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.frame .field input {
+  width: 100%; box-sizing: border-box; padding: 6px 8px; font: inherit;
+  background: var(--pf-surface-input); color: var(--pf-text-primary);
+  border: 1px solid var(--pf-border-moderate); border-radius: var(--pf-radius-md);
+}
+.frame .action { padding: 6px 10px; border-radius: var(--pf-radius-md); font: inherit; cursor: pointer; border: 1px solid var(--pf-border-moderate); }
+.frame .action.primary { background: var(--pf-accent-primary); color: var(--pf-text-on-accent); border-color: var(--pf-accent-primary); font-weight: 600; }
+.frame .action:disabled { opacity: .5; cursor: default; }

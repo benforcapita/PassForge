@@ -192,12 +192,12 @@ jobs:
           ref: ${{ env.TAG }}
       - uses: actions/download-artifact@v4
         with:
-          path: assets
+          path: release-assets
           merge-multiple: true
       - name: Installer script asset
-        run: cp scripts/install-server.sh assets/
+        run: cp scripts/install-server.sh release-assets/
       - name: Checksums
-        working-directory: assets
+        working-directory: release-assets
         run: sha256sum * > SHA256SUMS && cat SHA256SUMS
       - name: Publish release
         env:
@@ -232,14 +232,14 @@ jobs:
           cover \`install-server.sh\`).
           EOF
           sed -i 's/^          //' notes.md
-          gh release create "$TAG" assets/* --title "PassForge $VER" --notes-file notes.md --verify-tag
+          gh release create "$TAG" release-assets/* --title "PassForge $VER" --notes-file notes.md --verify-tag
 
       - name: Homebrew tap snippets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VER="${TAG#v}"
-          DMG="assets/PassForge_${VER}_universal.dmg"
+          DMG="release-assets/PassForge_${VER}_universal.dmg"
           DMG_SHA="$(sha256sum "$DMG" | awk '{print $1}')"
           SRC_SHA="$(curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${TAG}.tar.gz" | sha256sum | awk '{print $1}')"
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF

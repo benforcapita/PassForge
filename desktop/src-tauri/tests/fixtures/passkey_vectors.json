@@ -1,0 +1,19 @@
+{
+  "assertion": {
+    "authenticatorData": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA",
+    "challenge": "Z2V0LWNoYWxsZW5nZQ",
+    "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiWjJWMExXTm9ZV3hzWlc1blpRIiwib3JpZ2luIjoiaHR0cDovL2xvY2FsaG9zdDo4MTgxIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+    "signature": "MEUCIQCAaREUxXp8dWNzsiJXCUIzI7cjjgkC7nywYf6hGMIehgIgKO5nxIX_aB5v61XFCAeneTzrfuJgMg8ifQOBWy3Kgiw"
+  },
+  "origin": "http://localhost:8181",
+  "registration": {
+    "attestationObject": "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVilSZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NdAAAAAFo5vS6OSk9hnHsMPXriEVUAIQGqu8zdABEiM0RVZneIme7_hYo4RKbIavIsfQwX6JdWDaUBAgMmIAEhWCDP2VCedAwy3diWeS-gjR0idv-9twCmLKzUAdsMAOO0hCJYIIGhNjFW5HA3hrcMEUX3EifKDdFy3T7hwikSoWFm1ZSf",
+    "authenticatorData": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NdAAAAAFo5vS6OSk9hnHsMPXriEVUAIQGqu8zdABEiM0RVZneIme7_hYo4RKbIavIsfQwX6JdWDaUBAgMmIAEhWCDP2VCedAwy3diWeS-gjR0idv-9twCmLKzUAdsMAOO0hCJYIIGhNjFW5HA3hrcMEUX3EifKDdFy3T7hwikSoWFm1ZSf",
+    "challenge": "Y3JlYXRlLWNoYWxsZW5nZQ",
+    "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiWTNKbFlYUmxMV05vWVd4c1pXNW5aUSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODE4MSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+    "credentialId": "Aaq7zN0AESIzRFVmd4iZ7v-FijhEpshq8ix9DBfol1YN",
+    "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEz9lQnnQMMt3YlnkvoI0dInb_vbcApiys1AHbDADjtISBoTYxVuRwN4a3DBFF9xInyg3Rct0-4cIpEqFhZtWUnw",
+    "publicKeyAlgorithm": -7
+  },
+  "rpId": "localhost"
+}

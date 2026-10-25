@@ -12,6 +12,7 @@ export default defineConfig({
         index: "index.html",
         frame: "frame.html",
         background: "src/background.ts",
+        passkey: "passkey.html",
       },
       output: {
         entryFileNames: "[name].js",

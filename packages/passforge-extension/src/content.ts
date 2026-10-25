@@ -158,6 +158,31 @@ function closeDropdown() {
   currentForm = null;
 }
 
+// webauthn relay: the MAIN-world script (page-webauthn.js) asks the SW to
+// handle a passkey request. It is only a pipe — adds nothing to the request.
+const pendingWebauthn = new Map<string, (res: unknown) => void>();
+
+window.addEventListener("message", (e) => {
+  if (e.source !== window) return;
+  const d = e.data as { __pf?: string; id?: string; kind?: string; options?: unknown };
+  if (d?.__pf === "webauthn-cancel" && typeof d.id === "string") {
+    void chrome.runtime.sendMessage({ type: "pf:webauthn-cancel", id: d.id }).catch(() => {});
+    return;
+  }
+  if (d?.__pf !== "webauthn-req" || typeof d.id !== "string") return;
+  void chrome.runtime
+    .sendMessage({ type: "pf:webauthn", id: d.id, kind: d.kind, options: d.options })
+    .then((res) => {
+      window.postMessage({ __pf: "webauthn-res", id: d.id, ...(res as object) }, "*");
+    })
+    .catch((err) => {
+      window.postMessage(
+        { __pf: "webauthn-res", id: d.id, error: "NotAllowedError", message: String(err) },
+        "*",
+      );
+    });
+});
+
 // Page messages: only the dropdown's own window may talk — to close or to
 // report its content height.
 window.addEventListener("message", (e) => {

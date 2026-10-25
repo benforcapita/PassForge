@@ -7,6 +7,7 @@ import {
   handleCandidates, handleCreateAndFill, handleFill, handleMigrateComplete,
   handleMigrateFill, rpcAllowed,
 } from "./sw-fill";
+import { planWebauthn, type PasskeyDeps } from "./sw-passkey";
 
 const RPC_METHODS: Record<string, (...args: never[]) => Promise<unknown>> = {
   savedIntent: backend.savedIntent,
@@ -78,6 +79,84 @@ async function refreshBadge() {
   }
 }
 
+const passkeyDeps: PasskeyDeps = {
+  connected: backend.connected,
+  createPasskey: backend.passkeyCreate,
+  passkeyCandidates: backend.passkeyCandidates,
+  getPasskey: backend.passkeyGet,
+};
+
+const passkeyRequests = new Map<
+  string,
+  {
+    kind: string; origin: string; options: unknown;
+    resolve: (res: Record<string, unknown>) => void;
+    winId?: number;
+    candidates?: { credentialId: string; userName: string; displayName: string }[];
+  }
+>();
+
+function hostOfUrl(u: string): string {
+  try { return new URL(u).hostname; } catch { return u; }
+}
+
+function passkeyRequestPayload(reqId: string) {
+  const req = passkeyRequests.get(reqId);
+  if (!req) return null;
+  const pub = (req.options ?? {}) as Record<string, unknown>;
+  const rp = (pub.rp as { id?: string; name?: string } | undefined) ?? {};
+  const rpId = (rp.id as string) ?? (pub.rpId as string) ?? hostOfUrl(req.origin);
+  const user = (pub.user as { name?: string; displayName?: string } | undefined) ?? {};
+  return {
+    reqId, kind: req.kind, origin: req.origin, rpId,
+    userName: (user.name as string) ?? "",
+    displayName: (user.displayName as string) ?? "",
+    candidates: req.candidates ?? [],
+  };
+}
+
+async function finishPasskey(reqId: string, res: Record<string, unknown>) {
+  const req = passkeyRequests.get(reqId);
+  if (!req) return;
+  passkeyRequests.delete(reqId);
+  if (req.winId != null) {
+    try { await chrome.windows.remove(req.winId); } catch { /* already closed */ }
+  }
+  req.resolve(res);
+}
+
+async function openPasskeyConfirm(
+  sender: chrome.runtime.MessageSender | undefined,
+  msg: { id: string; kind: string; options: unknown },
+): Promise<Record<string, unknown>> {
+  const plan = await planWebauthn(passkeyDeps, sender as never, msg.kind, msg.options as Record<string, unknown>);
+  if (plan.kind === "fallback") return { fallback: true };
+  if (plan.kind === "error") return { error: plan.name, message: plan.message };
+  const response = new Promise<Record<string, unknown>>((resolve) => {
+    passkeyRequests.set(msg.id, {
+      kind: msg.kind,
+      origin: sender?.origin ?? "",
+      options: msg.options,
+      resolve,
+      candidates: plan.kind === "confirm-get" ? plan.candidates : undefined,
+    });
+  });
+  const url = chrome.runtime.getURL(`passkey.html?req=${encodeURIComponent(msg.id)}`);
+  const win = await chrome.windows.create({ url, type: "popup", width: 420, height: 520 });
+  const req = passkeyRequests.get(msg.id);
+  if (req && win?.id != null) req.winId = win.id;
+  const reqId = msg.id;
+  const onRemoved = (winId: number) => {
+    const r = passkeyRequests.get(reqId);
+    if (r && r.winId === winId) {
+      chrome.windows.onRemoved.removeListener(onRemoved);
+      void finishPasskey(reqId, { error: "NotAllowedError", message: "cancelled" });
+    }
+  };
+  chrome.windows.onRemoved.addListener(onRemoved);
+  return response;
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === "pf:rpc" && typeof msg.method === "string") {
     const fn = RPC_METHODS[msg.method];
@@ -126,6 +205,71 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .then(sendResponse)
       .catch((e) => sendResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }));
     return true;
+  }
+
+  if (msg?.type === "pf:webauthn" && typeof msg.id === "string") {
+    void openPasskeyConfirm(sender, msg as never).then(sendResponse);
+    return true;
+  }
+
+  if (msg?.type === "pf:webauthn-cancel" && typeof msg.id === "string") {
+    void finishPasskey(msg.id, { error: "AbortError", message: "aborted" });
+    sendResponse({ ok: true });
+    return false;
+  }
+
+  // passkey.html -> SW: request details (only our own confirm page may ask).
+  if (msg?.type === "pf:passkey-details" && typeof msg.reqId === "string") {
+    const isPage = sender.url?.startsWith(chrome.runtime.getURL("passkey.html"));
+    const payload = isPage ? passkeyRequestPayload(msg.reqId) : null;
+    sendResponse(payload ? { ok: true, ...payload } : { ok: false });
+    return false;
+  }
+
+  // passkey.html -> SW: the user's choice.
+  if (msg?.type === "pf:passkey-choice" && typeof msg.reqId === "string") {
+    const isPage = sender.url?.startsWith(chrome.runtime.getURL("passkey.html"));
+    if (!isPage) {
+      sendResponse({ ok: false, error: "not allowed" });
+      return false;
+    }
+    const choice = msg.choice as string;
+    const reqId = msg.reqId as string;
+    const req = passkeyRequests.get(reqId);
+    if (!req) {
+      sendResponse({ ok: false, error: "no pending request" });
+      return false;
+    }
+    sendResponse({ ok: true });
+    if (choice === "fallback") {
+      void finishPasskey(reqId, { fallback: true });
+    } else if (choice === "cancel") {
+      void finishPasskey(reqId, { error: "NotAllowedError", message: "cancelled" });
+    } else {
+      // confirm: call the backend create/get with the ORIGINAL options,
+      // origin forced to the sender-verified one.
+      void (async () => {
+        try {
+          const origin = req.origin;
+          const pub = (req.options ?? {}) as Record<string, unknown>;
+          const wire = req.kind === "create"
+            ? await passkeyDeps.createPasskey({ ...pub, origin })
+            : await passkeyDeps.getPasskey({
+                ...pub,
+                origin,
+                rpId: (pub.rpId as string) ?? hostOfUrl(origin),
+                credentialId: msg.credentialId ?? (pub.allowCredentials as { id: string }[] | undefined)?.[0]?.id,
+              });
+          await finishPasskey(reqId, { credential: wire });
+        } catch (e) {
+          await finishPasskey(reqId, {
+            error: "NotAllowedError",
+            message: e instanceof Error ? e.message : String(e),
+          });
+        }
+      })();
+    }
+    return false;
   }
 
   if (msg?.type === "pf:migrate-fill" && typeof msg.entryId === "string" && typeof msg.nonce === "string") {

@@ -9,6 +9,7 @@ import type {
   ImportReport,
   ImportReport2,
   MigrationPreview,
+  PasskeyRecord,
   SealedList,
   ServerInfo,
   Settings,
@@ -73,6 +74,8 @@ export type Api = {
   migrationPreview: (entryId: string) => Promise<MigrationPreview>;
   completeMigration: (entryId: string) => Promise<VaultEntry>;
   listSealed: () => Promise<SealedList>;
+  listPasskeys: () => Promise<PasskeyRecord[]>;
+  deletePasskey: (id: string) => Promise<boolean>;
 };
 
 const tauriApi: Api = {
@@ -110,6 +113,8 @@ const tauriApi: Api = {
   completeMigration: (entryId: string) =>
     invoke<WireEntry>("complete_migration", { entryId }).then(fromWireEntry),
   listSealed: () => invoke<SealedList>("list_sealed"),
+  listPasskeys: () => invoke<PasskeyRecord[]>("list_passkeys"),
+  deletePasskey: (id: string) => invoke<boolean>("delete_passkey", { id }),
 };
 
 async function resolveApi(): Promise<Api> {

@@ -1,6 +1,7 @@
 pub mod api;
 pub mod autofill;
 pub mod import;
+pub mod passkeys;
 pub mod seal;
 pub mod biometric;
 pub mod browser_hosts;

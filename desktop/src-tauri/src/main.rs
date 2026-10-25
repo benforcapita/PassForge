@@ -124,6 +124,8 @@ fn main() {
             commands::migration_preview,
             commands::complete_migration,
             commands::list_sealed,
+            commands::list_passkeys,
+            commands::delete_passkey,
         ]);
 
     let builder = builder

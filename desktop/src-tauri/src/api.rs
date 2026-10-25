@@ -21,6 +21,7 @@
 //!   so a locked app serves nothing.
 //! - CORS is restricted to browser-extension schemes.
 
+use crate::passkeys;
 use crate::commands::{
     complete_migration_inner, derive_profile_password, generate_entry_password, load_settings,
     master_fingerprint, migration_preview_inner, persist_settings, require_unlocked,
@@ -134,6 +135,11 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/entries/{id}/generate", post(generate_entry))
         .route("/api/settings", get(get_settings).put(put_settings))
         .route("/api/migration", get(list_migration))
+        .route("/api/passkeys", get(list_passkeys).delete(delete_passkey))
+        .route("/api/passkeys/create", post(passkey_create))
+        .route("/api/passkeys/candidates", post(passkey_candidates))
+        .route("/api/passkeys/get", post(passkey_get))
+        .route("/api/passkeys/{id}", axum::routing::delete(delete_passkey))
         .route("/api/entries/{id}/migration-preview", post(migration_preview))
         .route("/api/entries/{id}/migrate", post(migrate_entry))
         .route("/api/server-info", post(server_info))
@@ -188,7 +194,7 @@ fn api_error(status: StatusCode, err: &PassForgeError) -> Response {
 fn map_err(err: PassForgeError) -> Response {
     let status = match err {
         PassForgeError::Locked => StatusCode::FORBIDDEN,
-        PassForgeError::SealMismatch => StatusCode::CONFLICT,
+        PassForgeError::SealMismatch | PassForgeError::Conflict(_) => StatusCode::CONFLICT,
         PassForgeError::EntryNotFound(_) => StatusCode::NOT_FOUND,
         PassForgeError::InvalidRequest(_) => StatusCode::BAD_REQUEST,
         _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -461,5 +467,261 @@ async fn server_info(
     match result {
         Ok(info) => Json(info).into_response(),
         Err(err) => map_err(err),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Passkeys — token + unlock; origin/rpId policy enforced in passkeys.rs.
+// ---------------------------------------------------------------------------
+
+fn b64u(bytes: &[u8]) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
+}
+fn b64d(s: &str) -> Result<Vec<u8>> {
+    use base64::Engine;
+    base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(s)
+        .map_err(|_| PassForgeError::InvalidRequest("invalid base64url".into()))
+}
+fn origin_host(origin: &str) -> Result<String> {
+    url::Url::parse(origin)
+        .ok()
+        .and_then(|u| u.host_str().map(|h| h.trim_end_matches('.').to_lowercase()))
+        .ok_or_else(|| PassForgeError::InvalidRequest("invalid origin".into()))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateReq {
+    origin: String,
+    rp: CreateRp,
+    user: CreateUser,
+    challenge: String,
+    #[serde(default)]
+    pub_key_cred_params: Vec<AlgParam>,
+    #[serde(default)]
+    exclude_credentials: Vec<IdParam>,
+}
+#[derive(serde::Deserialize)]
+struct CreateRp {
+    id: Option<String>,
+    #[allow(dead_code)]
+    name: Option<String>,
+}
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateUser {
+    id: String,
+    name: String,
+    display_name: Option<String>,
+}
+#[derive(serde::Deserialize)]
+struct AlgParam {
+    alg: i64,
+}
+#[derive(serde::Deserialize)]
+struct IdParam {
+    id: String,
+}
+
+fn require_passkey_session(state: &ApiState) -> Result<zeroize::Zeroizing<[u8; 32]>> {
+    require_unlocked(&state.session)?;
+    state.session.root_key("passforge-passkey-root-v1")
+}
+
+async fn passkey_gate(state: &ApiState, rp_id: &str) -> Result<()> {
+    let settings = {
+        let db = state.db.lock().expect("db mutex poisoned");
+        load_settings(&db)
+    };
+    if settings.passkey_touch_id {
+        let reason = format!("use a passkey for {rp_id}");
+        tokio::task::spawn_blocking(move || crate::biometric::authenticate(&reason))
+            .await
+            .map_err(|_| PassForgeError::InvalidRequest("biometric task failed".into()))??;
+    }
+    Ok(())
+}
+
+async fn passkey_create(State(state): State<ApiState>, Json(req): Json<CreateReq>) -> Response {
+    state.session.touch();
+    let result = async {
+        let root = require_passkey_session(&state)?;
+        let rp_id = match req.rp.id {
+            Some(id) => id.to_lowercase(),
+            None => origin_host(&req.origin)?,
+        };
+        if !passkeys::rp_id_allowed(&req.origin, &rp_id) {
+            return Err(PassForgeError::InvalidRequest("rp_id not allowed".into()));
+        }
+        if !req.pub_key_cred_params.iter().any(|p| p.alg == -7) {
+            return Err(PassForgeError::InvalidRequest("unsupported_algorithm".into()));
+        }
+        for ex in &req.exclude_credentials {
+            let id = b64d(&ex.id).unwrap_or_default();
+            if passkeys::parse_credential_id(&root, &rp_id, &id).is_some() {
+                return Err(PassForgeError::Conflict("credential_excluded".into()));
+            }
+        }
+        passkey_gate(&state, &rp_id).await?;
+        let created = passkeys::create_with_nonce(&root, &rp_id, &req.origin, &req.challenge, None)?;
+        let record = crate::models::PasskeyRecord {
+            id: b64u(&created.credential_id),
+            rp_id: rp_id.clone(),
+            user_handle: req.user.id,
+            user_name: req.user.name,
+            display_name: req.user.display_name.unwrap_or_default(),
+            nonce: hex::encode(created.nonce),
+            created_at: chrono::Utc::now().to_rfc3339(),
+            last_used_at: None,
+        };
+        {
+            let db = state.db.lock().expect("db mutex poisoned");
+            db.insert_passkey(&record)?;
+        }
+        Ok(serde_json::json!({
+            "credentialId": b64u(&created.credential_id),
+            "clientDataJSON": b64u(&created.client_data_json),
+            "attestationObject": b64u(&created.attestation_object),
+            "authenticatorData": b64u(&created.authenticator_data),
+            "publicKey": b64u(&created.public_key),
+            "publicKeyAlgorithm": created.public_key_algorithm,
+            "transports": created.transports,
+        }))
+    }
+    .await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => map_err(e),
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CandidatesReq {
+    origin: String,
+    #[serde(rename = "rpId")]
+    rp_id: Option<String>,
+    #[serde(default)]
+    allow_credentials: Vec<IdParam>,
+}
+
+async fn passkey_candidates(State(state): State<ApiState>, Json(req): Json<CandidatesReq>) -> Response {
+    state.session.touch();
+    let result = async {
+        let root = require_passkey_session(&state)?;
+        let rp_id = match req.rp_id {
+            Some(id) => id.to_lowercase(),
+            None => origin_host(&req.origin)?,
+        };
+        if !passkeys::rp_id_allowed(&req.origin, &rp_id) {
+            return Err(PassForgeError::InvalidRequest("rp_id not allowed".into()));
+        }
+        let db = state.db.lock().expect("db mutex poisoned");
+        let vault = db.list_passkeys(Some(&rp_id))?;
+        let mut out = Vec::new();
+        if req.allow_credentials.is_empty() {
+            for row in vault {
+                out.push(serde_json::json!({
+                    "credentialId": row.id, "userName": row.user_name, "displayName": row.display_name,
+                }));
+            }
+        } else {
+            for c in &req.allow_credentials {
+                let raw = b64d(&c.id).unwrap_or_default();
+                if passkeys::parse_credential_id(&root, &rp_id, &raw).is_some() {
+                    let (un, dn) = vault
+                        .iter()
+                        .find(|r| r.id == c.id)
+                        .map(|r| (r.user_name.clone(), r.display_name.clone()))
+                        .unwrap_or(("PassForge passkey".into(), String::new()));
+                    out.push(serde_json::json!({
+                        "credentialId": c.id, "userName": un, "displayName": dn,
+                    }));
+                }
+            }
+        }
+        Ok(serde_json::json!(out))
+    }
+    .await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => map_err(e),
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GetReq {
+    origin: String,
+    #[serde(rename = "rpId")]
+    rp_id: Option<String>,
+    challenge: String,
+    credential_id: String,
+}
+
+async fn passkey_get(State(state): State<ApiState>, Json(req): Json<GetReq>) -> Response {
+    state.session.touch();
+    let result = async {
+        let root = require_passkey_session(&state)?;
+        let rp_id = match req.rp_id {
+            Some(id) => id.to_lowercase(),
+            None => origin_host(&req.origin)?,
+        };
+        if !passkeys::rp_id_allowed(&req.origin, &rp_id) {
+            return Err(PassForgeError::InvalidRequest("rp_id not allowed".into()));
+        }
+        passkey_gate(&state, &rp_id).await?;
+        let raw = b64d(&req.credential_id)?;
+        let Some((assertion, _nonce)) = passkeys::assert_with(
+            &root, &rp_id, &req.origin, &req.challenge, &raw,
+        )? else {
+            return Err(PassForgeError::EntryNotFound("credential not ours".into()));
+        };
+        let user_handle = {
+            let db = state.db.lock().expect("db mutex poisoned");
+            db.mark_passkey_used(&req.credential_id)?;
+            db.get_passkey(&req.credential_id)?.map(|r| r.user_handle)
+        };
+        Ok(serde_json::json!({
+            "credentialId": req.credential_id,
+            "clientDataJSON": b64u(&assertion.client_data_json),
+            "authenticatorData": b64u(&assertion.authenticator_data),
+            "signature": b64u(&assertion.signature),
+            "userHandle": user_handle,
+        }))
+    }
+    .await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => map_err(e),
+    }
+}
+
+async fn list_passkeys(State(state): State<ApiState>) -> Response {
+    let result = (|| -> Result<serde_json::Value> {
+        require_unlocked(&state.session)?;
+        let db = state.db.lock().expect("db mutex poisoned");
+        Ok(serde_json::to_value(db.list_passkeys(None)?)?)
+    })();
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => map_err(e),
+    }
+}
+
+async fn delete_passkey(
+    State(state): State<ApiState>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Response {
+    let result = (|| -> Result<serde_json::Value> {
+        require_unlocked(&state.session)?;
+        let db = state.db.lock().expect("db mutex poisoned");
+        Ok(serde_json::json!({ "deleted": db.delete_passkey(&id)? }))
+    })();
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => map_err(e),
     }
 }

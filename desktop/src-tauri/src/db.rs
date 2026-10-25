@@ -1,7 +1,7 @@
 use crate::error::{PassForgeError, Result};
 use crate::models::{
     EntryInput, EntryKind, EntrySummary, Folder, FolderInput, ImportReport,
-    VaultEntry, VaultExport,
+    PasskeyRecord, VaultEntry, VaultExport,
 };
 use crate::seal::SealedSecret;
 use chrono::Utc;
@@ -72,6 +72,16 @@ impl VaultDb {
               PRIMARY KEY (entry_id, group_id)
             );
 
+            CREATE TABLE IF NOT EXISTS passkeys (
+                id TEXT PRIMARY KEY,
+                rp_id TEXT NOT NULL,
+                user_handle TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                nonce TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                last_used_at TEXT
+            );
             CREATE TABLE IF NOT EXISTS kv (
               key TEXT PRIMARY KEY,
               value TEXT NOT NULL
@@ -100,6 +110,64 @@ impl VaultDb {
             self.conn
                 .execute_batch("ALTER TABLE entries ADD COLUMN sealed_json TEXT")?;
         }
+        Ok(())
+    }
+
+    pub fn insert_passkey(&self, pk: &PasskeyRecord) -> Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO passkeys (id, rp_id, user_handle, user_name, display_name, nonce, created_at, last_used_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![pk.id, pk.rp_id, pk.user_handle, pk.user_name, pk.display_name, pk.nonce, pk.created_at, pk.last_used_at],
+        )?;
+        Ok(())
+    }
+
+    fn passkey_row(row: &rusqlite::Row) -> rusqlite::Result<PasskeyRecord> {
+        Ok(PasskeyRecord {
+            id: row.get(0)?,
+            rp_id: row.get(1)?,
+            user_handle: row.get(2)?,
+            user_name: row.get(3)?,
+            display_name: row.get(4)?,
+            nonce: row.get(5)?,
+            created_at: row.get(6)?,
+            last_used_at: row.get(7)?,
+        })
+    }
+
+    pub fn list_passkeys(&self, rp_id: Option<&str>) -> Result<Vec<PasskeyRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, rp_id, user_handle, user_name, display_name, nonce, created_at, last_used_at
+             FROM passkeys WHERE (?1 IS NULL OR rp_id = ?1) ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map(params![rp_id], Self::passkey_row)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    pub fn get_passkey(&self, id: &str) -> Result<Option<PasskeyRecord>> {
+        self.conn
+            .query_row(
+                "SELECT id, rp_id, user_handle, user_name, display_name, nonce, created_at, last_used_at
+                 FROM passkeys WHERE id = ?1",
+                params![id],
+                Self::passkey_row,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    pub fn delete_passkey(&self, id: &str) -> Result<bool> {
+        Ok(self
+            .conn
+            .execute("DELETE FROM passkeys WHERE id = ?1", params![id])?
+            > 0)
+    }
+
+    pub fn mark_passkey_used(&self, id: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE passkeys SET last_used_at = ?1 WHERE id = ?2",
+            params![chrono::Utc::now().to_rfc3339(), id],
+        )?;
         Ok(())
     }
 
@@ -414,6 +482,13 @@ impl VaultDb {
                     params![&entry.entry.id, group_id],
                 )?;
             }
+        }
+        for pk in &export.passkeys {
+            tx.execute(
+                "INSERT OR IGNORE INTO passkeys (id, rp_id, user_handle, user_name, display_name, nonce, created_at, last_used_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![pk.id, pk.rp_id, pk.user_handle, pk.user_name, pk.display_name, pk.nonce, pk.created_at, pk.last_used_at],
+            )?;
         }
         tx.commit()?;
         Ok(report)

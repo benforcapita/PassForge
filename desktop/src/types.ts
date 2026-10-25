@@ -78,6 +78,7 @@ export type Folder = {
 };
 
 export type Settings = {
+  passkeyTouchId?: boolean;
   defaultCrypto: CryptoConfig;
   idleLockSeconds: number;
   clipboardClearSeconds: number;
@@ -101,6 +102,17 @@ export type ServerInfo = {
   version: string;
   default_algorithm: string;
   algorithms: { id: string; description: string; portable: boolean }[];
+};
+
+export type PasskeyRecord = {
+  id: string;
+  rpId: string;
+  userHandle: string;
+  userName: string;
+  displayName: string;
+  nonce: string;
+  createdAt: string;
+  lastUsedAt: string | null;
 };
 
 export type ImportReport2 = {

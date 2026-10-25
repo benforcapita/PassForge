@@ -316,6 +316,7 @@ fn export_import_roundtrips_folders_and_entries() {
         exported_at: "2026-01-01T00:00:00Z".into(),
         folders: source.list_folders().unwrap(),
         entries: source.list_all_entries().unwrap().into_iter().map(|entry| ExportedEntry { entry, sealed: None }).collect(),
+        passkeys: vec![],
     };
     let json = serde_json::to_string_pretty(&doc).unwrap();
     let parsed: VaultExport = serde_json::from_str(&json).unwrap();
@@ -354,6 +355,7 @@ fn import_is_idempotent_and_skips_existing_rows() {
         exported_at: "2026-01-01T00:00:00Z".into(),
         folders: db.list_folders().unwrap(),
         entries: db.list_all_entries().unwrap().into_iter().map(|entry| ExportedEntry { entry, sealed: None }).collect(),
+        passkeys: vec![],
     };
 
     // Importing the vault into itself must create nothing.
@@ -407,6 +409,7 @@ fn import_rejects_whole_file_when_any_entry_is_invalid() {
         exported_at: "2026-01-01T00:00:00Z".into(),
         folders: source.list_folders().unwrap(),
         entries: entries.into_iter().map(|entry| ExportedEntry { entry, sealed: None }).collect(),
+        passkeys: vec![],
     };
 
     let target = VaultDb::memory().unwrap();
@@ -467,6 +470,7 @@ fn sealed_roundtrip_and_export_v2() {
     let export = VaultExport {
         version: 2, exported_at: "t".into(), folders: db.list_folders().unwrap(),
         entries: vec![ExportedEntry { entry: e.clone(), sealed: Some(blob.clone()) }],
+        passkeys: vec![],
     };
     let json = serde_json::to_string(&export).unwrap();
     let parsed: VaultExport = serde_json::from_str(&json).unwrap();
@@ -474,4 +478,34 @@ fn sealed_roundtrip_and_export_v2() {
     db2.migrate().unwrap();
     db2.import_export(&parsed).unwrap();
     assert_eq!(db2.get_sealed(&entry.id).unwrap(), Some(blob));
+}
+
+#[test]
+fn passkeys_crud_and_export_roundtrip() {
+    use passforge_desktop::models::PasskeyRecord;
+    let db = VaultDb::memory().unwrap();
+    db.migrate().unwrap();
+    let pk = PasskeyRecord {
+        id: "AQAAAA".into(), rp_id: "example.com".into(), user_handle: "dXNlcg".into(),
+        user_name: "dev@example.com".into(), display_name: "Dev".into(),
+        nonce: "aabb".into(), created_at: "t".into(), last_used_at: None,
+    };
+    db.insert_passkey(&pk).unwrap();
+    assert_eq!(db.list_passkeys(Some("example.com")).unwrap().len(), 1);
+    assert_eq!(db.list_passkeys(Some("other.com")).unwrap().len(), 0);
+    assert_eq!(db.get_passkey("AQAAAA").unwrap(), Some(pk.clone()));
+    db.mark_passkey_used("AQAAAA").unwrap();
+    assert!(db.get_passkey("AQAAAA").unwrap().unwrap().last_used_at.is_some());
+    // export roundtrip restores rows
+    let export = VaultExport {
+        version: 2, exported_at: "t".into(), folders: vec![], entries: vec![],
+        passkeys: vec![pk.clone()],
+    };
+    let parsed: VaultExport = serde_json::from_str(&serde_json::to_string(&export).unwrap()).unwrap();
+    let db2 = VaultDb::memory().unwrap();
+    db2.migrate().unwrap();
+    db2.import_export(&parsed).unwrap();
+    assert_eq!(db2.get_passkey("AQAAAA").unwrap(), Some(pk));
+    assert!(db.delete_passkey("AQAAAA").unwrap());
+    assert!(!db.delete_passkey("AQAAAA").unwrap());
 }

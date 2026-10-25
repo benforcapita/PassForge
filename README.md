@@ -322,6 +322,7 @@ The trust design matters: a page can only *see* the icon and the dropdown chrome
 | `scripting` | required alongside the content-script declaration for autofill |
 | `contextMenus` | the "Fill with PassForge" right-click item |
 | `webNavigation` | resolving the page frame's verified URL during a fill |
+| `windows` | the passkey confirmation popup (`passkey.html`) |
 | `alarms` | periodic backend health check for the toolbar badge |
 | `content_scripts: <all_urls>` | detecting login/signup fields on every page (all frames) |
 
@@ -352,6 +353,16 @@ PassForge can take over an existing password stash without ever storing it in th
 Sealed entries show a "Legacy password (sealed)" chip and a sidebar **Migration** counter. In **Migration** each entry walks you through: *Change password on site* (opens `https://<site>/.well-known/change-password`), *Copy current / Copy new* (the preview's `current` vs `next`), then *I changed it* clears the seal — the entry becomes generated and holds no secret. The extension helps too: on a change-password form (current + new fields) the autofill dropdown offers **"Migrate this account"**, which fills the current password and the new generated password, then asks whether the change succeeded.
 
 **Warnings:** changing your master password makes sealed entries unreadable (the seal key derives from it — they return `409 SealMismatch`). And delete the CSV after importing — it's your passwords in plain text.
+
+---
+
+## 5b. Passkeys
+
+The extension can act as a WebAuthn authenticator: `navigator.credentials.create/get` calls on any page can be answered by PassForge instead of a platform passkey. It is *stateless like the rest*: each credential's P-256 private key is re-derived from `HKDF(root, salt=nonce, info="passforge-passkey-v1"‖rpId)` where `root` is `PBKDF2-HMAC-SHA256(master, "passforge-passkey-root-v1", 100k)` — the vault stores only the credential id (a 33-byte self-verifying blob: `0x01‖nonce‖HMAC tag`), the rpId and the user metadata. No key material is ever at rest, so a credential works on any device with the same master password. Attestation is `fmt:"none"` with a fixed AAGUID, signCount always 0, ES256 only.
+
+Registration/assertion only happen after a confirmation window (`passkey.html`) the page can't overlay: it shows the verified origin (Chrome's `sender.origin`, never page-supplied data), the rp and the account, with *Create/Sign in*, *Use another device or passkey* (falls back to the platform authenticator) and *Cancel*. If the backend is disconnected or locked, or the site asks for an unsupported algorithm or a foreign credential, the page gets its native implementation back — you never get stuck. Optional **Touch ID for passkeys** (Preferences → Passkeys) gates each create/get on macOS biometrics.
+
+Limitations: ES256 only (RS256/etc. fall back to native), top frame only, no conditional UI (conditional mediation goes to native), no credential exclusion support beyond *our* ids. **Warning:** changing your master password makes passkeys unverifiable — the derived keys change.
 
 ---
 
@@ -625,6 +636,10 @@ Every route requires `Authorization: Bearer <token>` with the contents of `api-t
 | `GET /api/migration` | yes | sealed entries + `migrated` count |
 | `POST /api/entries/{id}/migration-preview` | yes | `{ current, next }` — unsealed legacy vs fresh derive |
 | `POST /api/entries/{id}/migrate` | yes | clears the seal; returns the entry |
+| `POST /api/passkeys/create` | yes | WebAuthn registration: origin/rpId policy, ES256-only (400 `unsupported_algorithm`), `excludeCredentials` of our ids → 409; returns attestation + SPKI |
+| `POST /api/passkeys/candidates` | yes | `[{credentialId, userName, displayName}]` for the rpId |
+| `POST /api/passkeys/get` | yes | assertion signature for a credential id that verifies as ours |
+| `GET /api/passkeys` · `DELETE /api/passkeys/{id}` | yes | list/delete vault passkey rows |
 | `GET /api/entries/{id}/generate` response | — | `{ password, kind }` — `kind` is `sealed` while an imported password is still stored |
 | `POST /api/entries/{id}/generate` | yes | derive with the session's master password; marks entry used. **The desktop UI's generation path.** |
 | `GET /api/settings` | yes | crypto defaults, timers, `generation`, `knownServers` |

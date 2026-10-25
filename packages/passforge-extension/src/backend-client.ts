@@ -231,6 +231,21 @@ export async function saveSettings(settings: Settings): Promise<Settings> {
 }
 
 /** Probe an algorithm server *through* the backend (we can't reach it ourselves). */
+export async function passkeyCreate(body: unknown): Promise<Record<string, unknown>> {
+  return call("/api/passkeys/create", body, "POST");
+}
+export async function passkeyCandidates(body: unknown): Promise<Record<string, unknown>[]> {
+  return call("/api/passkeys/candidates", body, "POST");
+}
+export async function passkeyGet(body: unknown): Promise<Record<string, unknown>> {
+  return call("/api/passkeys/get", body, "POST");
+}
+export async function listPasskeys(): Promise<Record<string, unknown>[]> {
+  return call("/api/passkeys");
+}
+export async function deletePasskey(id: string): Promise<void> {
+  await call(`/api/passkeys/${id}`, undefined, "DELETE");
+}
 export async function migrationPreview(entryId: string): Promise<{ current: string; next: string }> {
   return call(`/api/entries/${entryId}/migration-preview`, undefined, "POST");
 }

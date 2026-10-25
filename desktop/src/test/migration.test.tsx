@@ -75,6 +75,8 @@ vi.mock("../api", () => ({
     rememberMasterPassword: vi.fn(async () => {}),
     forgetMasterPassword: vi.fn(async () => {}),
     exportVault: vi.fn(async () => {}),
+    listPasskeys: vi.fn(async () => []),
+    deletePasskey: vi.fn(async () => true),
     importVault: vi.fn(async () => ({
       foldersCreated: 0, foldersSkipped: 0, entriesCreated: 0, entriesSkipped: 0,
     })),
@@ -159,5 +161,28 @@ describe("Workbench sealed entry", () => {
     expect(screen.getByText("Legacy password (sealed)")).toBeTruthy();
     fireEvent.click(screen.getByText("Migrate…"));
     await screen.findByTestId("migration-row");
+  });
+});
+
+describe("Preferences passkeys section", () => {
+  it("lists passkeys and deletes one after confirm", async () => {
+    vi.mocked(api.biometricSupported).mockResolvedValue(true);
+    vi.mocked(api.listPasskeys).mockResolvedValue([
+      {
+        id: "pk1", rpId: "webauthn.example", userHandle: "dXNlcg",
+        userName: "carol@x.io", displayName: "Carol", nonce: "00",
+        createdAt: "2024-02-01T00:00:00Z", lastUsedAt: null,
+      },
+    ]);
+    vi.mocked(api.deletePasskey).mockResolvedValue(true);
+    const { PreferencesModal } = await import("../views/PreferencesModal");
+    render(<PreferencesModal settings={settings} onClose={vi.fn()} onSaved={vi.fn()} />);
+    await screen.findByTestId("passkey-list");
+    expect(screen.getByText("webauthn.example")).toBeTruthy();
+    fireEvent.click(screen.getByText("Delete"));
+    await screen.findByText("Keep");
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(api.deletePasskey).toHaveBeenCalledWith("pk1"));
+    await waitFor(() => expect(screen.queryByText("webauthn.example")).toBeNull());
   });
 });

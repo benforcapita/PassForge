@@ -12,6 +12,8 @@ pub enum PassForgeError {
     Locked,
     #[error("this password was imported under a different master password")]
     SealMismatch,
+    #[error("{0}")]
+    Conflict(String),
     #[error("keychain error: {0}")]
     Keychain(String),
     #[error("io error: {0}")]

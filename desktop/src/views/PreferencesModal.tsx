@@ -1,7 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { ImportModal } from "./ImportModal";
+import { Toggle } from "../components/ui/Toggle";
+import type { PasskeyRecord } from "../types";
 import { api } from "../api";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
@@ -46,6 +48,15 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
   const [testingServer, setTestingServer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showImport, setShowImport] = useState(false);
+  const [passkeys, setPasskeys] = useState<PasskeyRecord[] | null>(null);
+  const [bioSupported, setBioSupported] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [touchId, setTouchId] = useState(settings.passkeyTouchId ?? false);
+
+  useEffect(() => {
+    void api.listPasskeys().then(setPasskeys).catch(() => setPasskeys([]));
+    void api.biometricSupported().then(setBioSupported).catch(() => {});
+  }, []);
 
   const JSON_FILTER = { name: "JSON", extensions: ["json"] };
 
@@ -128,6 +139,16 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
       setError(errText(err));
     } finally {
       setVaultBusy(false);
+    }
+  };
+
+  const removePasskey = async (id: string) => {
+    setConfirmDelete(null);
+    try {
+      await api.deletePasskey(id);
+      setPasskeys((p) => p?.filter((k) => k.id !== id) ?? p);
+    } catch (err) {
+      setError(errText(err));
     }
   };
 
@@ -372,6 +393,55 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
             />
           </div>
         </div>
+        <p className="pt-2 text-[11px] uppercase tracking-[0.02em] text-pf-text-muted">
+          Passkeys
+        </p>
+        {passkeys === null ? (
+          <p className="text-[12px] text-pf-text-muted">Loading…</p>
+        ) : passkeys.length === 0 ? (
+          <p className="text-[12px] text-pf-text-secondary">No passkeys yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-1" data-testid="passkey-list">
+            {passkeys.map((pk) => (
+              <li
+                key={pk.id}
+                className="flex items-center justify-between rounded-sm border border-pf-border-moderate bg-pf-raised px-2 py-1.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-[12px] font-medium text-pf-text-primary">{pk.rpId}</p>
+                  <p className="truncate font-mono text-[11px] text-pf-text-secondary">
+                    {pk.userName} · created {new Date(pk.createdAt).toLocaleDateString()}
+                    {pk.lastUsedAt ? ` · used ${new Date(pk.lastUsedAt).toLocaleDateString()}` : ""}
+                  </p>
+                </div>
+                {confirmDelete === pk.id ? (
+                  <span className="flex items-center gap-1 text-[11px]">
+                    <Button variant="ghost" className="h-6" onClick={() => void removePasskey(pk.id)}>
+                      Delete
+                    </Button>
+                    <Button variant="ghost" className="h-6" onClick={() => setConfirmDelete(null)}>
+                      Keep
+                    </Button>
+                  </span>
+                ) : (
+                  <Button variant="ghost" className="h-6" onClick={() => setConfirmDelete(pk.id)}>
+                    Delete
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {bioSupported && (
+          <Toggle
+            checked={touchId}
+            onChange={(v) => {
+              setTouchId(v);
+              void api.saveSettings({ ...settings, passkeyTouchId: v }).then(onSaved);
+            }}
+            label="Require Touch ID for passkeys"
+          />
+        )}
         <p className="pt-2 text-[11px] uppercase tracking-[0.02em] text-pf-text-muted">
           Vault data
         </p>

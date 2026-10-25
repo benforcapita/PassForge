@@ -88,6 +88,26 @@ pub struct VaultExport {
     pub exported_at: String,
     pub folders: Vec<Folder>,
     pub entries: Vec<ExportedEntry>,
+    #[serde(default)]
+    pub passkeys: Vec<PasskeyRecord>,
+}
+
+/// A passkey credential's vault row — metadata only; the signing key is
+/// re-derived from the session's passkey root + `nonce` + rpId.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PasskeyRecord {
+    /// b64url credential id (also the HMAC-verifiable blob).
+    pub id: String,
+    pub rp_id: String,
+    /// b64url user handle.
+    pub user_handle: String,
+    pub user_name: String,
+    pub display_name: String,
+    /// hex nonce used to derive the signing key.
+    pub nonce: String,
+    pub created_at: String,
+    pub last_used_at: Option<String>,
 }
 
 /// VaultEntry + its optional sealed blob. The blob is serialized only in
@@ -113,6 +133,8 @@ pub struct ImportReport {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default)]
+    pub passkey_touch_id: bool,
     pub default_crypto: CryptoConfig,
     pub idle_lock_seconds: u64,
     pub clipboard_clear_seconds: u64,
@@ -140,6 +162,7 @@ pub enum GenerationMode {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            passkey_touch_id: false,
             default_crypto: CryptoConfig::default(),
             idle_lock_seconds: 60,
             clipboard_clear_seconds: 30,

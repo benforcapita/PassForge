@@ -86,6 +86,8 @@ vi.mock("../api", () => {
       rememberMasterPassword: vi.fn(async () => {}),
       forgetMasterPassword: vi.fn(async () => {}),
       exportVault: vi.fn(async (_path: string) => {}),
+      listPasskeys: vi.fn(async () => []),
+      deletePasskey: vi.fn(async (_id: string) => true),
       importVault: vi.fn(async (_path: string): Promise<ImportReport> => ({
         foldersCreated: 0,
         foldersSkipped: 0,

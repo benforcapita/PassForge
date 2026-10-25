@@ -5,6 +5,7 @@ import type {
   EntrySummary,
   ImportReport2,
   MigrationPreview,
+  PasskeyRecord,
   SealedList,
   Finger,
   Folder,
@@ -127,6 +128,18 @@ let settings: Settings = {
 // Mock "seals": plain in-memory storage — this is a dev mock, not the real
 // XChaCha20-Poly1305 path in the backend.
 const sealedPw = new Map<string, string>();
+const passkeys: PasskeyRecord[] = [
+  {
+    id: "mock-pk-1",
+    rpId: "webauthn.example",
+    userHandle: "dXNlcg",
+    userName: "carol@webauthn.example",
+    displayName: "Carol",
+    nonce: "00",
+    createdAt: "2024-02-01T00:00:00Z",
+    lastUsedAt: null,
+  },
+];
 let migrated = 0;
 
 function summarize(entry: MockEntry): EntrySummary {
@@ -305,6 +318,13 @@ export const mockApi: Api = {
     entry.kind = "generated";
     migrated += 1;
     return entry;
+  },
+  listPasskeys: async (): Promise<PasskeyRecord[]> => passkeys,
+  deletePasskey: async (id: string) => {
+    const i = passkeys.findIndex((p) => p.id === id);
+    if (i < 0) return false;
+    passkeys.splice(i, 1);
+    return true;
   },
   listSealed: async (): Promise<SealedList> => ({
     entries: entries.filter((e) => sealedPw.has(e.id)).map(summarize),

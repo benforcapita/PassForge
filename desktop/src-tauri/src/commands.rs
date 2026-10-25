@@ -9,7 +9,7 @@
 use crate::db::VaultDb;
 use crate::error::{PassForgeError, Result};
 use crate::models::{
-    EntryInput, EntrySummary, Folder, FolderInput, GenerationMode, ImportReport, Settings,
+    EntryInput, EntrySummary, PasskeyRecord, Folder, FolderInput, GenerationMode, ImportReport, Settings,
     VaultEntry, VaultExport,
 };
 use crate::keychain::SecretStore;
@@ -511,6 +511,20 @@ pub fn list_sealed(state: State<AppState>, session: State<SessionState>) -> Resu
 /// Import passwords from a CSV/JSON file — IPC only, so the plaintext file
 /// never crosses the loopback API.
 #[tauri::command]
+pub fn list_passkeys(state: State<AppState>, session: State<SessionState>) -> Result<Vec<PasskeyRecord>> {
+    require_unlocked(&session)?;
+    let db = state.db.lock().expect("db mutex poisoned");
+    db.list_passkeys(None)
+}
+
+#[tauri::command]
+pub fn delete_passkey(id: String, state: State<AppState>, session: State<SessionState>) -> Result<bool> {
+    require_unlocked(&session)?;
+    let db = state.db.lock().expect("db mutex poisoned");
+    db.delete_passkey(&id)
+}
+
+#[tauri::command]
 pub async fn import_passwords(path: String, state: State<'_, AppState>, session: State<'_, SessionState>) -> Result<serde_json::Value> {
     require_unlocked(&session)?;
     let content = std::fs::read_to_string(&path)
@@ -549,6 +563,7 @@ pub fn export_vault(path: String, state: State<AppState>, session: State<Session
                 entry,
             })
             .collect(),
+        passkeys: db.list_passkeys(None)?,
     };
     std::fs::write(&path, serde_json::to_string_pretty(&export)?)?;
     Ok(())

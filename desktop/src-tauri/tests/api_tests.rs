@@ -678,3 +678,79 @@ async fn sealed_wrong_master_is_409() {
         .await.unwrap();
     assert_eq!(resp.status(), StatusCode::CONFLICT);
 }
+
+#[tokio::test]
+async fn passkey_routes_gates_and_round_trip() {
+    let st = state();
+    let app = api::router(st.clone());
+    let body = serde_json::json!({
+        "origin": "http://localhost:8181",
+        "rp": {"name": "Test"},
+        "user": {"id": "dXNlcjE", "name": "carol@example.com", "displayName": "Carol"},
+        "challenge": "Y2hhbGxlbmdl",
+        "pubKeyCredParams": [{"type": "public-key", "alg": -7}],
+        "excludeCredentials": []
+    });
+    // 401 without token, 403 while locked
+    let resp = app.clone().oneshot(
+        Request::builder().method("POST").uri("/api/passkeys/create")
+            .header("content-type", "application/json").body(Body::from(body.to_string())).unwrap())
+        .await.unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    let resp = app.clone().oneshot(req("POST", "/api/passkeys/create", Some(body.clone()))).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+
+    st.session.unlock(b"pw".to_vec()).unwrap();
+    let resp = app.clone().oneshot(req("POST", "/api/passkeys/create", Some(body.clone()))).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let created = json(resp).await;
+    let cred_id = created["credentialId"].as_str().unwrap();
+    assert_eq!(created["publicKeyAlgorithm"], -7);
+    assert!(created["attestationObject"].as_str().unwrap().len() > 20);
+
+    // exclude the same id -> 409
+    let excl = serde_json::json!({
+        "origin": "http://localhost:8181", "rp": {},
+        "user": {"id": "dXNlcjE", "name": "x", "displayName": "x"},
+        "challenge": "Y2hhbGxlbmdl",
+        "pubKeyCredParams": [{"alg": -7}],
+        "excludeCredentials": [{"id": cred_id}]
+    });
+    let resp = app.clone().oneshot(req("POST", "/api/passkeys/create", Some(excl))).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+
+    // no ES256 offered -> 400
+    let noes = serde_json::json!({
+        "origin": "http://localhost:8181", "rp": {},
+        "user": {"id": "dQ", "name": "x"},
+        "challenge": "Y2hhbGxlbmdl",
+        "pubKeyCredParams": [{"alg": -8}],
+    });
+    let resp = app.clone().oneshot(req("POST", "/api/passkeys/create", Some(noes))).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+    // candidates (empty allowCredentials -> vault rows)
+    let cand = serde_json::json!({"origin": "http://localhost:8181", "allowCredentials": []});
+    let resp = app.clone().oneshot(req("POST", "/api/passkeys/candidates", Some(cand))).await.unwrap();
+    let list = json(resp).await;
+    assert_eq!(list.as_array().unwrap().len(), 1);
+
+    // get -> signature + userHandle
+    let get = serde_json::json!({
+        "origin": "http://localhost:8181", "challenge": "b3RoZXItY2hhbGxlbmdl",
+        "credentialId": cred_id
+    });
+    let resp = app.clone().oneshot(req("POST", "/api/passkeys/get", Some(get))).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let assertion = json(resp).await;
+    assert_eq!(assertion["userHandle"], "dXNlcjE");
+    assert!(assertion["signature"].as_str().unwrap().len() > 20);
+
+    // list + delete
+    let resp = app.clone().oneshot(req("GET", "/api/passkeys", None)).await.unwrap();
+    assert_eq!(json(resp).await.as_array().unwrap().len(), 1);
+    let resp = app.clone().oneshot(req("DELETE", &format!("/api/passkeys/{cred_id}"), None)).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let resp = app.clone().oneshot(req("GET", "/api/passkeys", None)).await.unwrap();
+    assert_eq!(json(resp).await.as_array().unwrap().len(), 0);
+}

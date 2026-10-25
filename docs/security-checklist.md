@@ -105,6 +105,22 @@ Status of the threat model as of the vault-hardening + security pass.
 - [x] `migration-preview`/`migrate` require unlock; a wrong master fails
   AEAD, not silently.
 
+## Passkeys
+- [x] Signing keys are derived on demand
+  (`HKDF(PBKDF2(master,"passforge-passkey-root-v1",100k), nonce‖rpId)`);
+  the vault stores metadata + nonce only — no key material at rest.
+- [x] Credential ids self-verify: `0x01‖nonce‖HMAC(tag)` — foreign ids and
+  ids minted for a different rpId fail closed (constant-time tag check).
+- [x] Origin policy: https-only (loopback http excepted), rpId must equal or
+  strictly suffix-match the origin host — `example.com.evil.io` rejected.
+- [x] The confirm window reads the origin from Chrome's `sender.origin`
+  (top frame only); the page cannot supply or spoof it.
+- [x] Every failure mode falls back to the platform authenticator.
+- [x] Optional Touch ID gate per create/get when `passkeyTouchId`.
+- [ ] Non-discoverable logins on a *different* device need the same master
+  password (by design); changing the master invalidates credentials.
+- [ ] signCount stays 0 (stateless; clone detection unavailable).
+
 ## Native messaging host
 - [x] Chrome `allowed_origins` restricts the manifest to the extension ID.
 - [x] `open_existing_at` never creates the vault or key; missing vault

@@ -129,6 +129,7 @@ fn main() {
     let builder = builder
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             use tauri::{Emitter, Manager};
             let session = app.state::<session::SessionState>().inner().clone();

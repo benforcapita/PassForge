@@ -337,6 +337,24 @@ entry. No remote hosts, no background network activity beyond `127.0.0.1`.
 
 ---
 
+## 5a. Importing and migrating existing passwords
+
+PassForge can take over an existing password stash without ever storing it in the clear.
+
+**Formats.** CSV exports from Chrome/Edge/Brave, Firefox, Safari/Apple Passwords, Bitwarden (non-`login` rows skipped), 1Password and LastPass (secure notes skipped), plus LessPass JSON profile exports. Rows without a password are skipped with a reason.
+
+**How it works.** *Preferences → Vault data → Import passwords…* reads the file **in the app over IPC only** — a plaintext CSV never crosses the loopback API. For each credential one of three things happens:
+
+- **Reverse match** — if the imported password turns out to *be* a PassForge/LessPass derivation for that site and login, the app finds it: the options are forced (the enabled character classes equal exactly the classes present in the password, and its length is the length), so only the counter 1–10 needs trying. A match is stored as a normal generated entry — nothing secret at all. Only LessPass-family passwords can reverse, because only they are deterministic functions of site + login + master password.
+- **Sealed** — anything else is stored as a *sealed entry*: the legacy password is encrypted with XChaCha20-Poly1305 under a key derived from your master password (HKDF from `PBKDF2-HMAC-SHA256(master, "passforge-seal-root-v1", 100k)`), ciphertext length bucketed to {64,128,256,512} bytes. The vault holds ciphertext only; generating a sealed entry returns the legacy password, so autofill still works.
+- **Duplicate** — same site+login already exists → skipped.
+
+Sealed entries show a "Legacy password (sealed)" chip and a sidebar **Migration** counter. In **Migration** each entry walks you through: *Change password on site* (opens `https://<site>/.well-known/change-password`), *Copy current / Copy new* (the preview's `current` vs `next`), then *I changed it* clears the seal — the entry becomes generated and holds no secret. The extension helps too: on a change-password form (current + new fields) the autofill dropdown offers **"Migrate this account"**, which fills the current password and the new generated password, then asks whether the change succeeded.
+
+**Warnings:** changing your master password makes sealed entries unreadable (the seal key derives from it — they return `409 SealMismatch`). And delete the CSV after importing — it's your passwords in plain text.
+
+---
+
 ## 6. The Servers panel — demonstrating the severance
 
 Both frontends have the same two-section panel.
@@ -604,6 +622,10 @@ Every route requires `Authorization: Bearer <token>` with the contents of `api-t
 | `GET /api/entries/{id}` | yes | one entry's parameters |
 | `GET /api/autofill?url=` | yes | entries whose site matches the page URL (exact host or strict subdomain; https only except loopback), most recently used first |
 | `POST /api/entries` | yes | create an entry from `EntryInput`; empty `folderId` uses the first (or a new "Personal") folder |
+| `GET /api/migration` | yes | sealed entries + `migrated` count |
+| `POST /api/entries/{id}/migration-preview` | yes | `{ current, next }` — unsealed legacy vs fresh derive |
+| `POST /api/entries/{id}/migrate` | yes | clears the seal; returns the entry |
+| `GET /api/entries/{id}/generate` response | — | `{ password, kind }` — `kind` is `sealed` while an imported password is still stored |
 | `POST /api/entries/{id}/generate` | yes | derive with the session's master password; marks entry used. **The desktop UI's generation path.** |
 | `GET /api/settings` | yes | crypto defaults, timers, `generation`, `knownServers` |
 | `PUT /api/settings` | yes | replace settings (URLs normalized, `knownServers` deduped) |
@@ -627,7 +649,7 @@ Native-messaging host ops (`com.passforge.desktop`, length-prefixed JSON on stdi
 
 **Guarantees**
 
-- Passwords are never written to disk, logs, or the vault; the vault holds parameters only (SQLCipher, random key in Keychain).
+- Generated entries store parameters only — no password is ever written to disk, logs, or the vault (SQLCipher, random key in Keychain). *Sealed* (imported, not-yet-migrated) entries additionally hold XChaCha20-Poly1305 ciphertext of the legacy password under a master-derived key inside that SQLCipher vault; the seal key lives only in RAM while unlocked, and changing the master password makes sealed entries unreadable (409).
 - The master password exists only in backend RAM while unlocked and is zeroized on lock/idle/quit; `/api/generate` zeroizes it after each request.
 - Frontends contain no derivation code and cannot generate without the backend. This is verified by tests (`api_tests`, desktop vitest "Servers panel — backend severance").
 - Loopback-only backend with a random 256-bit bearer token in a 0600 file; vault routes additionally need the unlocked session.

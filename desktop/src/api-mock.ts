@@ -3,6 +3,9 @@ import { serverUrlError } from "./serverUrl";
 import type {
   EntryInput,
   EntrySummary,
+  ImportReport2,
+  MigrationPreview,
+  SealedList,
   Finger,
   Folder,
   ImportReport,
@@ -88,6 +91,7 @@ function seedEntry(
   const now = new Date().toISOString();
   entries.push({
     id: uid(),
+    kind: "generated",
     profile: {
       site,
       login,
@@ -120,9 +124,15 @@ let settings: Settings = {
   knownServers: [],
 };
 
+// Mock "seals": plain in-memory storage — this is a dev mock, not the real
+// XChaCha20-Poly1305 path in the backend.
+const sealedPw = new Map<string, string>();
+let migrated = 0;
+
 function summarize(entry: MockEntry): EntrySummary {
   return {
     id: entry.id,
+    kind: entry.kind ?? "generated",
     site: entry.profile.site,
     login: entry.profile.login,
     counter: entry.profile.counter,
@@ -176,6 +186,7 @@ export const mockApi: Api = {
     const now = new Date().toISOString();
     const entry: MockEntry = {
       id: uid(),
+      kind: "generated",
       profile: {
         site: input.site,
         login: input.login,
@@ -237,8 +248,68 @@ export const mockApi: Api = {
     const entry = entries.find((e) => e.id === entryId);
     if (!entry) throw new Error(`entry not found: ${entryId}`);
     entry.lastUsedAt = new Date().toISOString();
-    return mockPassword(entry);
+    return sealedPw.get(entryId) ?? mockPassword(entry);
   },
+  importPasswords: async (pathOrContent: string): Promise<ImportReport2> => {
+    // Dev-mode accepts file text (browser has no fs); a real path in Tauri.
+    const content = pathOrContent.includes(",") ? pathOrContent : "";
+    const lines = content.split(/\r?\n/).filter((l) => l.trim());
+    const report: ImportReport2 = {
+      total: 0, reverseMatched: 0, sealed: 0, lessPassProfiles: 0,
+      skippedDuplicate: 0, skippedInvalid: 0, skipReasons: [],
+    };
+    const header = (lines.shift() ?? "").toLowerCase();
+    if (!header.includes("password")) throw new Error("unsupported CSV: no password column");
+    const idx = (names: string[]) => header.split(",").findIndex((h) => names.includes(h.trim()));
+    const [iUrl, iUser, iPw] = [idx(["url"]), idx(["username"]), idx(["password"])];
+    for (const line of lines) {
+      report.total += 1;
+      const cols = line.split(",");
+      const site = (cols[iUrl] ?? "").replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
+      const login = cols[iUser] ?? "";
+      const pw = cols[iPw] ?? "";
+      if (!site || !login) { report.skippedInvalid += 1; report.skipReasons.push(`${site || "row"}: missing site or login`); continue; }
+      if (!pw) { report.skippedInvalid += 1; report.skipReasons.push(`${site}: no password`); continue; }
+      if (entries.some((e) => e.profile.site === site && e.profile.login === login)) {
+        report.skippedDuplicate += 1;
+        continue;
+      }
+      const entry = await mockApi.createEntry({
+        site, login, counter: 1,
+        options: { ...DEFAULT_OPTIONS }, saltFields: [], crypto: null,
+        folderId: folders[0]?.id ?? "folder-logins", groupIds: [], tags: [],
+      });
+      sealedPw.set(entry.id, pw);
+      const real = entries.find((e) => e.id === entry.id);
+      if (real) real.kind = "sealed";
+      report.sealed += 1;
+    }
+    return report;
+  },
+  migrationPreview: async (entryId): Promise<MigrationPreview> => {
+    const current = sealedPw.get(entryId);
+    if (current === undefined) throw new Error("entry is not sealed");
+    const entry = entries.find((e) => e.id === entryId);
+    if (!entry) throw new Error(`entry not found: ${entryId}`);
+    const saved = sealedPw.get(entryId);
+    sealedPw.delete(entryId);
+    const next = mockPassword(entry);
+    if (saved !== undefined) sealedPw.set(entryId, saved);
+    return { current, next };
+  },
+  completeMigration: async (entryId) => {
+    const entry = entries.find((e) => e.id === entryId);
+    if (!entry) throw new Error(`entry not found: ${entryId}`);
+    if (!sealedPw.has(entryId)) throw new Error("entry is not sealed");
+    sealedPw.delete(entryId);
+    entry.kind = "generated";
+    migrated += 1;
+    return entry;
+  },
+  listSealed: async (): Promise<SealedList> => ({
+    entries: entries.filter((e) => sealedPw.has(e.id)).map(summarize),
+    migrated,
+  }),
   getSettings: async () => ({ ...settings }),
   saveSettings: async (next: Settings) => {
     settings = { ...next };

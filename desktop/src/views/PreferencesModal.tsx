@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { ImportModal } from "./ImportModal";
 import { api } from "../api";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
@@ -44,6 +45,7 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
   const [serverError, setServerError] = useState<string | null>(null);
   const [testingServer, setTestingServer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const JSON_FILTER = { name: "JSON", extensions: ["json"] };
 
@@ -384,6 +386,14 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
           <Button variant="ghost" onClick={() => void doImport()} disabled={vaultBusy}>
             Import vault…
           </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setShowImport(true)}
+            disabled={vaultBusy}
+            data-testid="import-passwords-btn"
+          >
+            Import passwords…
+          </Button>
         </div>
         <input
           ref={fileInputRef}
@@ -398,6 +408,12 @@ export function PreferencesModal({ settings, onClose, onSaved, onVaultChanged }:
         {vaultMsg && <p className="text-[11px] text-pf-text-muted">{vaultMsg}</p>}
         {error && <p className="text-[11px] text-pf-text-error">{error}</p>}
       </div>
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => onVaultChanged?.()}
+        />
+      )}
     </Modal>
   );
 }

@@ -34,8 +34,11 @@ export type Finger = {
   color: string;
 };
 
+export type EntryKind = "generated" | "sealed";
+
 export type VaultEntry = {
   id: string;
+  kind: EntryKind;
   profile: {
     site: string;
     login: string;
@@ -59,6 +62,7 @@ export type FolderInput = {
 
 export type EntrySummary = {
   id: string;
+  kind: EntryKind;
   site: string;
   login: string;
   counter: number;
@@ -98,6 +102,20 @@ export type ServerInfo = {
   default_algorithm: string;
   algorithms: { id: string; description: string; portable: boolean }[];
 };
+
+export type ImportReport2 = {
+  total: number;
+  reverseMatched: number;
+  sealed: number;
+  lessPassProfiles: number;
+  skippedDuplicate: number;
+  skippedInvalid: number;
+  skipReasons: string[];
+};
+
+export type MigrationPreview = { current: string; next: string };
+
+export type SealedList = { entries: EntrySummary[]; migrated: number };
 
 export type ImportReport = {
   foldersCreated: number;

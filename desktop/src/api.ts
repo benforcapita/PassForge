@@ -7,6 +7,9 @@ import type {
   Folder,
   FolderInput,
   ImportReport,
+  ImportReport2,
+  MigrationPreview,
+  SealedList,
   ServerInfo,
   Settings,
   VaultEntry,
@@ -64,6 +67,12 @@ export type Api = {
   forgetMasterPassword: () => Promise<void>;
   exportVault: (path: string) => Promise<void>;
   importVault: (path: string) => Promise<ImportReport>;
+  /** CSV/JSON password import — IPC only, the plaintext never hits the API. */
+  importPasswords: (path: string) => Promise<ImportReport2>;
+  /** current = unsealed legacy password, next = fresh derive of the profile. */
+  migrationPreview: (entryId: string) => Promise<MigrationPreview>;
+  completeMigration: (entryId: string) => Promise<VaultEntry>;
+  listSealed: () => Promise<SealedList>;
 };
 
 const tauriApi: Api = {
@@ -95,6 +104,12 @@ const tauriApi: Api = {
   forgetMasterPassword: () => invoke<void>("forget_master_password"),
   exportVault: (path: string) => invoke<void>("export_vault", { path }),
   importVault: (path: string) => invoke<ImportReport>("import_vault", { path }),
+  importPasswords: (path: string) => invoke<ImportReport2>("import_passwords", { path }),
+  migrationPreview: (entryId: string) =>
+    invoke<MigrationPreview>("migration_preview", { entryId }),
+  completeMigration: (entryId: string) =>
+    invoke<WireEntry>("complete_migration", { entryId }).then(fromWireEntry),
+  listSealed: () => invoke<SealedList>("list_sealed"),
 };
 
 async function resolveApi(): Promise<Api> {

@@ -90,6 +90,21 @@ Status of the threat model as of the vault-hardening + security pass.
 - [ ] A malicious page can fake a PassForge icon/dropdown — phishing is
   out of scope (same as every password manager's autofill UI).
 
+## Sealed entries & import
+- [x] Sealed blobs are XChaCha20-Poly1305 ciphertext under
+  `HKDF-SHA256(PBKDF2(master, "passforge-seal-root-v1", 100k))` — a fixed
+  KDF, so changing crypto *defaults* can't break seals; changing the master
+  password does (AEAD fails → `409 SealMismatch`).
+- [x] The seal root is cached in `SessionState` and zeroized on lock.
+- [x] The blob lives only in `sealed_json` — never serialized on
+  `VaultEntry`/`EntrySummary`, so it cannot reach the extension or the
+  native host; only exports (v2) carry it.
+- [x] Ciphertext length is bucketed {64,128,256,512} — password length is
+  not observable from the vault row.
+- [x] Import is IPC-only: plaintext CSV never crosses the loopback API.
+- [x] `migration-preview`/`migrate` require unlock; a wrong master fails
+  AEAD, not silently.
+
 ## Native messaging host
 - [x] Chrome `allowed_origins` restricts the manifest to the extension ID.
 - [x] `open_existing_at` never creates the vault or key; missing vault

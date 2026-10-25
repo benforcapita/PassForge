@@ -42,6 +42,8 @@ import type {
 } from "../types";
 import { DeleteEntryModal } from "./DeleteEntryModal";
 import { NewProfileModal } from "./NewProfileModal";
+import { ImportModal } from "./ImportModal";
+import { MigrationView } from "./MigrationView";
 import { PreferencesModal } from "./PreferencesModal";
 import { ServersModal } from "./ServersModal";
 
@@ -111,13 +113,16 @@ export function Workbench({ onLock }: { onLock: () => void }) {
   const [query, setQuery] = useState("");
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const sealedCount = entries.filter((e) => e.kind === "sealed").length;
   const [detail, setDetail] = useState<VaultEntry | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [password, setPassword] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [newFolderMode, setNewFolderMode] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [modal, setModal] = useState<"none" | "new" | "prefs" | "servers" | "delete">("none");
+  const [modal, setModal] = useState<
+    "none" | "new" | "prefs" | "servers" | "delete" | "import" | "migration" | "migrate-entry"
+  >("none");
   const [newTag, setNewTag] = useState("");
   const filterRef = useRef<HTMLInputElement>(null);
   const be = backend.useBackend();
@@ -417,6 +422,21 @@ export function Workbench({ onLock }: { onLock: () => void }) {
                 </span>
               </button>
             ))}
+            {sealedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setModal("migration")}
+                className="flex h-8 items-center justify-between rounded-sm px-2 text-[13px] text-pf-text-secondary hover:bg-pf-raised hover:text-pf-text-primary"
+              >
+                <span>Migration</span>
+                <span
+                  className="rounded-sm bg-pf-warning-bg px-1.5 font-mono text-[11px] text-pf-warning"
+                  data-testid="migration-badge"
+                >
+                  {sealedCount}
+                </span>
+              </button>
+            )}
             {newFolderMode ? (
               <div className="mt-1 flex gap-1">
                 <TextInput
@@ -560,6 +580,16 @@ export function Workbench({ onLock }: { onLock: () => void }) {
                     {detail.profile.site}
                   </h1>
                   <p className="font-mono text-[12px] text-pf-text-secondary">{detail.profile.login}</p>
+                  {detail.kind === "sealed" && (
+                    <div className="mt-2 flex items-center gap-2" data-testid="sealed-chip">
+                      <span className="inline-flex items-center gap-1 rounded-sm bg-pf-warning-bg px-2 py-0.5 text-[11px] font-medium text-pf-warning">
+                        Legacy password (sealed)
+                      </span>
+                      <Button variant="ghost" className="h-7" onClick={() => setModal("migrate-entry")}>
+                        Migrate…
+                      </Button>
+                    </div>
+                  )}
                   <p className="mt-1 text-[11px] text-pf-text-muted">
                     Last used:{" "}
                     {detail.lastUsedAt ? new Date(detail.lastUsedAt).toLocaleString() : "never"}
@@ -968,6 +998,33 @@ export function Workbench({ onLock }: { onLock: () => void }) {
           onVaultChanged={() => {
             void refreshEntries();
             void refreshFolders();
+          }}
+        />
+      )}
+      {modal === "import" && (
+        <ImportModal
+          onClose={() => setModal("none")}
+          onImported={() => {
+            void refreshEntries();
+            void refreshFolders();
+          }}
+        />
+      )}
+      {modal === "migration" && (
+        <MigrationView
+          clipboardClearSeconds={settings.clipboardClearSeconds}
+          onClose={() => setModal("none")}
+          onChanged={() => void refreshEntries()}
+        />
+      )}
+      {modal === "migrate-entry" && detail && (
+        <MigrationView
+          clipboardClearSeconds={settings.clipboardClearSeconds}
+          entryId={detail.id}
+          onClose={() => setModal("none")}
+          onChanged={() => {
+            void refreshEntries();
+            void api.getEntry(detail.id).then(setDetail).catch(() => {});
           }}
         />
       )}

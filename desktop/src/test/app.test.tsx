@@ -12,6 +12,7 @@ import type {
 vi.mock("../api", () => {
   const entry: VaultEntry = {
     id: "e1",
+    kind: "generated",
     profile: {
       site: "github.com",
       login: "dev@passforge.io",
@@ -29,6 +30,7 @@ vi.mock("../api", () => {
   };
   const summary: EntrySummary = {
     id: "e1",
+    kind: "generated",
     site: "github.com",
     login: "dev@passforge.io",
     counter: 2,
@@ -109,6 +111,7 @@ const settingsFixture: Settings = {
 };
 const entryFixture: VaultEntry = {
   id: "e1",
+  kind: "generated",
   profile: {
     site: "github.com",
     login: "dev@passforge.io",
@@ -126,6 +129,7 @@ const entryFixture: VaultEntry = {
 };
 const summaryFixture: EntrySummary = {
   id: "e1",
+  kind: "generated",
   site: "github.com",
   login: "dev@passforge.io",
   counter: 2,

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0D1117"/>
+      <stop offset="1" stop-color="#161B22"/>
+    </linearGradient>
+    <linearGradient id="key" x1="392" y1="160" x2="672" y2="736" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#06B6D4" stop-opacity="0.32"/>
+      <stop offset="0.55" stop-color="#06B6D4" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#06B6D4" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="squircle">
+      <rect width="1024" height="1024" rx="230"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1024" height="1024" rx="230" fill="url(#bg)"/>
+
+  <g clip-path="url(#squircle)">
+    <ellipse cx="512" cy="520" rx="380" ry="380" fill="url(#glow)"/>
+
+    <g fill="url(#key)">
+      <path fill-rule="evenodd" d="M512 158 L635 229 L635 371 L512 442 L389 371 L389 229 Z
+                                   M512 236 L567 268 L567 332 L512 364 L457 332 L457 268 Z"/>
+      <rect x="477" y="420" width="70" height="300" rx="24"/>
+      <rect x="547" y="592" width="120" height="48" rx="14"/>
+      <rect x="547" y="672" width="88" height="48" rx="14"/>
+    </g>
+  </g>
+
+  <rect x="8" y="8" width="1008" height="1008" rx="224" fill="none" stroke="#30363D" stroke-width="4"/>
+</svg>

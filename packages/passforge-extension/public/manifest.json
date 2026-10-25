@@ -4,9 +4,19 @@
   "version": "0.1.0",
   "description": "Stateless password manager — deterministic generation, nothing stored.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvFkhKXDVCGMIGlcXifm1rtuxzD+H9/nw8v4XUWSm0ZW+4FHzrUuRX12jdVfo3uTHjRbJYe6ajxSvGFhdCFylBhN4AmnPhL+XgrY01U+JXbTsk8enTmhAajj4xJls0hZ/3fzEHvYQL8ESE2SDIWK3L5tG1wDuuaNoijOn7nIrm8dWynAbVHsYfvfURq6+QftlR6M0KNiak0+IemUqw4q+1oLNAIY7H0ZVVsYF08TT7jEBN8n830+BVv96CoFYzZDhc2Lfy+0ZReX5NRyoQicNSY7Raq6K8maO+F7lLSjcGNUIscgl8JggjxO2ZkMCc5kzF8mzS1oFEGDswQnXgvh7xwIDAQAB",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
     "default_title": "PassForge (Ctrl+Shift+L)",
-    "default_popup": "index.html"
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
   },
   "commands": {
     "_execute_action": {

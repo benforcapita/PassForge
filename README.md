@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/media/logo.svg" width="96" alt="PassForge logo"/></p>
+
 # PassForge
 
 **A stateless password manager where the frontends can't generate a single password on their own.**

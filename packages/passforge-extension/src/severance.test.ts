@@ -6,7 +6,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const DIST = join(__dirname, "..", "dist");
-const BANNED = /pbkdf2|calc_entropy|render_password|renderPassword/i;
+const BANNED = /pbkdf2|calc_entropy|render_password|renderPassword|passforge-finish-v1/i;
 
 function files(dir: string): string[] {
   if (!existsSync(dir)) return [];

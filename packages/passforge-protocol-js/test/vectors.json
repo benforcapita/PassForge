@@ -1,0 +1,458 @@
+{
+  "fingerprint": [
+    {
+      "fingerprint": [
+        {
+          "color": "#490092",
+          "icon": "fa-coffee"
+        },
+        {
+          "color": "#DB6D00",
+          "icon": "fa-coffee"
+        },
+        {
+          "color": "#DB6D00",
+          "icon": "fa-heart"
+        }
+      ],
+      "masterPassword": "master"
+    },
+    {
+      "fingerprint": [
+        {
+          "color": "#FF6CB6",
+          "icon": "fa-gbp"
+        },
+        {
+          "color": "#000000",
+          "icon": "fa-coffee"
+        },
+        {
+          "color": "#B5DAFE",
+          "icon": "fa-bed"
+        }
+      ],
+      "masterPassword": "tHis is a g00d! password"
+    },
+    {
+      "fingerprint": [
+        {
+          "color": "#920000",
+          "icon": "fa-plug"
+        },
+        {
+          "color": "#490092",
+          "icon": "fa-plane"
+        },
+        {
+          "color": "#24FE23",
+          "icon": "fa-beer"
+        }
+      ],
+      "masterPassword": "♥"
+    },
+    {
+      "fingerprint": [
+        {
+          "color": "#924900",
+          "icon": "fa-plug"
+        },
+        {
+          "color": "#920000",
+          "icon": "fa-cloud"
+        },
+        {
+          "color": "#24FE23",
+          "icon": "fa-gbp"
+        }
+      ],
+      "masterPassword": ""
+    }
+  ],
+  "protocol": [
+    {
+      "crypto": {
+        "digest": "sha256",
+        "iterations": 1000
+      },
+      "entropy": "d22be73a173a63b63eae12a745c220250edc48bff6a9ca323cb8e0a03a8fc993",
+      "inputHex": "f91dcf184a72577c2c21eab1bcb56c0f41cb6cfbdd2b8cded8ebe4c0cd11dfcc",
+      "masterPassword": "correct horse",
+      "password": "XX*?FG{2k`h/[T90",
+      "profile": {
+        "counter": 1,
+        "digits": true,
+        "length": 16,
+        "login": "alice@example.org",
+        "lowercase": true,
+        "saltFields": [],
+        "site": "example.org",
+        "symbols": true,
+        "uppercase": true
+      },
+      "serverOutput": "001f3e5d7c9bbad9f81736557493b2d1f00f2e4d6c8baac9e80726456483a2c1",
+      "settingsDigest": "5b9bde6979dd7e562aaff8973449322571535b95870a22be5cb762b6028f32d0"
+    },
+    {
+      "crypto": {
+        "digest": "sha256",
+        "iterations": 1000
+      },
+      "entropy": "c5c8451337d8986cd974b11739b4ac4695dfca72ef92e94fd455516604161a3d",
+      "inputHex": "01382d81711c25e146f76d8a12e4c8a245d4ea98f529b5aef232bdc8c924e086",
+      "masterPassword": "tHis is a g00d! password",
+      "password": "Cr}ex`niOW:P'@xg4Mp%z1<3zH;:Ewr$Z;5",
+      "profile": {
+        "counter": 2,
+        "digits": true,
+        "length": 35,
+        "login": "♥",
+        "lowercase": true,
+        "saltFields": [],
+        "site": "lesspass.com",
+        "symbols": true,
+        "uppercase": true
+      },
+      "serverOutput": "01203f5e7d9cbbdaf91837567594b3d2f1102f4e6d8cabcae90827466584a3c2",
+      "settingsDigest": "fccd8632b99b207fda16025de9e6da2182dc676eeb5224d77abc2a73108eb7cf"
+    },
+    {
+      "crypto": {
+        "digest": "sha256",
+        "iterations": 1000
+      },
+      "entropy": "14ee6d62bcb7974e15b2f93cd1f1babd2db46b6d06aac6cac01afcceb9b39e2a",
+      "inputHex": "575ddfce9a6ed516a2f18fbb6fd8e57451a6b5d48929ca279c6cba442980f183",
+      "masterPassword": "master",
+      "password": "wvuf",
+      "profile": {
+        "counter": 1,
+        "digits": false,
+        "length": 4,
+        "login": "",
+        "lowercase": true,
+        "saltFields": [],
+        "site": "github.com",
+        "symbols": false,
+        "uppercase": false
+      },
+      "serverOutput": "0221405f7e9dbcdbfa1938577695b4d3f211304f6e8daccbea0928476685a4c3",
+      "settingsDigest": "602d54f57d0147dd145174e145b673f8a88802e997b8d2a095416c191d2d32f6"
+    },
+    {
+      "crypto": {
+        "digest": "sha512",
+        "iterations": 1000
+      },
+      "entropy": "3c512c979fcc5e1111d45077e02acb27db51d90485af50a5112ff68a39c35fb9",
+      "inputHex": "6951330b795867989a40cd8cc13231a47c35bd5853e9bd4a28d2a517aadd9244",
+      "masterPassword": "master",
+      "password": "LJBCVUUGSBMB",
+      "profile": {
+        "counter": 255,
+        "digits": false,
+        "length": 12,
+        "login": "carol",
+        "lowercase": false,
+        "saltFields": [],
+        "site": "bank.example",
+        "symbols": false,
+        "uppercase": true
+      },
+      "serverOutput": "032241607f9ebddcfb1a39587796b5d4f31231506f8eadcceb0a29486786a5c4",
+      "settingsDigest": "1416852dba4f0f659464b3f81c6fa2faebb43d55fe6a7d06205bc5b2a191ea0d"
+    },
+    {
+      "crypto": {
+        "digest": "sha1",
+        "iterations": 1000
+      },
+      "entropy": "43b4cc64d5dad75b8f6e11c6e33ba494743ac40cafff16d681bb7e7dd3ceeb04",
+      "inputHex": "aa15e322d1a8ee9b41660731546a54874d20593f84be3910feb9a5c6ba4f9631",
+      "masterPassword": "master",
+      "password": "061470",
+      "profile": {
+        "counter": 3,
+        "digits": true,
+        "length": 6,
+        "login": "carol",
+        "lowercase": false,
+        "saltFields": [],
+        "site": "bank.example",
+        "symbols": false,
+        "uppercase": false
+      },
+      "serverOutput": "04234261809fbeddfc1b3a597897b6d5f4133251708faecdec0b2a496887a6c5",
+      "settingsDigest": "7b7e4290937087482e3613bcb53243584bd0e2fd0b9f001e99f6d02d628ff7f7"
+    },
+    {
+      "crypto": {
+        "digest": "sha-256",
+        "iterations": 1000
+      },
+      "entropy": "0e176117561f9458734153f3b909c0913faa0f504e6d500249c10383dae9ebc2",
+      "inputHex": "2ff26ab809736eadcb5ac79cf043636fd9bdeef48836d7f40dd908174d087693",
+      "masterPassword": "pässwörd",
+      "password": "#}_>/.:;$);!>%\"!+.>>",
+      "profile": {
+        "counter": 1,
+        "digits": false,
+        "length": 20,
+        "login": "dave",
+        "lowercase": false,
+        "saltFields": [],
+        "site": "symbols.test",
+        "symbols": true,
+        "uppercase": false
+      },
+      "serverOutput": "0524436281a0bfdefd1c3b5a7998b7d6f51433527190afceed0c2b4a6988a7c6",
+      "settingsDigest": "b794b8b92984817fb1c1d67ae7b139f161154003c4a80458c490a6dad1455688"
+    },
+    {
+      "crypto": {
+        "digest": "sha256",
+        "iterations": 1000
+      },
+      "entropy": "d8027cb0e3f08d1f1032f420b5575205aa1cb6e025151f64b97b2282f2b78bf0",
+      "inputHex": "09283e103f95d723860b52c6abccaaef80764461f38e293a1c042d2764e064ff",
+      "masterPassword": "master",
+      "password": "Ib[q=h1{;[TijCgu",
+      "profile": {
+        "counter": 1,
+        "digits": true,
+        "length": 16,
+        "login": "erin",
+        "lowercase": true,
+        "saltFields": [
+          {
+            "key": "b",
+            "value": "2"
+          },
+          {
+            "key": "a",
+            "value": "1"
+          },
+          {
+            "key": "a",
+            "value": "0"
+          }
+        ],
+        "site": "salted.test",
+        "symbols": true,
+        "uppercase": true
+      },
+      "serverOutput": "0625446382a1c0dffe1d3c5b7a99b8d7f61534537291b0cfee0d2c4b6a89a8c7",
+      "settingsDigest": "3c05964823756aa5dd0f0d462758a57d7d0242645d113a516efacf6892f81161"
+    },
+    {
+      "crypto": {
+        "digest": "SHA-512",
+        "iterations": 1000
+      },
+      "entropy": "145b1e24c03e41db0cfb13e3246e3b59b3e44802441ce39b5bd5b01b31823564",
+      "inputHex": "42df26be892ee112ee2c48a7a075d52788a242b157f2f9ba5f275d678f9fd34c",
+      "masterPassword": "master",
+      "password": "!0Aau]3C+4R/cHX#bqx5e:uT8|w*o-yBeZDJe?e69!jaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "profile": {
+        "counter": 7,
+        "digits": true,
+        "length": 128,
+        "login": "frank",
+        "lowercase": true,
+        "saltFields": [],
+        "site": "long.test",
+        "symbols": true,
+        "uppercase": true
+      },
+      "serverOutput": "0726456483a2c1e0ff1e3d5c7b9ab9d8f71635547392b1d0ef0e2d4c6b8aa9c8",
+      "settingsDigest": "4defff6554d687564e8d89ebeaf1872edc326e870b5c065634915a7adc593651"
+    },
+    {
+      "crypto": {
+        "digest": "sha256",
+        "iterations": 1000
+      },
+      "entropy": "9f576d434c8109e40ae07543913d34d1e6ab99368b093974d56e8096d8dbccc3",
+      "inputHex": "85a3a562b5345509555672d51c924a653ca60ac289e1e502115d5ff734c81d81",
+      "masterPassword": "master",
+      "password": "10e5x7vko4",
+      "profile": {
+        "counter": 1,
+        "digits": true,
+        "length": 10,
+        "login": "grace",
+        "lowercase": true,
+        "saltFields": [
+          {
+            "key": "env",
+            "value": "prod"
+          }
+        ],
+        "site": "mixed.test",
+        "symbols": false,
+        "uppercase": false
+      },
+      "serverOutput": "0827466584a3c2e1001f3e5d7c9bbad9f81736557493b2d1f00f2e4d6c8baac9e80726456483a2c1e0ff1e3d5c7b9ab9d8f71635547392b1d0ef0e2d4c6b8aa9",
+      "settingsDigest": "f0c95f4fe0c999e0026434c5454bd94cdf354c1afe730e37c28ce9065e981382"
+    },
+    {
+      "crypto": {
+        "digest": "sha1",
+        "iterations": 1000
+      },
+      "entropy": "c2bb14e59fc5f75f3a2b311c206afd76ca1f78398f505ee503d8be47e63f25ec",
+      "inputHex": "24ceecbea5eb00720d533100242031da0ebb56ac827549f15f7d2f146a0dc194",
+      "masterPassword": "master",
+      "password": "?\"S0\\EJAU.4@00~8*X.M5YJ#",
+      "profile": {
+        "counter": 2,
+        "digits": true,
+        "length": 24,
+        "login": "heidi",
+        "lowercase": false,
+        "saltFields": [],
+        "site": "mixed.test",
+        "symbols": true,
+        "uppercase": true
+      },
+      "serverOutput": "0928476685a4c3e201203f5e7d9cbbdaf91837567594b3d2f1102f4e6d8cabca",
+      "settingsDigest": "f870cdcbe25b2272dc5d45d6224efe48aa568e495a4c4328a7b63c2c22a4077b"
+    },
+    {
+      "crypto": {
+        "digest": "md5",
+        "iterations": 1000
+      },
+      "entropy": "59bd23907f1b19021cc659525d9eb2e2615dee09e09e0a41dc7f99847ae13d66",
+      "inputHex": "3129f6edfda8488b1bf555eb3b680ce87b5ac3a638ec71b8709f6949804d2d4f",
+      "masterPassword": "master",
+      "password": "cHxZyFgG",
+      "profile": {
+        "counter": 1,
+        "digits": false,
+        "length": 8,
+        "login": "ivan",
+        "lowercase": true,
+        "saltFields": [],
+        "site": "unknown-digest.test",
+        "symbols": false,
+        "uppercase": true
+      },
+      "serverOutput": "0a29486786a5c4e30221405f7e9dbcdbfa1938577695b4d3f211304f6e8daccb",
+      "settingsDigest": "efc777c0bbca29d517fdd05faa1d690ac2ee282380300a0a8d0326da91e66c42"
+    },
+    {
+      "crypto": {
+        "digest": "sha256",
+        "iterations": 100000
+      },
+      "entropy": "a7aa4ac520492835fc208049ac6cbac2c4fc80f7a053d5b231d6422c204c1587",
+      "inputHex": "f50ddabb14a339e314d5e7e5e9f604c01b0ce7ce86054ee6cd70938821147e73",
+      "masterPassword": "correct horse",
+      "password": "HB`3DpV@5<x($Pb!",
+      "profile": {
+        "counter": 1,
+        "digits": true,
+        "length": 16,
+        "login": "alice@example.org",
+        "lowercase": true,
+        "saltFields": [],
+        "site": "example.org",
+        "symbols": true,
+        "uppercase": true
+      },
+      "serverOutput": "0b2a496887a6c5e4032241607f9ebddcfb1a39587796b5d4f31231506f8eadcc",
+      "settingsDigest": "5b9bde6979dd7e562aaff8973449322571535b95870a22be5cb762b6028f32d0"
+    }
+  ],
+  "render": [
+    {
+      "entropy": "e99e20abab609cc4564ef137acb540de20d9b92dcc5cda58f78ba431444ef2da",
+      "options": {
+        "digits": true,
+        "length": 16,
+        "lowercase": true,
+        "symbols": true,
+        "uppercase": true
+      },
+      "password": "7w4<?(pVln$CpJR7"
+    },
+    {
+      "entropy": "0000000000000000000000000000000000000000000000000000000000000000",
+      "options": {
+        "digits": false,
+        "length": 4,
+        "lowercase": true,
+        "symbols": false,
+        "uppercase": false
+      },
+      "password": "aaaa"
+    },
+    {
+      "entropy": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "options": {
+        "digits": true,
+        "length": 33,
+        "lowercase": false,
+        "symbols": false,
+        "uppercase": true
+      },
+      "password": "PY3THDNDEXGSH6FSC81WTFDA6JJ0HMSAZ"
+    },
+    {
+      "entropy": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "options": {
+        "digits": false,
+        "length": 64,
+        "lowercase": false,
+        "symbols": true,
+        "uppercase": false
+      },
+      "password": "!::>\\_%}-&_)#;\\\\^,.#:[#.%\"]``{@'<(,<'=!{|.}+>]>@)$*!!!!!!!!!!!!!"
+    },
+    {
+      "entropy": "e99e20abab609cc4564ef137acb540de20d9b92dcc5cda58f78ba431444ef2da",
+      "options": {
+        "digits": false,
+        "length": 64,
+        "lowercase": false,
+        "symbols": true,
+        "uppercase": false
+      },
+      "password": "!_[{|%#&'%|#::-*`{#>`={'`!<\\\"?_=@\\*{|%,<]{%][_@#%}-_\"!!!!!!!!!!!"
+    },
+    {
+      "entropy": "0000000000000000000000000000000000000000000000000000000000000000",
+      "options": {
+        "digits": true,
+        "length": 33,
+        "lowercase": false,
+        "symbols": false,
+        "uppercase": true
+      },
+      "password": "0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "entropy": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "options": {
+        "digits": false,
+        "length": 4,
+        "lowercase": true,
+        "symbols": false,
+        "uppercase": false
+      },
+      "password": "pkrb"
+    },
+    {
+      "entropy": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "options": {
+        "digits": true,
+        "length": 16,
+        "lowercase": true,
+        "symbols": true,
+        "uppercase": true
+      },
+      "password": "'l7'dSg&:BAqj[8j"
+    }
+  ]
+}

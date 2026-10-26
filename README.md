@@ -24,7 +24,7 @@ Both frontends ship with a **Servers** panel that lets you see, connect to and d
 
 ## Download
 
-**[⬇ Latest release](https://github.com/benforcapita/PassForge/releases/latest)** — macOS 13+ (Apple Silicon and Intel). What changed: [CHANGELOG.md](CHANGELOG.md).
+**[⬇ Latest release](https://github.com/benforcapita/PassForge/releases/latest)** — macOS 13+ (Apple Silicon and Intel). What changed: [CHANGELOG.md](CHANGELOG.md) · what's next: [ROADMAP.md](ROADMAP.md).
 
 | File | What it is |
 |---|---|
